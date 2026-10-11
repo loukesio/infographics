@@ -1,0 +1,735 @@
+<!doctype html>
+<html lang="el">
+<head>
+<meta charset="utf-8">
+<title>ΘΕΣΣΑΛΙΑ — Thessaly: A Region in 14 Panels</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Alegreya:ital,wght@0,400;0,500;0,700;0,800;0,900;1,400;1,500;1,700&family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/d3@7.9.0/dist/d3.min.js" integrity="sha384-CjloA8y00+1SDAUkjs099PVfnY2KmDC2BZnws9kh8D/lX1s46w6EPhpXdqMfjK6i" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/topojson-client@3.1.0/dist/topojson-client.min.js" integrity="sha384-Ukv1p/xTma6P4/2bY5KzWBw+ydSpXmhCMtyciIQVDJ1RmOxtCYNMF1uXT9T63H67" crossorigin="anonymous"></script>
+<style>
+doc-page:not(:defined){visibility:hidden}
+:root{
+  --paper:#f2eee3; --paper2:#e7e1d1; --ink:#191713; --ink2:#4a463d;
+  --mute:#8b8474; --rule:#c7bfa9;
+  --red:#b3241f; --teal:#1c4b52; --ochre:#c08a1e; --wheat:#d9bd6a;
+  --deep:#141d1c; --snow:#dfe6e4; --water:#2b6b76;
+}
+.page > main{min-width:0; min-height:0}
+.grid > *, .stack > *, .row > *{min-width:0}
+.page{
+  background:var(--paper); color:var(--ink);
+  font-family:'IBM Plex Sans',system-ui,sans-serif;
+  display:grid; grid-template-rows:auto 1fr auto;
+  padding:4.6cqw 4.6cqw 3.4cqw; overflow:hidden;
+  -webkit-print-color-adjust:exact; print-color-adjust:exact;
+}
+.page.dark{background:var(--deep); color:var(--paper);
+  --ink:#f2eee3; --ink2:#bdb6a4; --mute:#8d8b7e; --rule:#39423f;}
+
+/* ---------- masthead ---------- */
+.mast{display:flex; align-items:baseline; gap:1.4cqw;
+  border-bottom:0.28cqw solid var(--ink); padding-bottom:0.7cqw; margin-bottom:2.2cqw}
+.mnum{font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:1.5cqw;
+  background:var(--red); color:#fff; padding:0.25cqw 0.65cqw; letter-spacing:.02em}
+.mtitle{font-family:'Alegreya',serif; font-weight:800; font-size:2.5cqw; letter-spacing:-.01em}
+.mtitle em{font-family:'IBM Plex Sans',sans-serif; font-style:normal; font-weight:400;
+  font-size:1.15cqw; color:var(--mute); letter-spacing:.14em; text-transform:uppercase; margin-left:0.9cqw}
+.mspacer{flex:1; border-bottom:0.09cqw dotted var(--rule); transform:translateY(-0.35cqw)}
+.mseries{font-family:'IBM Plex Mono',monospace; font-size:0.78cqw; color:var(--mute);
+  letter-spacing:.2em; text-transform:uppercase}
+.mpage{font-family:'IBM Plex Mono',monospace; font-size:1.15cqw; font-weight:600; color:var(--ink)}
+
+.foot{display:flex; gap:1.6cqw; align-items:baseline; margin-top:2.2cqw;
+  border-top:0.09cqw solid var(--rule); padding-top:0.7cqw;
+  font-family:'IBM Plex Mono',monospace; font-size:0.72cqw; color:var(--mute); letter-spacing:.05em}
+.foot b{font-weight:600; color:var(--ink2)}
+.foot .sp{flex:1}
+
+/* ---------- type ---------- */
+.k{font-family:'IBM Plex Mono',monospace; font-size:0.8cqw; letter-spacing:.24em;
+  text-transform:uppercase; color:var(--red); font-weight:600}
+.k.q{color:var(--mute)}
+h1.big{font-family:'Alegreya',serif; font-weight:900; font-size:9.5cqw; line-height:.86;
+  letter-spacing:-.025em; margin:0}
+h2.hd{font-family:'Alegreya',serif; font-weight:800; font-size:4.4cqw; line-height:.94;
+  letter-spacing:-.02em; margin:0}
+h3.sh{font-family:'Alegreya',serif; font-weight:700; font-size:2.05cqw; line-height:1.06;
+  margin:0 0 0.5cqw; letter-spacing:-.01em}
+h4.lb{font-family:'IBM Plex Sans',sans-serif; font-weight:600; font-size:1.02cqw;
+  letter-spacing:.1em; text-transform:uppercase; margin:0 0 0.55cqw; color:var(--ink)}
+.lead{font-family:'Alegreya',serif; font-size:1.85cqw; line-height:1.3; margin:0;
+  text-wrap:pretty; color:var(--ink)}
+p.b{font-size:1.06cqw; line-height:1.5; margin:0 0 0.85cqw; text-wrap:pretty; color:var(--ink2)}
+p.b:last-child{margin-bottom:0}
+.en{font-size:0.94cqw; line-height:1.45; color:var(--mute); text-wrap:pretty; margin:0.35cqw 0 0}
+.en.lg{font-size:1.15cqw; line-height:1.4}
+.cap{font-family:'IBM Plex Mono',monospace; font-size:0.72cqw; color:var(--mute); letter-spacing:.04em; line-height:1.4}
+.num{font-family:'Alegreya',serif; font-weight:900; font-variant-numeric:tabular-nums;
+  letter-spacing:-.035em; line-height:.84}
+.sp{flex:1 1 auto; min-height:0}
+.spread{justify-content:space-between}
+.midv{justify-content:center}
+.rule{height:0.09cqw; background:var(--rule); margin:1.2cqw 0}
+.rule.k2{height:0.22cqw; background:var(--ink)}
+strong.hl{color:var(--red); font-weight:600}
+.gr{font-family:'Alegreya',serif}
+
+/* ---------- layout helpers ---------- */
+.grid{display:grid; gap:2cqw}
+.col2{grid-template-columns:1fr 1fr}
+.col3{grid-template-columns:repeat(3,1fr)}
+.col4{grid-template-columns:repeat(4,1fr)}
+.stack{display:flex; flex-direction:column}
+.row{display:flex}
+.between{justify-content:space-between}
+
+/* ---------- stat tile ---------- */
+.tile{border-top:0.22cqw solid var(--ink); padding-top:0.75cqw; display:flex; flex-direction:column; gap:0.28cqw}
+.tile .n{font-family:'Alegreya',serif; font-weight:900; font-size:4.6cqw; line-height:.84;
+  font-variant-numeric:tabular-nums; letter-spacing:-.035em}
+.tile .n small{font-size:.42em; font-weight:700; letter-spacing:0}
+.tile .t{font-size:0.98cqw; font-weight:600; line-height:1.25}
+.tile .s{font-size:0.82cqw; color:var(--mute); line-height:1.3}
+.tile.acc{border-color:var(--red)} .tile.acc .n{color:var(--red)}
+.tile.wat{border-color:var(--teal)} .tile.wat .n{color:var(--teal)}
+
+/* ---------- bars ---------- */
+.bars{display:flex; flex-direction:column; gap:0.72cqw}
+.bar{display:grid; grid-template-columns:9cqw 1fr auto; align-items:center; gap:0.8cqw}
+.bar .bl{font-size:0.95cqw; font-weight:500; text-align:right; line-height:1.15}
+.bar .bl em{display:block; font-style:normal; font-size:0.72cqw; color:var(--mute)}
+.bar .bt{height:1.5cqw; background:var(--paper2); position:relative; overflow:hidden}
+.page.dark .bar .bt{background:#222b29}
+.bar .bt i{position:absolute; inset:0 auto 0 0; width:var(--w); background:var(--ink);
+  transition:width 1.4s cubic-bezier(.2,.7,.25,1)}
+.anim .bar .bt i{width:0}
+.anim .in .bar .bt i{width:var(--w)}
+.bar .bv{font-family:'IBM Plex Mono',monospace; font-size:0.95cqw; font-weight:600; font-variant-numeric:tabular-nums; min-width:5cqw; text-align:right}
+
+/* ---------- reveal — the FINAL state is the default; motion is additive and
+     only switched on (html.anim) once JS confirms the animation timeline runs.
+     A stalled timeline therefore paints the finished design, not a blank one. */
+.rv{transition:opacity .8s ease, transform .8s cubic-bezier(.2,.7,.25,1)}
+.anim .rv{opacity:0; transform:translateY(1.1cqw)}
+.anim .in .rv, .anim .rv.in{opacity:1; transform:none}
+.anim .in .rv:nth-child(2){transition-delay:.08s}
+.anim .in .rv:nth-child(3){transition-delay:.16s}
+.anim .in .rv:nth-child(4){transition-delay:.24s}
+.anim .in .rv:nth-child(5){transition-delay:.32s}
+.anim .in .rv:nth-child(6){transition-delay:.40s}
+.draw{transition:stroke-dashoffset 2.4s ease-out}
+.anim .draw{stroke-dasharray:var(--len); stroke-dashoffset:var(--len)}
+.anim .in .draw{stroke-dashoffset:0}
+.grow{transform-origin:bottom; transition:transform 1.2s cubic-bezier(.2,.7,.25,1)}
+.anim .grow{transform:scaleY(0)}
+.anim .in .grow{transform:scaleY(1)}
+.fade{transition:opacity 1s ease .6s}
+.anim .fade{opacity:0}
+.anim .in .fade{opacity:1}
+@keyframes shimmer{0%,100%{opacity:.55}50%{opacity:.95}}
+.shim{animation:shimmer 6s ease-in-out infinite}
+
+/* ---------- photo slots ---------- */
+.ph{position:relative; background:var(--paper2); overflow:hidden}
+.page.dark .ph{background:#1d2624}
+image-slot{--is-bg:transparent}
+
+/* ---------- misc components ---------- */
+.chip{display:inline-flex; align-items:center; gap:0.4cqw; border:0.09cqw solid var(--rule);
+  padding:0.28cqw 0.7cqw; font-size:0.8cqw; font-family:'IBM Plex Mono',monospace;
+  letter-spacing:.06em; text-transform:uppercase; color:var(--ink2)}
+.fact{border-left:0.22cqw solid var(--red); padding-left:0.9cqw}
+.fact .ft{font-family:'Alegreya',serif; font-weight:700; font-size:1.45cqw; line-height:1.12; margin:0 0 0.3cqw}
+.dl{display:grid; grid-template-columns:auto 1fr; gap:0.35cqw 1cqw; font-size:0.95cqw; align-items:baseline}
+.dl dt{font-family:'IBM Plex Mono',monospace; font-size:0.8cqw; color:var(--mute); letter-spacing:.08em; text-transform:uppercase}
+.dl dd{margin:0; color:var(--ink2)}
+
+@media print{
+  .rv{opacity:1!important; transform:none!important; transition:none!important}
+  .bar .bt i{width:var(--w)!important; transition:none!important}
+  .draw{stroke-dashoffset:0!important; transition:none!important}
+  .grow{transform:none!important; transition:none!important}
+  .fade{opacity:1!important; transition:none!important}
+  .shim{animation:none!important; opacity:.8!important}
+}
+</style>
+</head>
+<body>
+<doc-page width="70cm" height="100cm">
+
+<!-- ══════════════ 01 · TITLE ══════════════ -->
+<section class="page dark" data-screen-label="01 Title" id="p01">
+  <header class="mast" style="border-color:var(--paper)">
+    <span class="mnum">01</span>
+    <span class="mtitle">ΜΕ ΜΙΑ ΜΑΤΙΑ<em>At a glance</em></span>
+    <span class="mspacer"></span>
+    <span class="mseries">Μια περιφέρεια σε 14 πίνακες</span>
+    <span class="mpage">01/14</span>
+  </header>
+  <main class="stack" style="gap:2cqw">
+    <div class="stack" style="gap:1.8cqw; flex:1; min-height:0; justify-content:center">
+      <span class="k" style="color:var(--wheat); font-size:1.25cqw">Περιφέρεια Θεσσαλίας · Έδρα: Λάρισα</span>
+      <h1 class="big rv" style="font-size:20cqw; margin:0.4cqw 0">ΘΕΣΣΑΛΙΑ</h1>
+      <div class="row between rv" style="align-items:flex-end; gap:3cqw">
+        <p class="lead" style="max-width:36cqw; color:var(--paper); font-size:2.7cqw">Μια πεδιάδα κλεισμένη από βουνά, ένα ποτάμι που τη διασχίζει, και οκτώ χιλιάδες χρόνια ανθρώπων που την καλλιεργούν.</p>
+        <p class="en lg" style="max-width:28cqw; text-align:right; font-size:1.5cqw">A plain ringed by mountains, one river running through it, and eight thousand years of people farming it. Greece's only true lowland — and the country's oldest continuously settled ground.</p>
+      </div>
+    </div>
+
+    <div class="grid col2 rv" style="gap:2.6cqw; align-items:stretch; height:47cqw; flex:none">
+      <div class="ph" style="background:#101817">
+        <svg id="mapGreece" style="width:100%;height:100%;display:block"></svg>
+      </div>
+      <div class="stack" style="gap:1.5cqw; justify-content:space-between">
+        <div class="tile" style="border-color:var(--wheat)"><span class="n" style="color:var(--wheat)">688<small>,255</small></span><span class="t">κάτοικοι · residents</span><span class="s">Απογραφή 2021 · −6,1% από το 2011</span></div>
+        <div class="tile" style="border-color:var(--paper)"><span class="n">14.037<small> km²</small></span><span class="t">έκταση · area</span><span class="s">10,6% της Ελλάδας · 4 ηπειρωτικές ενότητες + Σποράδες</span></div>
+        <div class="tile" style="border-color:var(--red)"><span class="n" style="color:#e2564f">2.917<small> m</small></span><span class="t">Όλυμπος · Mount Olympus</span><span class="s">Το ψηλότερο σημείο της Ελλάδας</span></div>
+      </div>
+    </div>
+
+    <div class="grid col4 rv" style="gap:1.8cqw">
+      <div class="tile" style="border-color:var(--rule)"><span class="n" style="font-size:3.4cqw">148<small>.562</small></span><span class="t">Λάρισα, πόλη</span><span class="s">5η μεγαλύτερη πόλη της Ελλάδας</span></div>
+      <div class="tile" style="border-color:var(--rule)"><span class="n" style="font-size:3.4cqw">205<small> km</small></span><span class="t">Πηνειός</span><span class="s">Λεκάνη 9.500 km²</span></div>
+      <div class="tile" style="border-color:var(--rule)"><span class="n" style="font-size:3.4cqw">≈6800<small> π.Χ.</small></span><span class="t">Σέσκλο</span><span class="s">Από τους αρχαιότερους οικισμούς της Ευρώπης</span></div>
+      <div class="tile" style="border-color:var(--rule)"><span class="n" style="font-size:3.4cqw">1881</span><span class="t">Προσάρτηση</span><span class="s">Η Θεσσαλία εντάσσεται στο ελληνικό κράτος</span></div>
+    </div>
+  </main>
+  <footer class="foot" style="border-color:var(--rule)">
+    <span><b>Πηγές</b> ΕΛΣΤΑΤ Απογραφή 2021 · Natural Earth (γεωμετρία ακτογραμμής)</span>
+    <span class="sp"></span><span>ΘΕΣΣΑΛΙΑ / THESSALY · 2026</span>
+  </footer>
+</section>
+
+<!-- ══════════════ 02 · THE PLAIN ══════════════ -->
+<section class="page" data-screen-label="02 The plain" id="p02">
+  <header class="mast">
+    <span class="mnum">02</span><span class="mtitle">Ο ΚΑΜΠΟΣ<em>The plain</em></span>
+    <span class="mspacer"></span><span class="mseries">Γεωγραφία</span><span class="mpage">02/14</span>
+  </header>
+  <main class="stack" style="gap:1.8cqw">
+    <div class="row between" style="align-items:flex-end; gap:3cqw">
+      <h2 class="hd" style="max-width:38cqw">Μια λεκάνη κλειστή<br>από τέσσερα βουνά</h2>
+      <p class="en" style="max-width:24cqw; text-align:right">Thessaly is a basin, not a coast. Mountains close it on every side; a single gorge lets the water out.</p>
+    </div>
+    <div class="rule k2" style="margin:0.4cqw 0"></div>
+
+    <div class="grid" style="grid-template-columns:1fr 20cqw; gap:2.2cqw; flex:1; min-height:0">
+      <div class="ph rv" style="background:#e9e4d4">
+        <svg id="mapThess" style="width:100%;height:100%;display:block"></svg>
+      </div>
+      <div class="stack rv spread" style="gap:1.3cqw">
+        <div>
+          <h4 class="lb">Το δαχτυλίδι · The ring</h4>
+          <p class="b">Ο Όλυμπος στον βορρά, η Όσσα και το Πήλιο στα ανατολικά, η Όθρυς στον νότο, η Πίνδος στα δυτικά. Ανάμεσά τους, μια σχεδόν επίπεδη πεδιάδα στα <strong class="hl">60–120 m</strong> υψόμετρο.</p>
+          <p class="en">Olympus north, Ossa and Pelion east, Othrys south, Pindus west — enclosing an almost flat floor 60–120 m above the sea.</p>
+        </div>
+        <div class="rule"></div>
+        <div>
+          <h4 class="lb">Μια λίμνη κάποτε</h4>
+          <p class="b">Στην προϊστορία η πεδιάδα ήταν λίμνη. Το νερό άνοιξε δρόμο προς το Αιγαίο μέσα από τα <strong class="hl">Τέμπη</strong>. Ο μύθος λέει ότι ο Ποσειδώνας έσχισε τον βράχο με την τρίαινά του.</p>
+          <p class="en">The plain was once a lake; it drained through the Vale of Tempe. Myth credits Poseidon's trident.</p>
+        </div>
+        <div class="rule"></div>
+        <div class="stack" style="gap:0.9cqw">
+          <div class="tile"><span class="n" style="font-size:3.2cqw">≈4.500<small> km²</small></span><span class="t">Θεσσαλικός κάμπος</span><span class="s">Η μεγαλύτερη πεδιάδα της Ελλάδας</span></div>
+          <div class="tile wat"><span class="n" style="font-size:3.2cqw">9.500<small> km²</small></span><span class="t">Λεκάνη Πηνειού</span><span class="s">Σχεδόν όλη η Θεσσαλία στραγγίζει εδώ</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <h4 class="lb">Τομή Δύση → Ανατολή · Cross-section, Pindus to the Aegean</h4>
+      <div class="ph rv" style="height:15cqw; background:transparent">
+        <svg id="xsec" style="width:100%;height:100%;display:block"></svg>
+      </div>
+    </div>
+  </main>
+  <footer class="foot"><span><b>Πηγές</b> Natural Earth 1:50m · ΕΛΣΤΑΤ · WWF Pinios River Basin</span><span class="sp"></span><span>Σημεία και υψόμετρα σε πραγματικές συντεταγμένες</span></footer>
+</section>
+
+<!-- ══════════════ 03 · OLYMPUS ══════════════ -->
+<section class="page" data-screen-label="03 Olympus" id="p03">
+  <header class="mast">
+    <span class="mnum">03</span><span class="mtitle">ΟΛΥΜΠΟΣ<em>Mount Olympus</em></span>
+    <span class="mspacer"></span><span class="mseries">Βουνά</span><span class="mpage">03/14</span>
+  </header>
+  <main class="stack" style="gap:1.8cqw">
+    <div class="ph rv" style="flex:1; min-height:30cqw">
+      <image-slot id="ph-olympus" shape="rect" placeholder="Φωτογραφία: Ο Όλυμπος από τον κάμπο — Olympus seen across the Thessalian plain (landscape, wide)"></image-slot>
+    </div>
+    <div class="grid" style="grid-template-columns:26cqw 1fr; gap:2.4cqw; flex:none; height:40cqw">
+      <div class="stack" style="gap:1.1cqw">
+        <span class="k">Μύτικας · 40°05′N 22°21′E</span>
+        <h2 class="hd">2.917<span style="font-size:.42em"> μέτρα</span></h2>
+        <p class="b">Το ψηλότερο βουνό της Ελλάδας και το όριο της Θεσσαλίας με τη Μακεδονία. <strong class="hl">52 κορυφές</strong>, φαράγγια βάθους 1.000 m, και η πρώτη καταγεγραμμένη ανάβαση μόλις το <strong class="hl">1913</strong>.</p>
+        <p class="en">Greece's highest mountain and Thessaly's northern wall. 52 peaks; gorges a kilometre deep; first recorded ascent 1913 — remarkably late for a mountain the Greeks had been writing about for three thousand years.</p>
+        <div class="rule"></div>
+        <dl class="dl">
+          <dt>Κορυφή</dt><dd>Μύτικας 2.917 m</dd>
+          <dt>Άλλες</dt><dd>Σκολιό 2.911 · Στεφάνι 2.909</dd>
+          <dt>Καθεστώς</dt><dd>Εθνικός Δρυμός από το 1938 — ο πρώτος της Ελλάδας</dd>
+          <dt>UNESCO</dt><dd>Απόθεμα Βιόσφαιρας, 1981</dd>
+          <dt>Μυθολογία</dt><dd>Κατοικία των δώδεκα θεών</dd>
+        </dl>
+      </div>
+      <div class="stack" style="gap:0.9cqw">
+        <h4 class="lb">Οι ψηλότερες κορυφές της Ελλάδας · Greece's highest summits</h4>
+        <div class="ph rv" style="flex:1; background:transparent">
+          <svg id="peaks" style="width:100%;height:100%;display:block"></svg>
+        </div>
+        <p class="cap">Ύψος σε μέτρα. Οι θεσσαλικές κορυφές με κόκκινο. · Elevation in metres; Thessalian summits in red.</p>
+      </div>
+    </div>
+  </main>
+  <footer class="foot"><span><b>Πηγές</b> Ελληνική Ορειβατική Ομοσπονδία · Φορέας Διαχείρισης Εθνικού Δρυμού Ολύμπου</span><span class="sp"></span><span>03/14</span></footer>
+</section>
+
+<!-- ══════════════ 04 · THE MOUNTAINS ══════════════ -->
+<section class="page" data-screen-label="04 Mountains" id="p04">
+  <header class="mast">
+    <span class="mnum">04</span><span class="mtitle">ΤΑ ΒΟΥΝΑ<em>The ring of mountains</em></span>
+    <span class="mspacer"></span><span class="mseries">Βουνά</span><span class="mpage">04/14</span>
+  </header>
+  <main class="stack" style="gap:1.6cqw">
+    <p class="lead" style="max-width:52cqw">Τέσσερις οροσειρές κλείνουν τον κάμπο. Κάθε μία δίνει κάτι διαφορετικό: νερό, ξυλεία, βοσκοτόπια, καταφύγιο.</p>
+    <div class="rule k2" style="margin:0.2cqw 0"></div>
+    <div class="grid col4" style="gap:1.8cqw">
+      <div class="stack rv" style="gap:0.6cqw">
+        <span class="k q">Δυτικά</span><h3 class="sh">Πίνδος<br><span style="font-weight:400;font-size:.62em;color:var(--mute)">Pindus</span></h3>
+        <p class="b">Η «ραχοκοκαλιά» της Ελλάδας. Δίνει στη Θεσσαλία το νερό της: εδώ γεννιέται ο Πηνειός. Κοζιάκας <strong class="hl">1.901 m</strong>, Άγραφα έως <strong class="hl">2.184 m</strong>.</p>
+      </div>
+      <div class="stack rv" style="gap:0.6cqw">
+        <span class="k q">Βορειοανατολικά</span><h3 class="sh">Όσσα / Κίσσαβος<br><span style="font-weight:400;font-size:.62em;color:var(--mute)">Ossa</span></h3>
+        <p class="b">Καστανιές και οξιές πάνω από το Αιγαίο. <strong class="hl">1.978 m</strong>. Οι Γίγαντες, λέει ο μύθος, τη στοίβαξαν πάνω στο Πήλιο για να φτάσουν τον ουρανό.</p>
+      </div>
+      <div class="stack rv" style="gap:0.6cqw">
+        <span class="k q">Ανατολικά</span><h3 class="sh">Πήλιο<br><span style="font-weight:400;font-size:.62em;color:var(--mute)">Pelion</span></h3>
+        <p class="b"><strong class="hl">1.624 m</strong>. Το βουνό των Κενταύρων· εδώ ο Χείρωνας δίδαξε τον Αχιλλέα. 24 παραδοσιακά χωριά ανάμεσα σε θάλασσα και δάσος.</p>
+      </div>
+      <div class="stack rv" style="gap:0.6cqw">
+        <span class="k q">Νότια</span><h3 class="sh">Όθρυς<br><span style="font-weight:400;font-size:.62em;color:var(--mute)">Othrys</span></h3>
+        <p class="b"><strong class="hl">1.726 m</strong>. Η έδρα των Τιτάνων στον πόλεμο εναντίον του Ολύμπου — και το φυσικό σύνορο με τη Φθιώτιδα.</p>
+      </div>
+    </div>
+
+    <div class="stack" style="gap:0.8cqw; flex:1; min-height:0">
+      <h4 class="lb">Η κοιλάδα των Τεμπών · The Vale of Tempe</h4>
+      <div class="ph rv" style="flex:1; min-height:0">
+        <image-slot id="ph-tempe" shape="rect" placeholder="Φωτογραφία: Τα Τέμπη — the gorge between Olympus and Ossa with the Pineios below"></image-slot>
+      </div>
+    </div>
+    <div class="grid" style="grid-template-columns:1fr 46cqw; gap:2.4cqw; height:40cqw">
+      <div class="stack" style="gap:0.7cqw; justify-content:center">
+        <p class="b">Ένα φαράγγι <strong class="hl">10 χιλιομέτρων</strong> ανάμεσα στον Όλυμπο και την Όσσα, πλάτους μόλις 25 m στο στενότερο σημείο. Το μοναδικό άνοιγμα της Θεσσαλίας προς τη θάλασσα — και για αιώνες η μοναδική χερσαία πύλη προς τον βορρά.</p>
+        <p class="en">A 10 km gorge, 25 m wide at its narrowest: Thessaly's only outlet to the sea, and for centuries the only land gate to the north. Xerxes' army, the Romans, the Ottomans and the modern motorway have all used it.</p>
+        <div class="rule"></div>
+        <p class="cap">Κορυφές με πραγματικές συντεταγμένες, ταξινομημένες κατά αζιμούθιο γύρω από τη Λάρισα. · Real summit coordinates, ordered by bearing from Larissa; bar length is elevation.</p>
+      </div>
+      <div class="stack" style="gap:0.6cqw">
+        <h4 class="lb">Υψομετρικό προφίλ του δαχτυλιδιού · Elevation of the ring</h4>
+        <div class="ph rv" style="flex:1; min-height:0; background:transparent">
+          <svg id="ring" style="width:100%;height:100%;display:block"></svg>
+        </div>
+      </div>
+    </div>
+  </main>
+  <footer class="foot"><span><b>Πηγές</b> Ελληνική Ορειβατική Ομοσπονδία · Natural Earth</span><span class="sp"></span><span>04/14</span></footer>
+</section>
+
+<!-- ══════════════ 05 · METEORA ══════════════ -->
+<section class="page" data-screen-label="05 Meteora" id="p05">
+  <header class="mast">
+    <span class="mnum">05</span><span class="mtitle">ΜΕΤΕΩΡΑ<em>Meteora</em></span>
+    <span class="mspacer"></span><span class="mseries">Βουνά · Πολιτισμός</span><span class="mpage">05/14</span>
+  </header>
+  <main class="stack" style="gap:1.6cqw; justify-content:space-between">
+    <div class="ph rv" style="flex:1; min-height:34cqw">
+      <image-slot id="ph-meteora" shape="rect" placeholder="Φωτογραφία: Τα Μετέωρα — rock pillars with monasteries, wide landscape"></image-slot>
+    </div>
+    <div class="grid" style="grid-template-columns:24cqw 1fr 17cqw; gap:2.2cqw; flex:none; height:52cqw">
+      <div class="stack midv" style="gap:0.9cqw">
+        <span class="k">Καλαμπάκα · Τρίκαλα</span>
+        <h2 class="hd" style="font-size:3.4cqw">Μοναστήρια<br>στον αέρα</h2>
+        <p class="b">Κροκαλοπαγείς βράχοι που στέκουν έως <strong class="hl">400 m</strong> πάνω από την πεδιάδα — τα υπολείμματα ενός δέλτα ποταμού που απολιθώθηκε πριν από 60 εκατομμύρια χρόνια και μετά σχίστηκε από σεισμούς και νερό.</p>
+        <p class="en">Conglomerate pillars up to 400 m high: the fossilised delta of a prehistoric river, split by earthquakes and rain. Monks began climbing them in the 11th century, hauling themselves up in rope nets.</p>
+      </div>
+      <div class="stack" style="gap:0.9cqw">
+        <h4 class="lb">Ύψος βράχων και μονών · Pillar heights</h4>
+        <div class="ph rv" style="flex:1; background:transparent">
+          <svg id="pillars" style="width:100%;height:100%;display:block"></svg>
+        </div>
+        <p class="cap">Ύψος κορυφής βράχου πάνω από την επιφάνεια της θάλασσας (m). · Summit elevation above sea level.</p>
+      </div>
+      <div class="stack spread" style="gap:1cqw">
+        <div class="tile acc"><span class="n" style="font-size:3.6cqw">24</span><span class="t">μονές τον 16ο αι.</span><span class="s">monasteries at the peak of Meteora</span></div>
+        <div class="tile"><span class="n" style="font-size:3.6cqw">6</span><span class="t">σε λειτουργία σήμερα</span><span class="s">still active today</span></div>
+        <div class="tile"><span class="n" style="font-size:3.6cqw">1988</span><span class="t">Μνημείο UNESCO</span><span class="s">Εγγράφεται και ως μνημείο φύσης και πολιτισμού</span></div>
+        <div class="rule"></div>
+        <p class="cap">Μεγάλο Μετέωρο · Βαρλαάμ · Ρουσάνου · Αγία Τριάδα · Άγιος Στέφανος · Άγιος Νικόλαος Αναπαυσάς</p>
+      </div>
+    </div>
+  </main>
+  <footer class="foot"><span><b>Πηγές</b> UNESCO World Heritage List (αρ. 455) · Ιερά Μητρόπολη Σταγών και Μετεώρων</span><span class="sp"></span><span>05/14</span></footer>
+</section>
+
+<!-- ══════════════ 06 · PINEIOS ══════════════ -->
+<section class="page" data-screen-label="06 Pineios" id="p06">
+  <header class="mast">
+    <span class="mnum">06</span><span class="mtitle">ΠΗΝΕΙΟΣ<em>The river</em></span>
+    <span class="mspacer"></span><span class="mseries">Νερό</span><span class="mpage">06/14</span>
+  </header>
+  <main class="stack" style="gap:1.6cqw">
+    <div class="row between" style="align-items:flex-end; gap:3cqw">
+      <h2 class="hd" style="max-width:40cqw">205 χιλιόμετρα<br>από την Πίνδο στο Αιγαίο</h2>
+      <p class="en" style="max-width:23cqw;text-align:right">Named for the god Peneus. It drains 9,500 km² — two thirds of Thessaly — and every town on the plain sits on it or on one of its branches.</p>
+    </div>
+    <div class="rule k2" style="margin:0.2cqw 0"></div>
+
+    <div class="stack" style="gap:0.7cqw; flex:1; min-height:0">
+      <h4 class="lb">Μηκοτομή · Long profile, source to sea</h4>
+      <div class="ph rv" style="flex:1; min-height:26cqw; background:transparent">
+        <svg id="river" style="width:100%;height:100%;display:block"></svg>
+      </div>
+    </div>
+
+    <div class="grid" style="grid-template-columns:1fr 1fr 22cqw; gap:2.2cqw; flex:none; height:38cqw">
+      <div class="stack" style="gap:0.9cqw">
+        <h4 class="lb">Οι παραπόταμοι · Tributaries</h4>
+        <div class="bars" id="tribs">
+          <div class="bar"><span class="bl">Ενιπέας<em>Enipeas</em></span><span class="bt"><i style="--w:100%;background:var(--teal)"></i></span><span class="bv">84 km</span></div>
+          <div class="bar"><span class="bl">Τιταρήσιος<em>Titarisios</em></span><span class="bt"><i style="--w:83%;background:var(--teal)"></i></span><span class="bv">70 km</span></div>
+          <div class="bar"><span class="bl">Πορταϊκός<em>Portaikos</em></span><span class="bt"><i style="--w:60%;background:var(--water)"></i></span><span class="bv">≈50 km</span></div>
+          <div class="bar"><span class="bl">Ληθαίος<em>Litheos</em></span><span class="bt"><i style="--w:48%;background:var(--water)"></i></span><span class="bv">≈40 km</span></div>
+          <div class="bar"><span class="bl">Καλέντζης<em>Kalentzis</em></span><span class="bt"><i style="--w:42%;background:var(--water)"></i></span><span class="bv">≈35 km</span></div>
+        </div>
+        <p class="b" style="margin-top:0.6cqw">Ο Τιταρήσιος κατεβαίνει από τον Όλυμπο· ο Ενιπέας από την Όθρυς. Ο Όμηρος γράφει ότι τα νερά τους δεν ανακατεύονται με του Πηνειού, «αλλά πλέουν από πάνω σαν λάδι».</p>
+      </div>
+      <div class="stack" style="gap:0.9cqw">
+        <div class="ph rv" style="flex:1; min-height:26cqw">
+          <image-slot id="ph-pineios" shape="rect" placeholder="Φωτογραφία: Ο Πηνειός στη Λάρισα — the river through the city, or the delta at Stomio"></image-slot>
+        </div>
+        <p class="cap">Ο Πηνειός περνά μέσα από τη Λάρισα· το Αλκαζάρ, το μεγάλο πάρκο της πόλης, βρίσκεται στην όχθη του.</p>
+      </div>
+      <div class="stack" style="gap:1cqw">
+        <div class="tile wat"><span class="n" style="font-size:3.4cqw">96<small>%</small></span><span class="t">του νερού πάει στη γεωργία</span><span class="s">of water use in the basin is agricultural</span></div>
+        <div class="tile wat"><span class="n" style="font-size:3.4cqw">3.140<small> hm³</small></span><span class="t">συνολική διαθεσιμότητα</span><span class="s">2.550 επιφανειακό · 590 υπόγειο</span></div>
+        <div class="sp"></div>
+        <div class="rule"></div>
+        <p class="b" style="margin:0">Το δέλτα του Πηνειού, κοντά στο Στόμιο, προστατεύεται από διεθνείς συμβάσεις για την ορνιθοπανίδα του.</p>
+      </div>
+    </div>
+  </main>
+  <footer class="foot"><span><b>Πηγές</b> WWF, <i>Pinios River Basin (Greece)</i> · Britannica · Ομήρου <i>Ιλιάδα</i> Β 751–5</span><span class="sp"></span><span>06/14</span></footer>
+</section>
+
+<!-- ══════════════ 07 · LAKE KARLA ══════════════ -->
+<section class="page dark" data-screen-label="07 Lake Karla" id="p07">
+  <header class="mast" style="border-color:var(--paper)">
+    <span class="mnum">07</span><span class="mtitle">ΛΙΜΝΗ ΚΑΡΛΑ<em>The lake that vanished</em></span>
+    <span class="mspacer"></span><span class="mseries">Νερό</span><span class="mpage">07/14</span>
+  </header>
+  <main class="stack" style="gap:1.8cqw">
+    <div class="row between" style="align-items:flex-end;gap:3cqw">
+      <h2 class="hd" style="max-width:42cqw;color:var(--paper)">Η λίμνη που στράγγισαν<br>και ξαναβρήκαν</h2>
+      <p class="en" style="max-width:23cqw;text-align:right">Homer's Boebeis. Drained in 1962 for farmland; refilled from 2010 after the aquifer collapsed beneath the fields it created.</p>
+    </div>
+    <div class="rule k2" style="margin:0.2cqw 0;background:var(--paper)"></div>
+
+    <div class="stack" style="gap:0.8cqw; flex:1; min-height:0">
+      <h4 class="lb" style="color:var(--paper)">Επιφάνεια λίμνης, 1950–2024 · Lake surface area</h4>
+      <div class="ph rv" style="flex:1; min-height:27cqw; background:transparent">
+        <svg id="karla" style="width:100%;height:100%;display:block"></svg>
+      </div>
+    </div>
+
+    <div class="grid col3" style="gap:2.2cqw">
+      <div class="stack" style="gap:0.8cqw">
+        <span class="k" style="color:var(--wheat)">1962</span>
+        <h3 class="sh" style="color:var(--paper)">Η αποξήρανση</h3>
+        <p class="b" style="color:var(--ink2)">Μια σήραγγα 10 km έριξε τη λίμνη στον Παγασητικό. Κερδήθηκαν <strong style="color:#e2564f">180 km²</strong> καλλιεργήσιμης γης — και χάθηκαν 1.100 τόνοι ψαριών τον χρόνο, μαζί με τα χέλια που τρέφονταν οι γύρω οικισμοί.</p>
+      </div>
+      <div class="stack" style="gap:0.8cqw">
+        <span class="k" style="color:var(--wheat)">1962–2000</span>
+        <h3 class="sh" style="color:var(--paper)">Ο λογαριασμός</h3>
+        <p class="b" style="color:var(--ink2)">Χωρίς τη λίμνη, το μικροκλίμα άλλαξε και η άρδευση στράφηκε στα υπόγεια νερά. Ο υδροφόρος ορίζοντας υποχώρησε δεκάδες μέτρα· το έδαφος καθίζησε.</p>
+      </div>
+      <div class="stack" style="gap:0.8cqw">
+        <span class="k" style="color:var(--wheat)">2010 → σήμερα</span>
+        <h3 class="sh" style="color:var(--paper)">Η επιστροφή</h3>
+        <p class="b" style="color:var(--ink2)">Ένας ταμιευτήρας <strong style="color:#e2564f">≈38 km²</strong> ξαναγέμισε τον πυθμένα. Πελεκάνοι, φοινικόπτερα και αργυροτσικνιάδες επέστρεψαν. Τον Σεπτέμβριο του 2023 η κακοκαιρία Daniel ξαναέκανε την Κάρλα, για λίγες εβδομάδες, όσο ήταν το 1961.</p>
+      </div>
+    </div>
+  </main>
+  <footer class="foot" style="border-color:var(--rule)"><span><b>Πηγές</b> Wikipedia/Lake Karla · Φορέας Διαχείρισης Κάρλας–Μαυροβουνίου–Κεφαλόβρυσου · ΕΛΣΤΑΤ</span><span class="sp"></span><span>07/14</span></footer>
+</section>
+
+<!-- ══════════════ 08 · WATER & RISK ══════════════ -->
+<section class="page" data-screen-label="08 Water" id="p08">
+  <header class="mast">
+    <span class="mnum">08</span><span class="mtitle">ΝΕΡΟ &amp; ΚΙΝΔΥΝΟΣ<em>Water and risk</em></span>
+    <span class="mspacer"></span><span class="mseries">Νερό</span><span class="mpage">08/14</span>
+  </header>
+  <main class="stack" style="gap:1.7cqw">
+    <p class="lead" style="max-width:52cqw">Η Θεσσαλία ζει από το νερό που κατεβαίνει από τα βουνά της — και τα τελευταία χρόνια, από το πόσο απότομα κατεβαίνει.</p>
+    <div class="rule k2" style="margin:0.2cqw 0"></div>
+
+    <div class="stack" style="gap:0.8cqw; flex:1; min-height:0">
+      <h4 class="lb">Λίμνη Πλαστήρα · Lake Plastiras</h4>
+      <div class="ph rv" style="flex:1; min-height:20cqw">
+        <image-slot id="ph-plastira" shape="rect" placeholder="Φωτογραφία: Λίμνη Πλαστήρα — the reservoir at 750 m, wooded shoreline"></image-slot>
+      </div>
+    </div>
+    <div class="grid" style="grid-template-columns:1fr 26cqw; gap:2.4cqw; height:27cqw">
+      <div class="stack" style="gap:0.7cqw">
+        <h4 class="lb">Κακοκαιρία Daniel, 4–7 Σεπτεμβρίου 2023</h4>
+        <div class="ph rv" style="flex:1; min-height:0; background:transparent">
+          <svg id="daniel" style="width:100%;height:100%;display:block"></svg>
+        </div>
+      </div>
+      <div class="stack" style="gap:0.9cqw">
+        <p class="b">Τεχνητή λίμνη στα <strong class="hl">750 m</strong> υψόμετρο, στα Άγραφα. Δημιουργήθηκε το <strong class="hl">1959</strong> από φράγμα στον Ταυρωπό: ρεύμα, πόσιμο νερό και άρδευση για τον κάμπο της Καρδίτσας. Σήμερα είναι ο δημοφιλέστερος χειμερινός προορισμός της περιφέρειας.</p>
+        <div class="rule"></div>
+        <p class="b">Στη <strong class="hl">Ζαγορά</strong> του Πηλίου έπεσαν περίπου <strong class="hl">750 mm</strong> βροχής σε 24 ώρες — ελληνικό ρεκόρ, και σχεδόν <strong class="hl">δύο φορές</strong> η μέση ετήσια βροχόπτωση της Λάρισας. Ο κάμπος έγινε ξανά λίμνη.</p>
+      </div>
+    </div>
+
+    <div class="grid col4" style="gap:1.8cqw; flex:none">
+      <div class="tile wat rv"><span class="n" style="font-size:3.2cqw">413<small> mm</small></span><span class="t">μέση ετήσια βροχή, Λάρισα</span><span class="s">One of the drier lowlands in Greece</span></div>
+      <div class="tile wat rv"><span class="n" style="font-size:3.2cqw">≈24<small> km²</small></span><span class="t">Λίμνη Πλαστήρα</span><span class="s">Τεχνητή, 1959</span></div>
+      <div class="tile wat rv"><span class="n" style="font-size:3.2cqw">15,4<small>°C</small></span><span class="t">μέση θερμοκρασία</span><span class="s">Ηπειρωτικό κλίμα: παγωνιά τον χειμώνα, 40°C+ τον Ιούλιο</span></div>
+      <div class="tile acc rv"><span class="n" style="font-size:3.2cqw">48<small>,0°C</small></span><span class="t">ρεκόρ Ελλάδας &amp; Ευρώπης</span><span class="s">Ελασσόνα &amp; Καρδίτσα, 10 Ιουλίου 1977</span></div>
+    </div>
+  </main>
+  <footer class="foot"><span><b>Πηγές</b> ΕΜΥ / Meteo.gr · WMO αρχείο ακραίων τιμών · ΔΕΗ</span><span class="sp"></span><span>08/14</span></footer>
+</section>
+
+<!-- ══════════════ 09 · WILDLIFE ══════════════ -->
+<section class="page" data-screen-label="09 Wildlife" id="p09">
+  <header class="mast">
+    <span class="mnum">09</span><span class="mtitle">ΑΓΡΙΑ ΖΩΗ<em>Wildlife</em></span>
+    <span class="mspacer"></span><span class="mseries">Φύση</span><span class="mpage">09/14</span>
+  </header>
+  <main class="stack" style="gap:1.6cqw">
+    <div class="row between" style="align-items:flex-end;gap:3cqw">
+      <h2 class="hd" style="max-width:40cqw">Λύκοι στα ψηλά,<br>πελεκάνοι στα χαμηλά</h2>
+      <p class="en" style="max-width:23cqw;text-align:right">Three habitats stacked within 60 km: alpine Pindus and Olympus, the farmed plain, and the wetlands of Karla and the Pineios delta.</p>
+    </div>
+    <div class="rule k2" style="margin:0.2cqw 0"></div>
+
+    <div class="grid col3" style="gap:2cqw; flex:1; min-height:0">
+      <div class="stack rv" style="gap:0.8cqw; justify-content:flex-start">
+        <div class="ph" style="flex:1; min-height:24cqw"><image-slot id="ph-wolf" shape="rect" placeholder="Φωτογραφία: Λύκος — grey wolf, Pindus"></image-slot></div>
+        <span class="k">Πίνδος · Όλυμπος</span><h3 class="sh">Λύκος <span style="font-weight:400;font-size:.6em;color:var(--mute)">Canis lupus</span></h3>
+        <p class="b">Η Ελλάδα φιλοξενεί περίπου <strong class="hl">1.000 λύκους</strong>· η Πίνδος είναι ο πυρήνας τους. Επιστρέφουν σταδιακά στα χαμηλότερα βουνά της Θεσσαλίας καθώς τα χωριά αδειάζουν.</p>
+      </div>
+      <div class="stack rv" style="gap:0.8cqw">
+        <div class="ph" style="flex:1; min-height:24cqw"><image-slot id="ph-pelican" shape="rect" placeholder="Φωτογραφία: Αργυροπελεκάνος — Dalmatian pelican at Lake Karla"></image-slot></div>
+        <span class="k">Κάρλα · Δέλτα Πηνειού</span><h3 class="sh">Αργυροπελεκάνος <span style="font-weight:400;font-size:.6em;color:var(--mute)">Pelecanus crispus</span></h3>
+        <p class="b">Το μεγαλύτερο γλυκού νερού πουλί του κόσμου — άνοιγμα φτερών έως <strong class="hl">3,4 m</strong>. Επέστρεψε στην Κάρλα μαζί με το νερό· η λίμνη μετρά σήμερα πάνω από <strong class="hl">150 είδη πουλιών</strong>.</p>
+      </div>
+      <div class="stack rv" style="gap:0.8cqw">
+        <div class="ph" style="flex:1; min-height:24cqw"><image-slot id="ph-stork" shape="rect" placeholder="Φωτογραφία: Πελαργός σε φωλιά — white stork nesting on a village pole"></image-slot></div>
+        <span class="k">Ο κάμπος</span><h3 class="sh">Πελαργός <span style="font-weight:400;font-size:.6em;color:var(--mute)">Ciconia ciconia</span></h3>
+        <p class="b">Ο κάμπος της Θεσσαλίας είναι από τις πυκνότερες περιοχές φωλιάσματος πελαργού στην Ελλάδα. Φτάνουν τον Μάρτιο, φεύγουν τον Αύγουστο, και επιστρέφουν στην ίδια φωλιά χρόνο με τον χρόνο.</p>
+      </div>
+    </div>
+
+    <div class="grid col4" style="gap:1.6cqw">
+      <div class="fact rv"><p class="ft">Καφέ αρκούδα</p><p class="cap">Brown bear · Η νοτιότερη σταθερή παρουσία στην Πίνδο· περιστασιακά και στα Χάσια.</p></div>
+      <div class="fact rv"><p class="ft">Όρνιο &amp; χρυσαετός</p><p class="cap">Griffon vulture &amp; golden eagle · Φωλιάζουν στα βράχια των Μετεώρων και της Όσσας.</p></div>
+      <div class="fact rv"><p class="ft">Αγριόγιδο</p><p class="cap">Balkan chamois · Στις απόκρημνες πλαγιές του Ολύμπου, πάνω από τα 2.000 m.</p></div>
+      <div class="fact rv"><p class="ft">Βίδρα</p><p class="cap">Eurasian otter · Στον Πηνειό και τους παραποτάμους του — δείκτης καθαρού νερού.</p></div>
+    </div>
+  </main>
+  <footer class="foot"><span><b>Πηγές</b> Καλλιστώ · Ελληνική Ορνιθολογική Εταιρεία · Δίκτυο Natura 2000</span><span class="sp"></span><span>09/14</span></footer>
+</section>
+
+<!-- ══════════════ 10 · THE HORSE ══════════════ -->
+<section class="page" data-screen-label="10 The horse" id="p10">
+  <header class="mast">
+    <span class="mnum">10</span><span class="mtitle">ΤΟ ΑΛΟΓΟ<em>The Thessalian horse</em></span>
+    <span class="mspacer"></span><span class="mseries">Ζώα · Ιστορία</span><span class="mpage">10/14</span>
+  </header>
+  <main class="grid" style="grid-template-columns:1fr 26cqw; gap:2.6cqw">
+    <div class="stack" style="gap:1.4cqw">
+      <div class="ph rv" style="flex:1; min-height:34cqw">
+        <image-slot id="ph-horse" shape="rect" placeholder="Φωτογραφία: Θεσσαλικό άλογο στον κάμπο — a horse on the Thessalian plain (or an ancient Larissa coin with a horse)"></image-slot>
+      </div>
+      <div class="grid col3" style="gap:1.8cqw">
+        <div class="stack rv" style="gap:0.4cqw"><span class="k">Το ιππικό</span><p class="b">Η επίπεδη πεδιάδα έκανε τη Θεσσαλία τη μόνη περιοχή της Ελλάδας που μπορούσε να θρέψει και να εκπαιδεύσει ιππικό σε μεγάλη κλίμακα. Οι Θεσσαλοί ιππείς ήταν οι καλύτεροι του ελληνικού κόσμου.</p></div>
+        <div class="stack rv" style="gap:0.4cqw"><span class="k">Ο Βουκεφάλας</span><p class="b">Το άλογο του Μεγάλου Αλεξάνδρου ήταν θεσσαλικής ράτσας, από τη Φάρσαλο. Ο Φίλιππος Β΄ το αγόρασε για 13 τάλαντα — αστρονομικό ποσό.</p></div>
+        <div class="stack rv" style="gap:0.4cqw"><span class="k">Το σύμβολο</span><p class="b">Το άλογο κοσμούσε τα νομίσματα της αρχαίας Λάρισας και παραμένει έμβλημα της πόλης. Οι Κένταυροι — μισοί άνθρωποι, μισοί άλογοι — «γεννήθηκαν» στο Πήλιο.</p></div>
+      </div>
+    </div>
+    <div class="stack spread" style="gap:1.2cqw">
+      <span class="k">Ιππική Θεσσαλία</span>
+      <h2 class="hd" style="font-size:3.6cqw">Μια περιοχή που την όρισε ένα ζώο</h2>
+      <p class="en lg">No other Greek region had ground flat enough for cavalry. That single geographic fact shaped Thessaly's aristocracy, its warfare, its coinage and its myths.</p>
+      <div class="rule"></div>
+      <div class="tile acc"><span class="n" style="font-size:3.4cqw">13</span><span class="t">τάλαντα για τον Βουκεφάλα</span><span class="s">≈ 13 χρόνια μισθού για 13 άνδρες</span></div>
+      <div class="tile"><span class="n" style="font-size:3.4cqw">6ος<small> αι. π.Χ.</small></span><span class="t">το άλογο στα νομίσματα της Λάρισας</span><span class="s">Και στο σημερινό έμβλημα του δήμου</span></div>
+      <div class="rule"></div>
+      <div class="fact"><p class="ft">Ταυροκαθάψια</p><p class="cap">Θεσσαλικό αγώνισμα: έφιππος κυνηγούσε ταύρο και τον έριχνε πιάνοντάς τον από τα κέρατα. Οι Ρωμαίοι το αντέγραψαν στην αρένα.</p></div>
+      <div class="fact"><p class="ft">Κένταυροι</p><p class="cap">Πιθανή εξήγηση του μύθου: οι πρώτοι πεζοί Έλληνες που είδαν Θεσσαλούς έφιππους νόμισαν ότι ήταν ένα πλάσμα.</p></div>
+    </div>
+  </main>
+  <footer class="foot"><span><b>Πηγές</b> Πλούταρχος, <i>Αλέξανδρος</i> 6 · Ηρόδοτος Ζ΄ · Νομισματικό Μουσείο Αθηνών</span><span class="sp"></span><span>10/14</span></footer>
+</section>
+
+<!-- ══════════════ 11 · NEOLITHIC ══════════════ -->
+<section class="page" data-screen-label="11 Neolithic" id="p11">
+  <header class="mast">
+    <span class="mnum">11</span><span class="mtitle">ΟΙ ΠΡΩΤΟΙ ΑΓΡΟΤΕΣ<em>Europe's first farmers</em></span>
+    <span class="mspacer"></span><span class="mseries">Ιστορία</span><span class="mpage">11/14</span>
+  </header>
+  <main class="stack" style="gap:1.7cqw">
+    <div class="row between" style="align-items:flex-end;gap:3cqw">
+      <h2 class="hd" style="max-width:44cqw">Η γεωργία μπήκε στην Ευρώπη<br>από αυτόν τον κάμπο</h2>
+      <p class="en" style="max-width:22cqw;text-align:right">Farming crossed from Anatolia into Europe here. Thessaly holds the densest concentration of Neolithic settlement mounds — <i>magoules</i> — on the continent.</p>
+    </div>
+    <div class="rule k2" style="margin:0.2cqw 0"></div>
+
+    <div class="grid col2" style="gap:2.4cqw">
+      <div class="stack rv" style="gap:0.9cqw">
+        <div class="ph" style="height:21cqw"><image-slot id="ph-sesklo" shape="rect" placeholder="Φωτογραφία: Σέσκλο — the excavated Neolithic acropolis"></image-slot></div>
+        <span class="k">≈6800 – 4400 π.Χ. · 39°19′N 22°49′E</span>
+        <h3 class="sh">Σέσκλο</h3>
+        <p class="b">Ένας από τους αρχαιότερους γνωστούς οικισμούς της Ευρώπης. Πέτρινα θεμέλια, πλίνθινοι τοίχοι, δρόμοι, πλατεία — στο απόγειό του κατοικούσαν ίσως <strong class="hl">3.000–4.000</strong> άνθρωποι. Καταστράφηκε από φωτιά γύρω στο 4400 π.Χ.</p>
+      </div>
+      <div class="stack rv" style="gap:0.9cqw">
+        <div class="ph" style="height:21cqw"><image-slot id="ph-dimini" shape="rect" placeholder="Φωτογραφία: Διμήνι — concentric enclosure walls of the Neolithic site"></image-slot></div>
+        <span class="k">≈4800 – 4500 π.Χ. · 39°21′N 22°53′E</span>
+        <h3 class="sh">Διμήνι</h3>
+        <p class="b">Έξι ομόκεντροι περίβολοι γύρω από μια κεντρική αυλή με το «μέγαρο» — η αρχιτεκτονική μιας κοινωνίας που είχε ήδη κέντρο και περιφέρεια. Δίπλα, ένας μυκηναϊκός οικισμός που πολλοί ταυτίζουν με την <i>Ιωλκό</i>, το λιμάνι της Αργοναυτικής εκστρατείας.</p>
+      </div>
+    </div>
+
+    <div class="stack" style="gap:0.8cqw; flex:1; min-height:0">
+      <h4 class="lb">Οι μαγούλες: 8.000 χρόνια οικισμού σε στρώματα · The <i>magoula</i>, a village built on its own ruins</h4>
+      <div class="ph rv" style="flex:1; background:transparent">
+        <svg id="magoula" style="width:100%;height:100%;display:block"></svg>
+      </div>
+      <p class="cap">Κάθε γενιά έχτιζε πάνω στα ερείπια της προηγούμενης. Μετά από χιλιετίες, ο οικισμός γίνεται λόφος. Στη Θεσσαλία έχουν καταγραφεί πάνω από 400 μαγούλες. · More than 400 settlement mounds are recorded across the plain.</p>
+    </div>
+  </main>
+  <footer class="foot"><span><b>Πηγές</b> Εφορεία Αρχαιοτήτων Μαγνησίας · Χ. Τσούντας, <i>Αι προϊστορικαί ακροπόλεις Διμηνίου και Σέσκλου</i> (1908)</span><span class="sp"></span><span>11/14</span></footer>
+</section>
+
+<!-- ══════════════ 12 · TIMELINE ══════════════ -->
+<section class="page dark" data-screen-label="12 History" id="p12">
+  <header class="mast" style="border-color:var(--paper)">
+    <span class="mnum">12</span><span class="mtitle">ΙΣΤΟΡΙΑ<em>Eight thousand years</em></span>
+    <span class="mspacer"></span><span class="mseries">Ιστορία</span><span class="mpage">12/14</span>
+  </header>
+  <main class="stack" style="gap:1.8cqw">
+    <p class="lead" style="max-width:52cqw;color:var(--paper)">Ο κάμπος ήταν πάντα έπαθλο: αρκετά πλούσιος για να τον θέλουν όλοι, αρκετά ανοιχτός για να μην μπορεί να αμυνθεί.</p>
+    <div class="rule k2" style="margin:0.2cqw 0;background:var(--paper)"></div>
+    <div class="ph rv" style="flex:1; background:transparent; min-height:0">
+      <svg id="timeline" style="width:100%;height:100%;display:block"></svg>
+    </div>
+    <div class="grid col4" style="gap:1.8cqw">
+      <div class="stack rv" style="gap:0.4cqw"><span class="k" style="color:var(--wheat)">48 π.Χ.</span><h4 class="lb" style="color:var(--paper)">Φάρσαλος</h4><p class="b" style="color:var(--ink2)">Ο Καίσαρας συντρίβει τον Πομπήιο στον θεσσαλικό κάμπο. Η μάχη τερματίζει τη Ρωμαϊκή Δημοκρατία.</p></div>
+      <div class="stack rv" style="gap:0.4cqw"><span class="k" style="color:var(--wheat)">≈370 π.Χ.</span><h4 class="lb" style="color:var(--paper)">Ιπποκράτης</h4><p class="b" style="color:var(--ink2)">Ο πατέρας της ιατρικής πεθαίνει στη Λάρισα. Το φίδι του Ασκληπιού παραμένει στο έμβλημα της πόλης.</p></div>
+      <div class="stack rv" style="gap:0.4cqw"><span class="k" style="color:var(--wheat)">1423–1881</span><h4 class="lb" style="color:var(--paper)">Οθωμανική περίοδος</h4><p class="b" style="color:var(--ink2)">458 χρόνια. Η Λάρισα («Yenişehir») γίνεται διοικητικό κέντρο της Ρούμελης· ο κάμπος μοιράζεται σε τσιφλίκια.</p></div>
+      <div class="stack rv" style="gap:0.4cqw"><span class="k" style="color:var(--wheat)">1881</span><h4 class="lb" style="color:var(--paper)">Προσάρτηση</h4><p class="b" style="color:var(--ink2)">Η Θεσσαλία περνά στην Ελλάδα χωρίς πόλεμο, με τη Σύμβαση της Κωνσταντινούπολης. Το αγροτικό ζήτημα των τσιφλικιών θα κρατήσει ως το 1923.</p></div>
+    </div>
+  </main>
+  <footer class="foot" style="border-color:var(--rule)"><span><b>Πηγές</b> Καίσαρ, <i>De Bello Civili</i> · Σύμβαση Κωνσταντινουπόλεως 1881 · Ιστορικό Αρχείο Λάρισας</span><span class="sp"></span><span>12/14</span></footer>
+</section>
+
+<!-- ══════════════ 13 · PEOPLE & FIELDS ══════════════ -->
+<section class="page" data-screen-label="13 People" id="p13">
+  <header class="mast">
+    <span class="mnum">13</span><span class="mtitle">ΟΙ ΑΝΘΡΩΠΟΙ<em>People &amp; fields</em></span>
+    <span class="mspacer"></span><span class="mseries">Κοινωνία · Οικονομία</span><span class="mpage">13/14</span>
+  </header>
+  <main class="stack" style="gap:1.8cqw">
+    <div class="grid" style="grid-template-columns:1fr 1fr; gap:2.6cqw; flex:none; height:40cqw">
+      <div class="stack" style="gap:0.9cqw">
+        <h4 class="lb">Πληθυσμός ανά περιφερειακή ενότητα, 2021</h4>
+        <div class="bars" style="flex:1; justify-content:space-around">
+          <div class="bar"><span class="bl">Λάρισα<em>Larissa</em></span><span class="bt"><i style="--w:100%"></i></span><span class="bv">268.963</span></div>
+          <div class="bar"><span class="bl">Μαγνησία<em>Magnesia</em></span><span class="bt"><i style="--w:66%"></i></span><span class="bv">177.448</span></div>
+          <div class="bar"><span class="bl">Τρίκαλα<em>Trikala</em></span><span class="bt"><i style="--w:45%"></i></span><span class="bv">≈122.000</span></div>
+          <div class="bar"><span class="bl">Καρδίτσα<em>Karditsa</em></span><span class="bt"><i style="--w:40%"></i></span><span class="bv">106.305</span></div>
+          <div class="bar"><span class="bl">Σποράδες<em>Sporades</em></span><span class="bt"><i style="--w:5%"></i></span><span class="bv">≈13.500</span></div>
+        </div>
+        <p class="cap">Σύνολο Θεσσαλίας 688.255. Τρίκαλα και Σποράδες: υπολογισμός από το περιφερειακό σύνολο.</p>
+      </div>
+      <div class="stack" style="gap:0.9cqw">
+        <h4 class="lb">Πληθυσμός Θεσσαλίας, 1951–2021</h4>
+        <div class="ph rv" style="flex:1; min-height:16cqw; background:transparent">
+          <svg id="pop" style="width:100%;height:100%;display:block"></svg>
+        </div>
+      </div>
+    </div>
+
+    <div class="rule k2" style="margin:0.3cqw 0"></div>
+
+    <div class="ph rv" style="flex:1; min-height:22cqw"><image-slot id="ph-cotton" shape="rect" placeholder="Φωτογραφία: Βαμβακοχώραφο τον Σεπτέμβριο — cotton field at harvest, or the plain from the air"></image-slot></div>
+    <div class="grid" style="grid-template-columns:1fr 1fr 21cqw; gap:2.4cqw; height:23cqw">
+      <div class="stack" style="gap:0.9cqw">
+        <span class="k">Ο σιτοβολώνας</span>
+        <h2 class="hd" style="font-size:4.3cqw">Το βαμβάκι<br>της Ευρώπης</h2>
+      </div>
+      <div class="stack" style="gap:0.9cqw">
+        <p class="b">Η Ελλάδα παράγει περίπου <strong class="hl">80%</strong> του βαμβακιού της Ευρωπαϊκής Ένωσης, και η Θεσσαλία είναι η καρδιά του. Μαζί με σκληρό σιτάρι, καλαμπόκι, αμύγδαλα και βαμβακόσπορο, ο κάμπος τροφοδοτεί ένα μεγάλο μέρος της ελληνικής αγροτικής παραγωγής.</p>
+        <p class="en">Greece grows roughly four fifths of the EU's cotton; the Thessalian plain is where most of it stands. Picking runs from mid-September into November, and the roadsides turn white with what falls off the trailers.</p>
+        <p class="cap">Ο κάμπος τον Σεπτέμβριο.</p>
+      </div>
+      <div class="stack spread" style="gap:1cqw">
+        <div class="tile acc"><span class="n" style="font-size:3.2cqw">−6,1<small>%</small></span><span class="t">πληθυσμός 2011→2021</span><span class="s">732.762 → 688.255</span></div>
+        <div class="tile"><span class="n" style="font-size:3.2cqw">€17.868</span><span class="t">ΑΕΠ κατά κεφαλήν, 2024</span><span class="s">Σύνολο περιφέρειας: €12,1 δισ.</span></div>
+        <div class="tile"><span class="n" style="font-size:3.2cqw">49<small>/km²</small></span><span class="t">πυκνότητα</span><span class="s">Έναντι 79/km² στην Ελλάδα</span></div>
+      </div>
+    </div>
+  </main>
+  <footer class="foot"><span><b>Πηγές</b> ΕΛΣΤΑΤ Απογραφές 1951–2021 · Eurostat περιφερειακοί λογαριασμοί 2024 · Ευρωπαϊκή Επιτροπή, αγορά βάμβακος</span><span class="sp"></span><span>13/14</span></footer>
+</section>
+
+<!-- ══════════════ 14 · EVERYDAY LIFE ══════════════ -->
+<section class="page" data-screen-label="14 Everyday life" id="p14">
+  <header class="mast">
+    <span class="mnum">14</span><span class="mtitle">Η ΚΑΘΗΜΕΡΙΝΗ ΖΩΗ<em>Everyday life &amp; odd facts</em></span>
+    <span class="mspacer"></span><span class="mseries">Ζωή</span><span class="mpage">14/14</span>
+  </header>
+  <main class="stack" style="gap:1.6cqw">
+    <div class="grid" style="grid-template-columns:1fr 1fr; gap:2.4cqw; flex:1; min-height:0">
+      <div class="stack" style="gap:0.9cqw">
+        <div class="ph rv" style="flex:1; min-height:27cqw"><image-slot id="ph-tsipouro" shape="rect" placeholder="Φωτογραφία: Τσιπουράδικο — table of tsipouro and mezedes"></image-slot></div>
+        <span class="k">Τσιπουράδικο</span>
+        <h3 class="sh">Ένα τσίπουρο, ένας μεζές</h3>
+        <p class="b">Παραγγέλνεις τσίπουρο· έρχεται με μεζέ που δεν διάλεξες και δεν πληρώνεις. Παραγγέλνεις δεύτερο· έρχεται διαφορετικός μεζές. Το έθιμο γεννήθηκε στον Βόλο με τους πρόσφυγες του 1922 και είναι σήμερα ο κοινωνικός ρυθμός όλης της Θεσσαλίας. Το τσίπουρο <strong class="hl">Τυρνάβου</strong> έχει προστατευόμενη γεωγραφική ένδειξη.</p>
+      </div>
+      <div class="stack" style="gap:0.9cqw">
+        <div class="ph rv" style="flex:1; min-height:27cqw"><image-slot id="ph-theatre" shape="rect" placeholder="Φωτογραφία: Το Α΄ Αρχαίο Θέατρο Λάρισας μέσα στην πόλη — the ancient theatre amid modern Larissa"></image-slot></div>
+        <span class="k">Λάρισα, κέντρο</span>
+        <h3 class="sh">Ένα θέατρο κάτω από την πόλη</h3>
+        <p class="b">Το Α΄ Αρχαίο Θέατρο της Λάρισας χτίστηκε τον <strong class="hl">3ο αι. π.Χ.</strong> για <strong class="hl">≈10.000</strong> θεατές. Χάθηκε κάτω από αιώνες πόλης· ξαναβρέθηκε το 1910 και αποκαλύφθηκε συστηματικά μετά το 1985, με απαλλοτρίωση δεκάδων κτιρίων. Σήμερα ανοίγει ξανά ως χώρος παραστάσεων.</p>
+      </div>
+    </div>
+
+    <div class="rule k2" style="margin:0.2cqw 0"></div>
+    <h4 class="lb">Και μερικά που δεν χωρούσαν αλλού · Odd facts</h4>
+
+    <div class="grid col3" style="gap:2cqw 2.2cqw; align-content:start">
+      <div class="fact rv"><p class="ft">Η πόλη με τα περισσότερα μαγαζιά</p><p class="cap">Η Λάρισα έχει την υψηλότερη αναλογία καφέ, μπαρ και ταβερνών ανά κάτοικο στην Ελλάδα. Από εδώ ξεκίνησαν και οι αλυσίδες Mikel και Bruno.</p></div>
+      <div class="fact rv"><p class="ft">Οκτώ χιλιάδες χρόνια χωρίς διακοπή</p><p class="cap">Η Λάρισα θεωρείται από τις αρχαιότερες συνεχώς κατοικημένες πόλεις της Ευρώπης — ο ίδιος λόφος, από τη νεολιθική εποχή μέχρι σήμερα.</p></div>
+      <div class="fact rv"><p class="ft">Ο Αχιλλέας ήταν Θεσσαλός</p><p class="cap">Η Φθία, το βασίλειο του Πηλέα και του Αχιλλέα, βρισκόταν στα νότια της Θεσσαλίας. Οι Μυρμιδόνες ξεκίνησαν από εδώ για την Τροία.</p></div>
+      <div class="fact rv"><p class="ft">Μπουρανί</p><p class="cap">Στον Τύρναβο, την Καθαρά Δευτέρα, ένα διονυσιακό έθιμο με φαλλικά σύμβολα και σούπα από σπανάκι επιβιώνει αδιάκοπα από την αρχαιότητα.</p></div>
+      <div class="fact rv"><p class="ft">Το τρενάκι του Πηλίου</p><p class="cap">Ο μετρικός σιδηρόδρομος Βόλου–Μηλεών (1895) σχεδιάστηκε από τον Εβαρίστο ντε Κίρικο — πατέρα του ζωγράφου Τζόρτζιο ντε Κίρικο, που γεννήθηκε στον Βόλο.</p></div>
+      <div class="fact rv"><p class="ft">Ο μεγαλύτερος ελληνικός κάμπος έχει ελάχιστη βροχή</p><p class="cap">Με 413 mm τον χρόνο, η Λάρισα είναι πιο ξηρή από τη Μαδρίτη. Όλη η γεωργία της στηρίζεται σε νερό που έρχεται από αλλού.</p></div>
+    </div>
+  </main>
+  <footer class="foot"><span><b>Πηγές</b> Δήμος Λαρισαίων · Εφορεία Αρχαιοτήτων Λάρισας · Λαογραφικό Αρχείο Τυρνάβου</span><span class="sp"></span><span>ΤΕΛΟΣ · 14/14</span></footer>
+</section>
+
+</doc-page>
+
+<script src="./doc-page.js"></script>
+<script src="./image-slot.js"></script>
+<script src="./charts.js"></script>
+</body>
+</html>

@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="el">
+<head>
+<meta charset="utf-8">
+<title>ΘΕΣΣΑΛΙΑ — Σχέδιο τοποθέτησης / Installation plan</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Alegreya:ital,wght@0,400;0,700;0,800;0,900;1,400&family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+doc-page:not(:defined){visibility:hidden}
+:root{
+  --paper:#f2eee3; --paper2:#e7e1d1; --ink:#191713; --ink2:#4a463d;
+  --mute:#8b8474; --rule:#c7bfa9; --red:#b3241f; --teal:#1c4b52;
+  --ochre:#c08a1e; --wheat:#d9bd6a; --deep:#141d1c;
+}
+.page{
+  background:var(--paper); color:var(--ink);
+  font-family:'IBM Plex Sans',system-ui,sans-serif;
+  display:grid; grid-template-rows:auto 1fr auto;
+  padding:2.6cqw 2.8cqw 1.8cqw; overflow:hidden;
+  -webkit-print-color-adjust:exact; print-color-adjust:exact;
+}
+.page > main{min-width:0; min-height:0}
+.grid > *, .stack > *, .row > *{min-width:0}
+.mast{display:flex; align-items:baseline; gap:1.2cqw;
+  border-bottom:0.26cqw solid var(--ink); padding-bottom:0.5cqw; margin-bottom:1cqw}
+.mnum{font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:1.35cqw;
+  background:var(--ink); color:var(--paper); padding:0.2cqw 0.55cqw}
+.mtitle{font-family:'Alegreya',serif; font-weight:800; font-size:2cqw; letter-spacing:-.01em}
+.mtitle em{font-family:'IBM Plex Sans',sans-serif; font-style:normal; font-weight:400;
+  font-size:1.16cqw; color:var(--mute); letter-spacing:.14em; text-transform:uppercase; margin-left:0.8cqw}
+.mspacer{flex:1; border-bottom:0.08cqw dotted var(--rule); transform:translateY(-0.3cqw)}
+.mpage{font-family:'IBM Plex Mono',monospace; font-size:1.2cqw; font-weight:600}
+.foot{display:flex; gap:1.4cqw; align-items:baseline; margin-top:1cqw;
+  border-top:0.08cqw solid var(--rule); padding-top:0.6cqw;
+  font-family:'IBM Plex Mono',monospace; font-size:1.14cqw; color:var(--mute); letter-spacing:.05em}
+.foot .sp{flex:1}
+.k{font-family:'IBM Plex Mono',monospace; font-size:1.14cqw; letter-spacing:.22em;
+  text-transform:uppercase; color:var(--red); font-weight:600}
+h3.sh{font-family:'Alegreya',serif; font-weight:700; font-size:1.8cqw; line-height:1.05; margin:0 0 0.35cqw}
+h4.lb{font-family:'IBM Plex Sans',sans-serif; font-weight:600; font-size:1.16cqw;
+  letter-spacing:.1em; text-transform:uppercase; margin:0 0 0.45cqw}
+p.b{font-size:1.16cqw; line-height:1.42; margin:0 0 0.5cqw; color:var(--ink2); text-wrap:pretty}
+p.b:last-child{margin-bottom:0}
+.cap{font-family:'IBM Plex Mono',monospace; font-size:1.14cqw; color:var(--mute); line-height:1.38}
+.stack{display:flex; flex-direction:column}
+.rule{height:0.08cqw; background:var(--rule); margin:0.8cqw 0}
+.rule.k2{height:0.2cqw; background:var(--ink)}
+strong.hl{color:var(--red); font-weight:600}
+
+/* ── scale elevation drawing ───────────────────────────────────────────── */
+.elev{position:relative}
+.run{display:flex; align-items:flex-end}
+.elev .run{height:auto}
+/* The panel IS 70 x 100 cm — let layout derive the height so the drawing can
+   never be captured at a stale width. */
+.pan{position:relative; background:var(--paper2); border:0.09cqw solid var(--ink);
+  aspect-ratio:70/100; display:flex; align-items:flex-start; padding:0.34cqw; box-sizing:border-box}
+.pan.dark{background:var(--deep); border-color:var(--deep)}
+.pan .pn{font-family:'IBM Plex Mono',monospace; font-size:1.16cqw; font-weight:600; color:var(--ink)}
+.pan.dark .pn{color:var(--wheat)}
+.floor{height:0.16cqw; background:var(--ink)}
+.eye{position:absolute; left:0; right:var(--eyegutter,0); border-top:0.08cqw dashed var(--red)}
+.eyelab{position:absolute; right:0; transform:translateY(50%); white-space:nowrap;
+  font-family:'IBM Plex Mono',monospace; font-size:1.14cqw; color:var(--red); letter-spacing:.08em}
+.dimrow{display:flex; align-items:center; gap:0.4cqw; margin-top:0.5cqw}
+.dimline{flex:1; height:0.08cqw; background:var(--ink2); position:relative}
+.dimline::before,.dimline::after{content:''; position:absolute; top:-0.25cqw; width:0.08cqw; height:0.58cqw; background:var(--ink2)}
+.dimline::before{left:0} .dimline::after{right:0}
+.dimval{font-family:'IBM Plex Mono',monospace; font-size:1.16cqw; font-weight:600; letter-spacing:.06em}
+.vdim{position:absolute; display:flex; flex-direction:column; align-items:center; gap:0.2cqw}
+.vline{width:0.08cqw; background:var(--ink2); position:relative}
+.vline::before,.vline::after{content:''; position:absolute; left:-0.25cqw; height:0.08cqw; width:0.58cqw; background:var(--ink2)}
+.vline::before{top:0} .vline::after{bottom:0}
+
+/* ── spec table ────────────────────────────────────────────────────────── */
+table.sp{width:100%; border-collapse:collapse; font-size:1.15cqw}
+table.sp th{text-align:left; font-family:'IBM Plex Mono',monospace; font-size:1.14cqw;
+  letter-spacing:.14em; text-transform:uppercase; color:var(--mute); font-weight:600;
+  border-bottom:0.14cqw solid var(--ink); padding:0 0.6cqw 0.35cqw 0}
+table.sp td{padding:var(--rowpad,0.34cqw) 0.6cqw var(--rowpad,0.34cqw) 0; border-bottom:0.08cqw solid var(--rule);
+  vertical-align:top; line-height:1.4}
+table.sp td.n{font-family:'IBM Plex Mono',monospace; font-weight:600; color:var(--red); white-space:nowrap}
+table.sp td.g{font-family:'Alegreya',serif; font-weight:700; font-size:1.35cqw; white-space:nowrap}
+table.sp td.e{color:var(--mute)}
+.swatches{display:flex; gap:0.5cqw}
+.sw{flex:1; display:flex; flex-direction:column; gap:0.25cqw}
+.sw i{display:block; height:2.2cqw; border:0.08cqw solid rgba(0,0,0,.12)}
+.sw span{font-family:'IBM Plex Mono',monospace; font-size:1.14cqw; color:var(--mute); letter-spacing:.04em}
+</style>
+</head>
+<body>
+<doc-page width="42cm" height="29.7cm">
+
+<!-- ═════════════ SHEET 1 · WALL ELEVATIONS ═════════════ -->
+<section class="page" data-screen-label="Plan 1 Elevations" id="s1">
+  <header class="mast">
+    <span class="mnum">A</span>
+    <span class="mtitle">ΣΧΕΔΙΟ ΤΟΠΟΘΕΤΗΣΗΣ<em>Installation plan · wall elevations</em></span>
+    <span class="mspacer"></span>
+    <span class="mpage">1/2</span>
+  </header>
+
+  <main class="stack" style="gap:0.9cqw">
+    <div class="row" style="display:flex; justify-content:space-between; align-items:flex-end; gap:2cqw">
+      <div style="max-width:46cqw">
+        <span class="k">18 πίνακες · 70 × 100 cm · κατακόρυφοι</span>
+        <h3 class="sh" style="font-size:2.1cqw; margin-top:0.4cqw">Δύο διατάξεις για τον ίδιο κύκλο</h3>
+      </div>
+      <p class="cap" style="max-width:34cqw; text-align:right">Όλες οι διαστάσεις σε εκατοστά· τα σχέδια είναι υπό κλίμακα. Η σειρά των πινάκων τρέχει από αριστερά προς τα δεξιά και δεν αλλάζει — η αλληλουχία κουβαλά το επιχείρημα. · All dimensions in centimetres; elevations to scale. Panel order must not be shuffled.</p>
+    </div>
+    <div class="rule k2" style="margin:0.1cqw 0"></div>
+
+    <div class="stack" style="gap:0.4cqw">
+      <div style="display:flex; align-items:baseline; gap:0.9cqw">
+        <h4 class="lb" style="margin:0">Διάταξη Α · ενιαία σειρά</h4>
+        <span class="cap">Απαιτεί τοίχο ≥ 14,5 m · single run, needs a wall of 14.5 m or more</span>
+      </div>
+      <div class="elev" id="elevA">
+        <div class="run" id="runA"></div>
+        <div class="floor"></div>
+        <div class="eye" id="eyeA"></div>
+        <span class="eyelab" id="eyeLabA">ΓΡΑΜΜΗ ΜΑΤΙΟΥ · 150 cm</span>
+      </div>
+      <div class="dimrow" id="dimA">
+        <span class="dimval">0</span><span class="dimline"></span>
+        <span class="dimval">1.396 cm · 13,96 m</span>
+      </div>
+    </div>
+
+    <div class="stack" style="gap:0.4cqw">
+      <div style="display:flex; align-items:baseline; gap:0.9cqw">
+        <h4 class="lb" style="margin:0">Διάταξη Β · δύο σειρές των 9</h4>
+        <span class="cap">Απαιτεί τοίχο ≥ 7,2 m και ύψος ≥ 2,7 m · two rows of nine, 7.2 m wide, 2.7 m tall</span>
+      </div>
+      <div class="elev" style="width:47%">
+        <div class="run" id="runB1" style="margin-bottom:0.4cqw"></div>
+        <div class="run" id="runB2"></div>
+        <div class="floor"></div>
+        <div class="dimrow">
+          <span class="dimval">0</span><span class="dimline"></span>
+          <span class="dimval">694 cm</span>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:2.2cqw; flex:1; min-height:0; align-items:start; padding-top:0.4cqw; border-top:0.2cqw solid var(--ink)">
+      <div>
+        <h4 class="lb">Ύψη ανάρτησης · mounting heights</h4>
+        <table class="sp">
+          <tr><td>Κάτω ακμή — ενιαία σειρά (Α)</td><td class="n">100 cm</td></tr>
+          <tr><td>Κάτω ακμή — σειρά 1 (Β)</td><td class="n">45 cm</td></tr>
+          <tr><td>Κάτω ακμή — σειρά 2 (Β)</td><td class="n">153 cm</td></tr>
+          <tr><td style="border:none">Κενό μεταξύ πινάκων &amp; σειρών</td><td class="n" style="border:none">8 cm</td></tr>
+        </table>
+      </div>
+      <div>
+        <h4 class="lb">Απόσταση θέασης · viewing</h4>
+        <p class="b">Οι πίνακες διαβάζονται από <strong class="hl">1,5 έως 3 m</strong>. Το μικρότερο κείμενο είναι 12 pt και οι επικεφαλίδες φτάνουν τα 5 cm, ώστε ο επισκέπτης να παίρνει τον τίτλο από μακριά και τα στοιχεία από κοντά.</p>
+        <p class="cap">Αφήστε ≥ 2 m ελεύθερου διαδρόμου μπροστά από τον τοίχο.</p>
+      </div>
+      <div>
+        <h4 class="lb">Φωτισμός &amp; στερέωση · lighting &amp; fixing</h4>
+        <p class="b">Φωτισμός <strong class="hl">3000–4000 K</strong> υπό γωνία 30°, ώστε το ματ χαρτί να μην γυαλίζει. Στερέωση με μαγνήτες ή απόσταση 15 mm από τον τοίχο — οι σκούροι πίνακες κερδίζουν από τη σκιά.</p>
+        <p class="cap">Οι σκούροι πίνακες (01, 07, 12, 15, 17) θέλουν ομοιόμορφο φωτισμό.</p>
+      </div>
+    </div>
+  </main>
+
+  <footer class="foot">
+    <span>ΘΕΣΣΑΛΙΑ / THESSALY · Σχέδιο τοποθέτησης</span><span class="sp"></span><span>Φύλλο A · 1/2</span>
+  </footer>
+</section>
+
+<!-- ═════════════ SHEET 2 · INDEX & SPECS ═════════════ -->
+<section class="page" data-screen-label="Plan 2 Index and specs" id="s2">
+  <header class="mast">
+    <span class="mnum">B</span>
+    <span class="mtitle">ΕΥΡΕΤΗΡΙΟ &amp; ΠΡΟΔΙΑΓΡΑΦΕΣ<em>Panel index &amp; print specification</em></span>
+    <span class="mspacer"></span>
+    <span class="mpage">2/2</span>
+  </header>
+
+  <main class="grid" style="display:grid; grid-template-columns:1fr 30cqw; gap:2.4cqw; min-height:0">
+    <div class="stack" style="min-height:0">
+      <h4 class="lb">Σειρά πινάκων · panel sequence</h4>
+      <table class="sp" style="--rowpad:0.24cqw">
+        <thead><tr><th style="width:3cqw">Αρ.</th><th style="width:16cqw">Τίτλος</th><th>English</th><th style="width:9cqw">Θέμα</th><th style="width:7cqw">Φόντο</th></tr></thead>
+        <tbody>
+          <tr><td class="n">01</td><td class="g">ΘΕΣΣΑΛΙΑ</td><td class="e">At a glance</td><td class="e">Εισαγωγή</td><td class="e">Σκούρο</td></tr>
+          <tr><td class="n">02</td><td class="g">Ο ΚΑΜΠΟΣ</td><td class="e">The plain</td><td class="e">Γεωγραφία</td><td class="e">Ανοιχτό</td></tr>
+          <tr><td class="n">03</td><td class="g">ΟΛΥΜΠΟΣ</td><td class="e">Mount Olympus</td><td class="e">Βουνά</td><td class="e">Ανοιχτό</td></tr>
+          <tr><td class="n">04</td><td class="g">ΤΑ ΒΟΥΝΑ</td><td class="e">The ring of mountains</td><td class="e">Βουνά</td><td class="e">Ανοιχτό</td></tr>
+          <tr><td class="n">05</td><td class="g">ΜΕΤΕΩΡΑ</td><td class="e">Meteora</td><td class="e">Βουνά · Πολιτισμός</td><td class="e">Ανοιχτό</td></tr>
+          <tr><td class="n">06</td><td class="g">ΠΗΝΕΙΟΣ</td><td class="e">The river</td><td class="e">Νερό</td><td class="e">Ανοιχτό</td></tr>
+          <tr><td class="n">07</td><td class="g">ΛΙΜΝΗ ΚΑΡΛΑ</td><td class="e">The lake that vanished</td><td class="e">Νερό</td><td class="e">Σκούρο</td></tr>
+          <tr><td class="n">08</td><td class="g">ΝΕΡΟ &amp; ΚΙΝΔΥΝΟΣ</td><td class="e">Water and risk</td><td class="e">Νερό · Κλίμα</td><td class="e">Ανοιχτό</td></tr>
+          <tr><td class="n">09</td><td class="g">ΑΓΡΙΑ ΖΩΗ</td><td class="e">Wildlife</td><td class="e">Φύση</td><td class="e">Ανοιχτό</td></tr>
+          <tr><td class="n">10</td><td class="g">ΤΟ ΑΛΟΓΟ</td><td class="e">The Thessalian horse</td><td class="e">Ζώα · Ιστορία</td><td class="e">Ανοιχτό</td></tr>
+          <tr><td class="n">11</td><td class="g">ΟΙ ΠΡΩΤΟΙ ΑΓΡΟΤΕΣ</td><td class="e">Europe's first farmers</td><td class="e">Ιστορία</td><td class="e">Ανοιχτό</td></tr>
+          <tr><td class="n">12</td><td class="g">ΙΣΤΟΡΙΑ</td><td class="e">Eight thousand years</td><td class="e">Ιστορία</td><td class="e">Σκούρο</td></tr>
+          <tr><td class="n">13</td><td class="g">ΟΙ ΑΝΘΡΩΠΟΙ</td><td class="e">People &amp; fields</td><td class="e">Κοινωνία</td><td class="e">Ανοιχτό</td></tr>
+          <tr><td class="n">14</td><td class="g">ΟΙ ΚΟΙΝΟΤΗΤΕΣ</td><td class="e">Who lives on the plain</td><td class="e">Κοινωνία</td><td class="e">Ανοιχτό</td></tr>
+          <tr><td class="n">15</td><td class="g">Η ΜΟΥΣΙΚΗ</td><td class="e">The clarinet holds the plain</td><td class="e">Παράδοση</td><td class="e">Σκούρο</td></tr>
+          <tr><td class="n">16</td><td class="g">ΤΟ ΤΡΑΠΕΖΙ</td><td class="e">Plain &amp; mountain on a plate</td><td class="e">Ζωή · Παραγωγή</td><td class="e">Ανοιχτό</td></tr>
+          <tr><td class="n">17</td><td class="g">ΤΟ ΚΛΙΜΑ</td><td class="e">A plain that keeps its heat</td><td class="e">Κλίμα</td><td class="e">Σκούρο</td></tr>
+          <tr><td class="n">18</td><td class="g">Η ΠΟΛΗ ΤΩΝ ΚΑΦΕΝΕΙΩΝ</td><td class="e">The city of cafés</td><td class="e">Ζωή</td><td class="e">Ανοιχτό</td></tr>
+        </tbody>
+      </table>
+      <div class="rule" style="margin:0.7cqw 0"></div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.4cqw 1.6cqw">
+        <h4 class="lb" style="grid-column:1/-1; margin:0">Πριν την εκτύπωση</h4>
+        <p class="b" style="margin:0">1 · Τοποθετήστε φωτογραφίες στις <strong class="hl">21 υποδοχές</strong> — σύρετε το αρχείο πάνω στο γκρι πλαίσιο.</p>
+        <p class="b" style="margin:0">2 · Αντικαταστήστε τα πληθυσμιακά στοιχεία πριν το 2011 με την ακριβή σειρά της ΕΛΣΤΑΤ.</p>
+        <p class="b" style="margin:0">3 · Ελέγξτε τα ονόματα και τις χρονολογίες με τοπικό ιστορικό.</p>
+        <p class="b" style="margin:0">4 · Πίνακας 17: <strong class="hl">προσωρινά δεδομένα</strong> — βλ. HANDOFF.md.</p>
+      </div>
+      <p class="cap" style="margin-top:0.6cqw">Οι πέντε σκούροι πίνακες (01, 07, 12, 15, 17) λειτουργούν ως σημεία στάσης στη σειρά. Μην τους μετακινήσετε — δίνουν τον ρυθμό του τοίχου. · The five dark panels punctuate the run; keep them where they are.</p>
+    </div>
+
+    <div class="stack" style="gap:0.9cqw; min-height:0">
+      <div>
+        <h4 class="lb">Εκτύπωση · print</h4>
+        <table class="sp">
+          <tr><td>Διάσταση</td><td class="n">700 × 1000 mm</td></tr>
+          <tr><td>Ανάλυση εξαγωγής</td><td class="n">Διανυσματικό PDF</td></tr>
+          <tr><td>Χαρτί</td><td class="n">200–250 g ματ</td></tr>
+          <tr><td>Φινίρισμα</td><td class="n">Χωρίς γυαλάδα</td></tr>
+          <tr><td>Χρώμα</td><td class="n">CMYK</td></tr>
+          <tr><td style="border:none">Περιθώριο κοπής</td><td class="n" style="border:none">3 mm bleed</td></tr>
+        </table>
+        <p class="cap" style="margin-top:0.5cqw">Το φόντο φτάνει ως την ακμή· ζητήστε bleed αν κόβεται στο καθαρό μέγεθος.</p>
+      </div>
+
+      <div class="rule"></div>
+
+      <div>
+        <h4 class="lb">Τυπογραφία</h4>
+        <table class="sp">
+          <tr><td class="g" style="font-size:1.1cqw">Alegreya</td><td class="e">Τίτλοι, αριθμοί</td></tr>
+          <tr><td style="font-weight:600">IBM Plex Sans</td><td class="e">Κείμενο</td></tr>
+          <tr><td style="font-family:'IBM Plex Mono',monospace; border:none">IBM Plex Mono</td><td class="e" style="border:none">Ετικέτες, δεδομένα</td></tr>
+        </table>
+        <p class="cap" style="margin-top:0.5cqw">Και οι τρεις έχουν πλήρη ελληνικά. Ενσωματώστε τις γραμματοσειρές στο PDF.</p>
+      </div>
+
+      <div class="rule"></div>
+
+      <div>
+        <h4 class="lb">Παλέτα</h4>
+        <div class="swatches">
+          <div class="sw"><i style="background:var(--paper)"></i><span>#F2EEE3</span></div>
+          <div class="sw"><i style="background:var(--deep)"></i><span>#141D1C</span></div>
+          <div class="sw"><i style="background:var(--red)"></i><span>#B3241F</span></div>
+          <div class="sw"><i style="background:var(--teal)"></i><span>#1C4B52</span></div>
+          <div class="sw"><i style="background:var(--wheat)"></i><span>#D9BD6A</span></div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <footer class="foot">
+    <span>ΘΕΣΣΑΛΙΑ / THESSALY · Ευρετήριο &amp; προδιαγραφές</span><span class="sp"></span><span>Φύλλο B · 2/2</span>
+  </footer>
+</section>
+
+</doc-page>
+
+<script src="./doc-page.js"></script>
+<script>
+(function () {
+  var P = [
+    ['01', 1], ['02', 0], ['03', 0], ['04', 0], ['05', 0], ['06', 0], ['07', 1], ['08', 0], ['09', 0],
+    ['10', 0], ['11', 0], ['12', 1], ['13', 0], ['14', 0], ['15', 1], ['16', 0], ['17', 1], ['18', 0]
+  ];
+  // Widths are true proportions of the run: 70 cm panels separated by 8 cm gaps.
+  function fill(el, items) {
+    if (!el) return;
+    var total = items.length * 70 + (items.length - 1) * 8;
+    el.innerHTML = '';
+    items.forEach(function (p, i) {
+      var d = document.createElement('div');
+      d.className = 'pan' + (p[1] ? ' dark' : '');
+      d.style.width = (70 / total * 100) + '%';
+      if (i) d.style.marginLeft = (8 / total * 100) + '%';
+      d.innerHTML = '<span class="pn">' + p[0] + '</span>';
+      el.appendChild(d);
+    });
+    // Height comes from CSS aspect-ratio, so it tracks any later reflow.
+    return el.offsetHeight;
+  }
+  function boot(pass) {
+    var dp = document.querySelector('doc-page');
+    if (dp && dp._measure) { try { dp._measure(); } catch (e) { } }
+    var hA = fill(document.getElementById('runA'), P);
+    fill(document.getElementById('runB1'), P.slice(0, 9));
+    fill(document.getElementById('runB2'), P.slice(9));
+    // eye line at 150 cm above the floor, panel bottom at 100 cm
+    // The dashed line and its label share one computed height so the label can
+    // never drift into the panel captions the way an unanchored one did.
+    var eye = document.getElementById('eyeA'), lab = document.getElementById('eyeLabA'),
+        elev = document.getElementById('elevA'), dim = document.getElementById('dimA');
+    if (hA) {
+      var y = hA * 0.5;
+      if (eye) eye.style.bottom = y + 'px';
+      if (lab) lab.style.bottom = y + 'px';
+    }
+    // The gutter is the label's MEASURED width, not a constant — a fixed value
+    // silently under-reserves the moment the type scale changes.
+    if (lab && elev) {
+      var need = Math.ceil(lab.offsetWidth + 14) + 'px';
+      elev.style.paddingRight = need;
+      elev.style.setProperty('--eyegutter', need);
+      if (dim) dim.style.paddingRight = need;
+      // The gutter narrows the run, so lay the panels out again against it.
+      if (!pass) { requestAnimationFrame(function () { boot(1); }); }
+    }
+  }
+  if (document.readyState === 'complete') boot();
+  else window.addEventListener('load', boot);
+  setTimeout(boot, 400);
+})();
+</script>
+</body>
+</html>

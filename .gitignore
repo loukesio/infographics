@@ -1,0 +1,26 @@
+# macOS
+.DS_Store
+
+# archives and scratch downloads
+*.zip
+data_eu/
+frames_eu/
+data/
+
+# big or re-downloadable inputs (scripts fetch them)
+thessaly-dataviz/data/kontur/*.gpkg
+thessaly-dataviz/data/kontur/*.geojson
+thessaly-dataviz/data/spotify_songs.csv
+thessaly-dataviz/data/era5_drought/
+thessaly-dataviz/data/era5_thessaly.rds
+Thessaly Infographic Installation/R/cache/
+Thessaly Infographic Installation/_p17_check.html
+
+# render logs and intermediates
+thessaly-dataviz/out/*.log
+thessaly-dataviz/out/t12_thessaly_population_3d_raw.png
+
+# R
+.Rhistory
+.RData
+.Rproj.user/

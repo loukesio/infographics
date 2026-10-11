@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="el">
+<head>
+<meta charset="utf-8">
+<title>Εξαγωγή SVG — Θεσσαλία</title>
+<link href="https://fonts.googleapis.com/css2?family=Alegreya:wght@400;700;800;900&family=IBM+Plex+Sans:wght@400;600&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--paper:#f2eee3;--ink:#191713;--ink2:#4a463d;--mute:#8b8474;--rule:#c7bfa9;--red:#b3241f;--deep:#141d1c}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:'IBM Plex Sans',system-ui,sans-serif;
+  display:grid;grid-template-columns:minmax(0,1fr) 420px;height:100vh;overflow:hidden}
+main{padding:38px 40px;overflow:auto}
+h1{font-family:'Alegreya',serif;font-weight:800;font-size:34px;margin:0 0 4px;letter-spacing:-.01em}
+.sub{font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--red);font-weight:600;margin-bottom:22px}
+p.lede{font-size:15px;line-height:1.55;color:var(--ink2);max-width:62ch;margin:0 0 22px;text-wrap:pretty}
+.bar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:24px}
+button{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;letter-spacing:.1em;
+  text-transform:uppercase;padding:11px 18px;border:1.5px solid var(--ink);background:var(--ink);
+  color:var(--paper);cursor:pointer;transition:.15s}
+button:hover{background:var(--red);border-color:var(--red)}
+button.ghost{background:transparent;color:var(--ink)}
+button.ghost:hover{background:var(--ink);color:var(--paper)}
+button:disabled{opacity:.35;cursor:default;background:transparent;color:var(--mute);border-color:var(--rule)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--mute);font-weight:600;border-bottom:2px solid var(--ink);padding:0 10px 7px 0}
+td{padding:9px 10px 9px 0;border-bottom:1px solid var(--rule);vertical-align:middle}
+td.n{font-family:'IBM Plex Mono',monospace;color:var(--red);font-weight:600;white-space:nowrap}
+td.g{font-family:'IBM Plex Mono',monospace;font-weight:600}
+td.d{color:var(--mute);font-family:'IBM Plex Mono',monospace;font-size:12px;white-space:nowrap}
+td.a{text-align:right}
+td.a button{padding:6px 12px;font-size:11px}
+.tag{display:inline-block;font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.1em;
+  padding:2px 7px;background:var(--deep);color:var(--paper)}
+aside{border-left:1px solid var(--rule);padding:38px 32px;overflow:auto;background:#efe9db}
+h2{font-family:'IBM Plex Sans',sans-serif;font-weight:600;font-size:12px;letter-spacing:.12em;
+  text-transform:uppercase;margin:0 0 12px}
+aside p{font-size:13.5px;line-height:1.55;color:var(--ink2);margin:0 0 12px;text-wrap:pretty}
+aside code{font-family:'IBM Plex Mono',monospace;font-size:12px;background:#e3dccb;padding:1px 5px}
+.rule{height:1px;background:var(--rule);margin:22px 0}
+#log{font-family:'IBM Plex Mono',monospace;font-size:11.5px;line-height:1.7;color:var(--mute);
+  max-height:180px;overflow:auto;white-space:pre-wrap}
+iframe{position:fixed;left:-20000px;top:0;width:2646px;height:3780px;border:0}
+</style>
+</head>
+<body>
+<main>
+  <h1>Εξαγωγή διαγραμμάτων σε SVG</h1>
+  <div class="sub">Chart export · vector, print-ready</div>
+  <p class="lede">Κάθε διάγραμμα του τοίχου είναι ήδη διανυσματικό. Αυτή η σελίδα τα βγάζει ως αυτόνομα αρχεία SVG — με ενσωματωμένο φόντο, σωστές διαστάσεις και τις γραμματοσειρές του έργου — για επεξεργασία σε Illustrator, Inkscape ή Figma.</p>
+  <div class="bar">
+    <button id="load">1 · Φόρτωση τοίχου</button>
+    <button id="all" class="ghost" disabled>2 · Λήψη όλων</button>
+    <button id="clip" class="ghost" disabled>Αντιγραφή λίστας</button>
+  </div>
+  <table>
+    <thead><tr><th style="width:52px">Πίν.</th><th>Διάγραμμα</th><th style="width:120px">Διαστάσεις</th><th style="width:70px">Φόντο</th><th style="width:120px"></th></tr></thead>
+    <tbody id="rows"><tr><td colspan="5" class="d">Πατήστε «Φόρτωση τοίχου».</td></tr></tbody>
+  </table>
+</main>
+
+<aside>
+  <h2>Τι βγαίνει</h2>
+  <p>Αυτόνομο <code>.svg</code> ανά διάγραμμα, σε πραγματικές διαστάσεις, με πλακάτο φόντο (ανοιχτό ή σκούρο ανάλογα με τον πίνακα) και <code>@import</code> των γραμματοσειρών.</p>
+  <p>Οι δύο χάρτες είναι μεγάλοι (~2 MB) γιατί περιέχουν την ακτογραμμή Natural Earth. Στο Illustrator, διαλέξτε τα μονοπάτια της στεριάς και απλοποιήστε τα αν θέλετε ελαφρύτερο αρχείο.</p>
+  <div class="rule"></div>
+  <h2>Γραμματοσειρές</h2>
+  <p>Το SVG δείχνει τις γραμματοσειρές με <code>@import</code>. Για εκτύπωση, μετατρέψτε τα κείμενα σε καμπύλες (<em>Type → Create Outlines</em>) ή εγκαταστήστε Alegreya και IBM Plex τοπικά.</p>
+  <div class="rule"></div>
+  <h2>Εναλλακτικά, σε R</h2>
+  <p>Το <code>R/03-render.R</code> γράφει τα ίδια διαγράμματα ως <code>.pdf</code> και <code>.svg</code> από ggplot2, στην ίδια παλέτα. Δείτε <code>R/README.md</code>.</p>
+  <div class="rule"></div>
+  <h2>Ημερολόγιο</h2>
+  <div id="log">—</div>
+</aside>
+
+<iframe id="wall" src="./thessaly.html"></iframe>
+
+<script>
+const $ = s => document.querySelector(s);
+const log = m => { const l = $('#log'); l.textContent = (l.textContent === '—' ? '' : l.textContent + '\n') + m; l.scrollTop = l.scrollHeight; };
+const FONTS = "@import url('https://fonts.googleapis.com/css2?family=Alegreya:wght@400;700;800;900&family=IBM+Plex+Sans:wght@300;400;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap');";
+let charts = [];
+
+function standalone(svg, dark) {
+  const c = svg.cloneNode(true);
+  const NS = 'http://www.w3.org/2000/svg';
+  c.setAttribute('xmlns', NS);
+  c.removeAttribute('style');
+  c.removeAttribute('data-om-id');
+  const vb = (c.getAttribute('viewBox') || '').split(' ');
+  c.setAttribute('width', vb[2]); c.setAttribute('height', vb[3]);
+  // Animation helper classes and their custom properties are meaningless in a
+  // static file and confuse editors — strip them.
+  c.querySelectorAll('[class],[style]').forEach(e => {
+    e.removeAttribute('class');
+    if ((e.getAttribute('style') || '').includes('--len')) e.removeAttribute('style');
+  });
+  const st = document.createElementNS(NS, 'style'); st.textContent = FONTS;
+  const bg = document.createElementNS(NS, 'rect');
+  bg.setAttribute('x', 0); bg.setAttribute('y', 0);
+  bg.setAttribute('width', vb[2]); bg.setAttribute('height', vb[3]);
+  bg.setAttribute('fill', dark ? '#141d1c' : '#f2eee3');
+  c.insertBefore(bg, c.firstChild); c.insertBefore(st, c.firstChild);
+  return '<?xml version="1.0" encoding="UTF-8"?>\n' + new XMLSerializer().serializeToString(c);
+}
+
+function download(name, text) {
+  const b = new Blob([text], { type: 'image/svg+xml;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(b); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+}
+
+function scan() {
+  const doc = $('#wall').contentDocument;
+  if (!doc) { log('Το iframe δεν είναι προσβάσιμο.'); return; }
+  charts = [...doc.querySelectorAll('.page svg')].filter(s => s.id).map(s => {
+    const page = s.closest('.page');
+    const vb = (s.getAttribute('viewBox') || '0 0 0 0').split(' ');
+    return { id: s.id, panel: page.id.replace('p', ''), dark: page.classList.contains('dark'),
+             w: Math.round(+vb[2]), h: Math.round(+vb[3]), node: s };
+  }).sort((a, b) => a.panel.localeCompare(b.panel));
+  $('#rows').innerHTML = charts.length ? charts.map((c, i) => `
+    <tr><td class="n">${c.panel}</td><td class="g">${c.id}</td>
+    <td class="d">${c.w} × ${c.h}</td>
+    <td>${c.dark ? '<span class="tag">σκούρο</span>' : '<span class="d">ανοιχτό</span>'}</td>
+    <td class="a"><button class="ghost" data-i="${i}">Λήψη</button></td></tr>`).join('')
+    : '<tr><td colspan="5" class="d">Δεν βρέθηκαν διαγράμματα.</td></tr>';
+  $('#all').disabled = $('#clip').disabled = !charts.length;
+  log(`Βρέθηκαν ${charts.length} διαγράμματα.`);
+}
+
+$('#load').onclick = () => {
+  log('Φόρτωση… τα διαγράμματα χρειάζονται λίγα δευτερόλεπτα.');
+  $('#load').disabled = true;
+  const f = $('#wall');
+  const after = () => setTimeout(() => { scan(); $('#load').disabled = false; }, 7000);
+  // No query string on the src: some preview servers sign the exact path and
+  // reject anything appended. Reload through the frame's own location instead.
+  try {
+    if (f.contentWindow && f.contentDocument && f.contentDocument.querySelector('doc-page')) {
+      f.onload = after; f.contentWindow.location.reload();
+    } else { f.onload = after; f.src = './thessaly.html'; }
+  } catch (e) { f.onload = after; f.src = './thessaly.html'; }
+};
+$('#rows').onclick = e => {
+  const b = e.target.closest('button[data-i]'); if (!b) return;
+  const c = charts[+b.dataset.i];
+  download(`${c.panel}-${c.id}.svg`, standalone(c.node, c.dark));
+  log(`→ ${c.panel}-${c.id}.svg`);
+};
+$('#all').onclick = () => {
+  // Browsers throttle rapid programmatic downloads; space them out.
+  charts.forEach((c, i) => setTimeout(() => {
+    download(`${c.panel}-${c.id}.svg`, standalone(c.node, c.dark));
+    log(`→ ${c.panel}-${c.id}.svg`);
+  }, i * 450));
+};
+$('#clip').onclick = () => {
+  const t = charts.map(c => `${c.panel}\t${c.id}\t${c.w}×${c.h}\t${c.dark ? 'dark' : 'light'}`).join('\n');
+  navigator.clipboard.writeText(t).then(() => log('Η λίστα αντιγράφηκε.'));
+};
+</script>
+</body>
+</html>

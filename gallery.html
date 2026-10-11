@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Thessaly dataviz — gallery of every chart (11 Oct 2026)</title>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Fira+Sans:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+  :root { --ink:#191713; --ink2:#4a463d; --mute:#8b8474; --rule:#e3ded2; --ok:#2A6B55; --warn:#C08A1E; --todo:#B3241F; }
+  body { margin:0; background:#fff; color:var(--ink); font-family:'Fira Sans',system-ui,sans-serif; }
+  header { padding:40px 48px 18px; border-bottom:1px solid var(--rule); }
+  h1 { font-family:Oswald,sans-serif; font-weight:700; font-size:40px; margin:0 0 6px; letter-spacing:.01em; }
+  header p { margin:0; color:var(--ink2); max-width:900px; line-height:1.45; }
+  nav { padding:14px 48px; font-size:14px; color:var(--mute); border-bottom:1px solid var(--rule); position:sticky; top:0; background:#fff; z-index:2; }
+  nav a { color:var(--ink2); text-decoration:none; margin-right:18px; }
+  h2 { font-family:Oswald,sans-serif; font-weight:500; font-size:26px; margin:40px 48px 6px; }
+  .lead { margin:0 48px 18px; color:var(--mute); font-size:14px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(420px,1fr)); gap:26px; padding:0 48px 30px; }
+  .card { border:1px solid var(--rule); border-radius:6px; overflow:hidden; background:#fff; display:flex; flex-direction:column; }
+  .card a.img { display:block; background:#f6f4ef; }
+  .card img { width:100%; height:300px; object-fit:contain; display:block; background:#fff; }
+  .card .body { padding:12px 14px 14px; font-size:13.5px; line-height:1.45; }
+  .card .title { font-family:Oswald,sans-serif; font-size:17px; font-weight:500; margin:0 0 2px; }
+  .card .meta { color:var(--mute); font-size:12px; margin-bottom:6px; }
+  .badge { display:inline-block; font-size:11px; letter-spacing:.06em; text-transform:uppercase; padding:2px 7px; border-radius:3px; color:#fff; margin-right:6px; }
+  .ok { background:var(--ok); } .warn { background:var(--warn); } .todo { background:var(--todo); }
+  .note { color:var(--ink2); }
+  code { font-family:ui-monospace,Menlo,monospace; font-size:12px; background:#f3f1ec; padding:1px 4px; border-radius:3px; }
+  footer { padding:26px 48px 50px; color:var(--mute); font-size:12.5px; border-top:1px solid var(--rule); margin-top:30px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Thessaly dataviz — every chart so far</h1>
+  <p>Status board for the two projects in this folder: the R/ggplot2 data-journalism set (<code>thessaly-dataviz/</code>) and the printed wall exhibit (<code>Thessaly Infographic Installation/</code>). Click any image to open the full-size file. Badges: <span class="badge ok">done</span> finished and checked · <span class="badge warn">check</span> done but needs a decision or redesign · <span class="badge todo">open</span> data or run still missing.</p>
+</header>
+<nav>
+  <a href="#new">New this session</a><a href="#thessaly">Thessaly &amp; Larissa</a><a href="#exhibit">Wall exhibit (R figures)</a><a href="#global">Global set</a><a href="#open">Still open</a>
+</nav>
+
+<h2 id="new">New this session (10–11 Oct 2026)</h2>
+<p class="lead">Five new pieces, all from named sources. Rendered PNGs are in <code>thessaly-dataviz/out/</code> and <code>Thessaly Infographic Installation/R/out/</code>.</p>
+<div class="grid">
+  <div class="card"><a class="img" href="thessaly-dataviz/out/t12_thessaly_population_3d.png"><img src="thessaly-dataviz/out/t12_thessaly_population_3d.png" alt=""></a><div class="body">
+    <p class="title">Population density of Thessaly in 3D</p><div class="meta">t12_thessaly_population_3d.R · Kontur Population 2023 (HDX) · NUTS 2021 border, mainland only</div>
+    <span class="badge ok">done</span><span class="note">rayshader spike map, labels placed with magick. Sporades (~13,000 people) cropped. A darker first version is kept as <code>…_v1grey.png</code>.</span></div></div>
+  <div class="card"><a class="img" href="thessaly-dataviz/out/t13_threatened_species_map.png"><img src="thessaly-dataviz/out/t13_threatened_species_map.png" alt=""></a><div class="body">
+    <p class="title">Where Thessaly's threatened species have been seen</p><div class="meta">t13_threatened_species_map.R · GBIF occurrence API, IUCN CR/EN/VU, 1,563 records of 106 species</div>
+    <span class="badge ok">done</span><span class="note">Hex-bin map + 18 most-recorded species. Hotspots verified in the data: Lake Karla, Meteora, Pelion. Global IUCN categories, not the Greek Red Data Book (no open occurrence data).</span></div></div>
+  <div class="card"><a class="img" href="thessaly-dataviz/out/t14_thessaly_exports.png"><img src="thessaly-dataviz/out/t14_thessaly_exports.png" alt=""></a><div class="body">
+    <p class="title">What Thessaly sells abroad, and to whom</p><div class="meta">t14_thessaly_exports.R · ΣΒΘΣΕ study 2025 (ELSTAT data), PDF in data/exports/</div>
+    <span class="badge ok">done</span><span class="note">€2.24 bn exports 2025; box widths are real values. Links are qualitative: no product × country values are published. Ask ΣΒΘΣΕ or ELSTAT for the cross table to make a true Sankey.</span></div></div>
+  <div class="card"><a class="img" href="Thessaly Infographic Installation/R/out/panel17_preview.png"><img src="Thessaly Infographic Installation/R/out/panel17_preview.png" alt=""></a><div class="body">
+    <p class="title">Exhibit panel 17 — The climate, with real data</p><div class="meta">thessaly.html + charts.js · ERA5-Land via Open-Meteo, 1960–2024 · data/climate.json status = observed</div>
+    <span class="badge ok">done</span><span class="note">Provisional stamp cleared. Headline is last decade vs first decade (+1,3 °C), not a single-year difference. Greek decimal commas fixed in the chart.</span></div></div>
+  <div class="card"><a class="img" href="Thessaly Infographic Installation/R/out/17-temperature.png"><img src="Thessaly Infographic Installation/R/out/17-temperature.png" alt=""></a><div class="body">
+    <p class="title">Annual mean temperature, Thessaly and Larissa (R version)</p><div class="meta">R/02-figures.R fig_temptime() · same JSON as the HTML</div>
+    <span class="badge ok">done</span><span class="note">Vector PDF/SVG in R/out for the printer.</span></div></div>
+  <div class="card"><a class="img" href="Thessaly Infographic Installation/R/out/17-heatdays.png"><img src="Thessaly Infographic Installation/R/out/17-heatdays.png" alt=""></a><div class="body">
+    <p class="title">Heat days at Larissa, 1960–2024</p><div class="meta">R/02-figures.R fig_heatdays() · daily ERA5-Land grid cell</div>
+    <span class="badge warn">check</span><span class="note">Days ≥ 35 °C and ≥ 40 °C per year; 1960s averaged 14, 2010s 20, 2024 had 44. Not yet on the wall: panel 17 is full. Decide whether to make room for it.</span></div></div>
+</div>
+
+<h2 id="thessaly">Thessaly &amp; Larissa (earlier sessions)</h2>
+<div class="grid">
+  <div class="card"><a class="img" href="thessaly-dataviz/out/t1_storm_daniel.png"><img src="thessaly-dataviz/out/t1_storm_daniel.png" alt=""></a><div class="body"><p class="title">Storm Daniel 2023 as rain gauges</p><div class="meta">t1_storm_daniel.R · NOA/meteo.gr, NASA Earth Observatory</div><span class="badge ok">done</span></div></div>
+  <div class="card"><a class="img" href="thessaly-dataviz/out/t4_greek_parliament.png"><img src="thessaly-dataviz/out/t4_greek_parliament.png" alt=""></a><div class="body"><p class="title">Hellenic Parliament 1974–2023, ribbon bars</p><div class="meta">t4_greek_parliament.R</div><span class="badge warn">check</span><span class="note">Seat counts typed from memory; verify every row before publishing.</span></div></div>
+  <div class="card"><a class="img" href="thessaly-dataviz/out/t5_larissa_bellwether.png"><img src="thessaly-dataviz/out/t5_larissa_bellwether.png" alt=""></a><div class="body"><p class="title">As Larissa votes, so votes Greece</p><div class="meta">t5_larissa_bellwether.R · Ministry of Interior results</div><span class="badge ok">done</span></div></div>
+  <div class="card"><a class="img" href="thessaly-dataviz/out/t6_larissa_mayor.png"><img src="thessaly-dataviz/out/t6_larissa_mayor.png" alt=""></a><div class="body"><p class="title">Larissa mayor elections 2014–2023</p><div class="meta">t6_larissa_mayor.R · ekloges.thessaly.gov.gr</div><span class="badge ok">done</span></div></div>
+  <div class="card"><a class="img" href="thessaly-dataviz/out/t8_larissa_mayors_history.png"><img src="thessaly-dataviz/out/t8_larissa_mayors_history.png" alt=""></a><div class="body"><p class="title">Mayor timeline 1975→ and deciding rounds</p><div class="meta">t8_larissa_mayors_history.R</div><span class="badge warn">check</span><span class="note">Possibly merge with t10 into one Larissa poster.</span></div></div>
+  <div class="card"><a class="img" href="thessaly-dataviz/out/t10_larissa_mayors_1881.png"><img src="thessaly-dataviz/out/t10_larissa_mayors_1881.png" alt=""></a><div class="body"><p class="title">145 years of Larissa mayors</p><div class="meta">t10_larissa_mayors_1881.R · eleftheria.gr</div><span class="badge ok">done</span></div></div>
+  <div class="card"><a class="img" href="thessaly-dataviz/out/t11_mayor_professions_radar.png"><img src="thessaly-dataviz/out/t11_mayor_professions_radar.png" alt=""></a><div class="body"><p class="title">Who ran Larissa? Professions radar</p><div class="meta">t11_mayor_professions_radar.R</div><span class="badge ok">done</span></div></div>
+</div>
+
+<h2 id="exhibit">Wall exhibit — R figures (vector versions of the HTML panels)</h2>
+<p class="lead">From <code>Thessaly Infographic Installation/R/</code>. The HTML is the layout master; these are the print-grade PDF/SVG twins.</p>
+<div class="grid">
+  <div class="card"><a class="img" href="Thessaly Infographic Installation/R/out/03-peaks.png"><img src="Thessaly Infographic Installation/R/out/03-peaks.png" alt=""></a><div class="body"><p class="title">03 · Peaks</p><span class="badge ok">done</span></div></div>
+  <div class="card"><a class="img" href="Thessaly Infographic Installation/R/out/06-river.png"><img src="Thessaly Infographic Installation/R/out/06-river.png" alt=""></a><div class="body"><p class="title">06 · Pineios river</p><span class="badge ok">done</span></div></div>
+  <div class="card"><a class="img" href="Thessaly Infographic Installation/R/out/07-karla.png"><img src="Thessaly Infographic Installation/R/out/07-karla.png" alt=""></a><div class="body"><p class="title">07 · Lake Karla</p><span class="badge ok">done</span></div></div>
+  <div class="card"><a class="img" href="Thessaly Infographic Installation/R/out/13-population.png"><img src="Thessaly Infographic Installation/R/out/13-population.png" alt=""></a><div class="body"><p class="title">13 · Population 1951–2021</p><span class="badge warn">check</span><span class="note">Pre-2011 values approximate; replace with exact ELSTAT census series.</span></div></div>
+  <div class="card"><a class="img" href="Thessaly Infographic Installation/R/out/14-transhumance.png"><img src="Thessaly Infographic Installation/R/out/14-transhumance.png" alt=""></a><div class="body"><p class="title">14 · Transhumance</p><span class="badge ok">done</span></div></div>
+</div>
+
+<h2 id="global">Global data-journalism set</h2>
+<div class="grid">
+  <div class="card"><a class="img" href="thessaly-dataviz/out/p1_carbon_majors.png"><img src="thessaly-dataviz/out/p1_carbon_majors.png" alt=""></a><div class="body"><p class="title">Carbon Majors since Paris (ggvmap)</p><span class="badge ok">done</span></div></div>
+  <div class="card"><a class="img" href="thessaly-dataviz/out/p2_ai_datacenters_fan.png"><img src="thessaly-dataviz/out/p2_ai_datacenters_fan.png" alt=""></a><div class="body"><p class="title">Who owns the power behind AI (fan chart)</p><span class="badge warn">check</span><span class="note">Liked. Re-download Epoch AI CSV before publishing.</span></div></div>
+  <div class="card"><a class="img" href="thessaly-dataviz/out/p2_ai_datacenters.png"><img src="thessaly-dataviz/out/p2_ai_datacenters.png" alt=""></a><div class="body"><p class="title">AI data centres (ggvmap version)</p><span class="badge warn">check</span></div></div>
+  <div class="card"><a class="img" href="thessaly-dataviz/out/p3_redistribution.png"><img src="thessaly-dataviz/out/p3_redistribution.png" alt=""></a><div class="body"><p class="title">Gini before vs after taxes</p><span class="badge warn">check</span><span class="note">Redesign: explain Gini in plain words.</span></div></div>
+  <div class="card"><a class="img" href="thessaly-dataviz/out/p4_incarceration.png"><img src="thessaly-dataviz/out/p4_incarceration.png" alt=""></a><div class="body"><p class="title">US imprisonment rate by race</p><span class="badge warn">check</span><span class="note">Redesign: say "per 100,000 residents" in the title.</span></div></div>
+  <div class="card"><a class="img" href="thessaly-dataviz/out/p5_plant_extinction.png"><img src="thessaly-dataviz/out/p5_plant_extinction.png" alt=""></a><div class="body"><p class="title">Plant extinction roses</p><span class="badge warn">check</span><span class="note">Called ugly. Redesign or drop.</span></div></div>
+</div>
+
+<h2 id="open">Still open</h2>
+<div class="grid">
+  <div class="card"><div class="body"><p class="title">Drought small multiples (t7)</p><span class="badge todo">open</span><span class="note">Open-Meteo hit its daily quota on 10 Oct; 3 of 30 grid points cached in <code>data/era5_drought/</code>. Rerun <code>LANG=en_US.UTF-8 Rscript scripts/t7_thessaly_drought.R</code>; it resumes. Then set the title to the finding and make the map version.</span></div></div>
+  <div class="card"><div class="body"><p class="title">Rent prices over time</p><span class="badge todo">open</span><span class="note">Spitogatos blocks automated access. Loukas opens <code>spitogatos.gr/deiktis-timon</code> in a browser and copies the quarterly €/m² series for Λάρισα, Μαγνησία, Τρίκαλα, Καρδίτσα into <code>data/</code>.</span></div></div>
+  <div class="card"><div class="body"><p class="title">Exports: dairy → Germany in euros</p><span class="badge todo">open</span><span class="note">Needs the product × country table from ΣΒΘΣΕ or an ELSTAT custom tabulation. National feta exports by country are public in Eurostat Comext as a fallback.</span></div></div>
+  <div class="card"><div class="body"><p class="title">Coldest place in Thessaly (exhibit panel 17)</p><span class="badge todo">open</span><span class="note">Still unsourced, deliberately blank. Kechroti/Mainalo −35,3 °C confirmed as an NOA station reading; HNMS official record remains −27,8 °C Ptolemaida 1963.</span></div></div>
+  <div class="card"><div class="body"><p class="title">ELSTAT census tables (6.2 in CLAUDE.md)</p><span class="badge todo">open</span><span class="note">Emptying villages 2011→2021, Larissa city population 1881→2021, farm and livestock tables. Not started.</span></div></div>
+  <div class="card"><div class="body"><p class="title">Europe ACLED map (x1)</p><span class="badge todo">open</span><span class="note">Needs ACLED login and aggregated export.</span></div></div>
+</div>
+
+<footer>Generated 11 Oct 2026. Every number on every chart carries its source in the chart caption; see <code>thessaly-dataviz/CLAUDE.md</code> §4 and §9 and <code>Thessaly Infographic Installation/HANDOFF.md</code> for the full notes.</footer>
+</body>
+</html>

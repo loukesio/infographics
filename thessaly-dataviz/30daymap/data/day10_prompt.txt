@@ -1,0 +1,45 @@
+#30DayMapChallenge 2026 · Day 10 · Prompting only — every prompt sent to the map-making agent, verbatim.
+The agent writes and renders the code; the human side (Claude, orchestrating) only sends prompts, never edits code.
+
+==================== PROMPT 1 ====================
+You are making Day 10 ("Prompting only") of Loukas Theodosiou's #30DayMapChallenge 2026 Thessaly series.
+First read this brief fully and follow every rule in it:
+/Users/theodosiou/Documents/Projects/infographics/thessaly-dataviz/30daymap/BRIEF.md
+(it points you to the shared code 30daymap/R/m30_base.R and to §1 of thessaly-dataviz/CLAUDE.md — read both).
+R working dir: /Users/theodosiou/Documents/Projects/infographics/thessaly-dataviz/
+
+Task: a map of Thessaly's mountain ring — the mountains that wall in the Thessalian plain
+(Olympus, Ossa/Kissavos, Pelion, Othrys, Pindus, Agrafa, and others such as Antichasia, Chasia, Mavrovouni if
+the data show them).
+- Real data only. Relief from m30_dem() + m30_hillshade(). Peak names and heights must come from OpenStreetMap
+  natural=peak points in the data (m30_osm("points", "natural = 'peak'"), names in the name / name:en tags via
+  other_tags, heights in the ele tag) — never from memory. If a peak has no ele tag, do not invent one.
+- Pick the highest named peak of each range (choose them from the OSM data, e.g. the highest peak within a
+  buffer of each massif or the top peaks overall) and label 6–8 of them, name + height in m.
+- Make the ring visible: e.g. grey the plain, show land above a threshold (e.g. 500 m or 1,000 m) in one
+  restrained sequential colour on the hillshade, so the eye sees a lowland bowl walled by mountains.
+- Title = a finding computed from the DEM, e.g. the share of Thessaly above 1,000 m, or how many metres
+  separate the plain from Mytikas; print the number with message().
+- Second element in the spare space (Thessaly is wide): e.g. a small ranked bar / lollipop of the labelled
+  peaks' heights, or an elevation profile across the region.
+- Caption must include, word for word: "Made by prompting only (N prompts)" where N is the number of
+  prompts you received in total (this is prompt 1; if you get follow-ups, update N each time).
+  Sources in the caption: Copernicus GLO-90 DEM, © OpenStreetMap contributors (Geofabrik 2026-10-28), GADM/GISCO.
+Output names: script 30daymap/scripts/day10_prompting_only.R, image 30daymap/out/day10_prompting_only.png,
+notes 30daymap/notes/day10.md (headings as in the brief; in How say it was made by prompting only, and
+that the prompts are in 30daymap/data/day10_prompt.txt — do not edit that txt file).
+Render with Rscript, look at the PNG with the Read tool, iterate at least twice until it is publishable.
+Do not touch any other day's files, do not commit. When done, report: the title, the finding number, the peaks
+labelled (name, height, OSM source), and anything that failed.
+
+==================== PROMPT 2 ====================
+Correction to my first prompt, two facts about the OSM data:
+1) In 30daymap/cache/thessaly_osm.gpkg the points layer has no "natural" column: use
+   m30_osm("points", "hstore_get_value(other_tags,'natural') = 'peak'").
+2) The ele tag is NOT in that gpkg at all: GDAL's default osmconf.ini lists ele under "ignore=", so every
+   peak comes without its height. Do not read heights from other tags (e.g. prominence) and not from memory.
+   Instead re-extract only the peaks from the original OSM file 30daymap/cache/greece.osm.pbf with a copy of
+   osmconf.ini in which ele is removed from the ignore lists and added to the points attributes
+   (e.g. osmextract::oe_read(..., extra_tags = c("ele","natural","name:en")) or sf::gdal_utils vectortranslate
+   with -oo CONFIG_FILE=<your osmconf>, -where "natural='peak'"); cache the result in 30daymap/cache/day10/.
+   Do not edit m30_base.R or the shared gpkg. Remember this is now prompt 2 for the caption count.

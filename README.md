@@ -13,6 +13,13 @@ Two projects live here:
 
 This page shows only finished charts. A status board of everything, including work in progress, is [`gallery.html`](gallery.html).
 
+## #30DayMapChallenge 2026 — Thessaly
+
+Thirty maps of Thessaly, one per day of November 2026, each with its code, data source and finding:
+[`thessaly-dataviz/30daymap/`](thessaly-dataviz/30daymap/README.md).
+
+[![](thessaly-dataviz/30daymap/out/day06_vintage.png)](thessaly-dataviz/30daymap/README.md)
+
 ## Thessaly and Larissa
 
 ### Population density of Thessaly in 3D

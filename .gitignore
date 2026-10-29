@@ -24,3 +24,9 @@ thessaly-dataviz/out/t12_thessaly_population_3d_raw.png
 .Rhistory
 .RData
 .Rproj.user/
+
+# 30DayMapChallenge caches (re-downloadable)
+thessaly-dataviz/30daymap/cache/
+thessaly-dataviz/30daymap/out/*_raw.png
+thessaly-dataviz/30daymap/preview.html
+!thessaly-dataviz/30daymap/data/

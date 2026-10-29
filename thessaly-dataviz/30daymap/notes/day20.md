@@ -20,7 +20,7 @@ pure ggplot (no rayshader), one accent + greys.
 
 **Finding**
 **8 of 397 res-6 hexagons hold 51.5% of 678,559 people on 2.0% of the hexagon area (329 of 16,317 km²).**
-Volos 103,000 (one cell), Larissa 139,500 (3 cells), Trikala 54,400, Karditsa 41,700 (2 cells), Tyrnavos 11,100.
+Volos 103,000 (one cell), Larissa 139,500 (3 cells: 56,300 + 53,900 + 29,300), Trikala 54,400, Karditsa 41,700 (2 cells), Tyrnavos 11,100. Volos is the tallest prism because the fixed H3 grid keeps it in one cell while it cuts Larissa into three; labels and subtitle say so.
 
 **Caveats**
 Kontur is modelled population (2023). Res-6 cells on the border stick out of the region, so the area base (16,317 km²)

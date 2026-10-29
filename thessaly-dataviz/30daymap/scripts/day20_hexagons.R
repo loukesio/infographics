@@ -75,10 +75,14 @@ lab <- hx |> mutate(id = row_number()) |> filter(top) |>
   left_join(tops |> group_by(id) |> summarise(lx = mean(X), ly = max(Y)), by = "id")
 print(select(lab, rank, pop, town))
 lab_txt <- lab |> filter(!is.na(town)) |> group_by(town) |>
-  summarise(n = n(), pop = sum(pop), lx = lx[which.max(ly)], ly = max(ly)) |>
+  summarise(n = n(), parts = paste(format(round(sort(pop, decreasing = TRUE), -2), big.mark = ",", trim = TRUE),
+                                    collapse = " + "),
+            pop = sum(pop), lx = lx[which.max(ly)], ly = max(ly)) |>
   mutate(txt = sprintf("%s\n%s%s", toupper(town), format(round(pop, -2), big.mark = ","),
-                       ifelse(n > 1, sprintf(" · %d hexagons", n), "")),
-         dx = ifelse(town == "Tyrnavos", -16000, 0))
+                       ifelse(n > 1, sprintf(" in %d hexagons%s", n, ifelse(town == "Larissa", paste0("\n(", parts, ")"), "")),
+                              " in 1 hexagon")),
+         dx = case_when(town == "Tyrnavos" ~ -16000, town == "Karditsa" ~ 7000, TRUE ~ 0),
+         dy = ifelse(town == "Tyrnavos", 12000, 0))
 towns_txt <- lab_txt |> arrange(desc(pop)) |> pull(town)
 towns_txt <- paste0(paste(head(towns_txt, -1), collapse = ", "), " and ", tail(towns_txt, 1))
 YTOP <- max(tops$Y) + 16000
@@ -86,8 +90,8 @@ YTOP <- max(tops$Y) + 16000
 pm <- ggplot() +
   geom_polygon(data = ground, aes(X, Y, group = g), fill = "#F4F2EE", colour = "#D6D2CA", linewidth = 0.3) +
   geom_polygon(data = layers, aes(X, Y, group = g, fill = I(fill)), colour = "white", linewidth = 0.12) +
-  geom_segment(data = lab_txt, aes(lx, ly + 1500, xend = lx + dx, yend = ly + 9000), colour = M30$soft, linewidth = 0.25) +
-  geom_text(data = lab_txt, aes(lx + dx, ly + 10000, label = txt), family = "Oswald", size = 3.1, colour = M30$ink,
+  geom_segment(data = lab_txt, aes(lx, ly + 1500, xend = lx + dx, yend = ly + 9000 + dy), colour = M30$soft, linewidth = 0.25) +
+  geom_text(data = lab_txt, aes(lx + dx, ly + 10000 + dy, label = txt), family = "Oswald", size = 3.1, colour = M30$ink,
             vjust = 0, lineheight = 0.95) +
   coord_equal(expand = FALSE, xlim = c(bb["xmin"] - 4000, bb["xmax"] + 4000),
               ylim = c(TILT * bb["ymin"] - 6000, YTOP), clip = "off")
@@ -112,8 +116,10 @@ L <- m30_labs(20, "Hexagons",
   title = sprintf("Half of Thessaly lives in %d hexagons", N50),
   subtitle = sprintf(paste0(
     "Thessaly cut into %d hexagons of about %.0f km² each; the height of each prism is the number of residents. ",
-    "The <b style='color:%s'>%d tallest</b>, in %s, hold %.0f%% of the region's %s people."),
-    nrow(hx), median(hx$km2), ACC, N50, towns_txt, 100 * hx$cs[N50], format(round(sum(hx$pop), -3), big.mark = ",")),
+    "The <b style='color:%s'>%d tallest</b>, in %s, hold %.0f%% of the region's %s people. ",
+    "Volos fits in one hexagon, so it stands tallest; Larissa is bigger but is cut into %d."),
+    nrow(hx), median(hx$km2), ACC, N50, towns_txt, 100 * hx$cs[N50], format(round(sum(hx$pop), -3), big.mark = ","),
+    lab_txt$n[lab_txt$town == "Larissa"]),
   source = "Kontur Population 2023, 400 m H3 hexagons summed to H3 resolution 6 (HDX, CC BY) · Eurostat GISCO NUTS 2021, mainland Thessaly",
   accent = ACC)
 cap <- L$caption; L$caption <- NULL

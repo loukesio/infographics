@@ -4,6 +4,8 @@ Thirty maps of Thessaly and Larissa for the [#30DayMapChallenge](https://30dayma
 made in R / ggplot2 by Loukas Theodosiou. Every map is built from open data named in its caption; each title is a
 number the script computes and prints. ✅ = done · ✋ = needs a check or input from Loukas (see *Status*).
 
+Each day is one R file in `scripts/`; click a map to open its code.
+
 **Run** from `thessaly-dataviz/`: `LANG=en_US.UTF-8 Rscript 30daymap/scripts/dayNN_<name>.R`. Scripts download and
 cache their data in `30daymap/cache/` (not in git). Shared look and data helpers: [`R/m30_base.R`](R/m30_base.R)
 (fonts Oswald + Fira Sans, Copernicus DEM, OSM extract, GADM municipalities). Design brief: [`BRIEF.md`](BRIEF.md).
@@ -46,9 +48,9 @@ cache their data in `30daymap/cache/` (not in git). Shared look and data helpers
 <a id="day-01"></a>
 ## Day 01 · Points — Nearly a third of Thessaly's settlements sit above 500 m
 
-[![](out/day01_settlements.png)](out/day01_settlements.png)
+**R file:** [`scripts/day01_settlements.R`](scripts/day01_settlements.R)
 
-Code: [`scripts/day01_settlements.R`](scripts/day01_settlements.R)
+[![](out/day01_settlements.png)](scripts/day01_settlements.R)
 
 **Idea**
 Every city, town, village and hamlet of Thessaly as one dot, coloured by the height it sits at. Pale dots fill the
@@ -82,9 +84,9 @@ done
 <a id="day-02"></a>
 ## Day 02 · Lines — Three fifths of Thessaly drains into one river
 
-[![](out/day02_pineios_rivers.png)](out/day02_pineios_rivers.png)
+**R file:** [`scripts/day02_pineios_rivers.R`](scripts/day02_pineios_rivers.R)
 
-Code: [`scripts/day02_pineios_rivers.R`](scripts/day02_pineios_rivers.R)
+[![](out/day02_pineios_rivers.png)](scripts/day02_pineios_rivers.R)
 
 **Idea**
 Every river reach of mainland Thessaly, line width by modelled mean discharge. The Pineios system is blue (main stem dark,
@@ -127,9 +129,9 @@ done
 <a id="day-03"></a>
 ## Day 03 · Polygons — Half of mapped Thessaly is fields
 
-[![](out/day03_thessaly_patchwork.png)](out/day03_thessaly_patchwork.png)
+**R file:** [`scripts/day03_thessaly_patchwork.R`](scripts/day03_thessaly_patchwork.R)
 
-Code: [`scripts/day03_thessaly_patchwork.R`](scripts/day03_thessaly_patchwork.R)
+[![](out/day03_thessaly_patchwork.png)](scripts/day03_thessaly_patchwork.R)
 
 **Idea**
 A mosaic of every land-use / land-cover polygon OpenStreetMap volunteers have drawn in mainland Thessaly, in six muted
@@ -164,9 +166,9 @@ done
 <a id="day-04"></a>
 ## Day 04 · Clusters — Three places hold 44% of Thessaly's threatened-species records
 
-[![](out/day04_species_clusters.png)](out/day04_species_clusters.png)
+**R file:** [`scripts/day04_species_clusters.R`](scripts/day04_species_clusters.R)
 
-Code: [`scripts/day04_species_clusters.R`](scripts/day04_species_clusters.R)
+[![](out/day04_species_clusters.png)](scripts/day04_species_clusters.R)
 
 **Idea**
 Instead of the hex grid of t13, let the records find their own hotspots: DBSCAN groups records of globally
@@ -205,9 +207,9 @@ done
 <a id="day-05"></a>
 ## Day 05 · Sight — Olympus sees 32% of Thessaly, Meteora only 6%
 
-[![](out/day05_sight.png)](out/day05_sight.png)
+**R file:** [`scripts/day05_sight.R`](scripts/day05_sight.R)
 
-Code: [`scripts/day05_sight.R`](scripts/day05_sight.R)
+[![](out/day05_sight.png)](scripts/day05_sight.R)
 
 **Idea**
 Two viewsheds over mainland Thessaly: what a person standing on Mytikas (Olympus' summit) and on the rock of Great Meteoron could see on a perfectly clear day. Blue = seen from Olympus, red = seen from Meteora, purple = both. A bar strip gives the share of the land and the farthest visible ground.
@@ -243,9 +245,9 @@ done
 <a id="day-06"></a>
 ## Day 06 · Vintage — 37% of Thessaly is plain, 16% is mountain
 
-[![](out/day06_vintage.png)](out/day06_vintage.png)
+**R file:** [`scripts/day06_vintage.R`](scripts/day06_vintage.R)
 
-Code: [`scripts/day06_vintage.R`](scripts/day06_vintage.R)
+[![](out/day06_vintage.png)](scripts/day06_vintage.R)
 
 **Idea**
 An old-atlas relief plate of Thessaly: faded hypsometric tints, 200 m contours, sepia relief shading, rivers in faded blue, engraved coast ripples and a serif cartouche with the "scale of heights" that doubles as the chart (share of the land in each height band).
@@ -277,9 +279,9 @@ done
 <a id="day-07"></a>
 ## Day 07 · A 10 minute map — Fewer than a third of Larissa's streets keep to the compass
 
-[![](out/day07_larissa_streets.png)](out/day07_larissa_streets.png)
+**R file:** [`scripts/day07_larissa_streets.R`](scripts/day07_larissa_streets.R)
 
-Code: [`scripts/day07_larissa_streets.R`](scripts/day07_larissa_streets.R)
+[![](out/day07_larissa_streets.png)](scripts/day07_larissa_streets.R)
 
 **Idea**
 Every street within 3 km of Larissa's centre, cut into straight pieces and coloured by how far it turns from the compass:
@@ -312,9 +314,9 @@ done
 <a id="day-08"></a>
 ## Day 08 · Utopia — Karla came back at a fifth of its size
 
-[![](out/day08_utopia_karla.png)](out/day08_utopia_karla.png)
+**R file:** [`scripts/day08_utopia_karla.R`](scripts/day08_utopia_karla.R)
 
-Code: [`scripts/day08_utopia_karla.R`](scripts/day08_utopia_karla.R)
+[![](out/day08_utopia_karla.png)](scripts/day08_utopia_karla.R)
 
 **Idea**
 Lake Karla (ancient Boibeis) was drained in 1962; a smaller lake was re-created in the lowest part of the old bed. The map puts the old lake at its record size next to today's lake — "the lake that was / the lake they want back" — and shows that Storm Daniel briefly refilled almost the whole old bed in September 2023.
@@ -347,9 +349,9 @@ done (needs Loukas: OK with a DEM-derived old shoreline? If he has a historic ma
 <a id="day-09"></a>
 ## Day 09 · Urban-rural — Half of Thessaly lives on 1% of its land
 
-[![](out/day09_urban_rural.png)](out/day09_urban_rural.png)
+**R file:** [`scripts/day09_urban_rural.R`](scripts/day09_urban_rural.R)
 
-Code: [`scripts/day09_urban_rural.R`](scripts/day09_urban_rural.R)
+[![](out/day09_urban_rural.png)](scripts/day09_urban_rural.R)
 
 **Idea**
 Every populated 400 m hexagon of mainland Thessaly, coloured by the EU Degree of Urbanisation of the 1 km cell under it
@@ -384,9 +386,9 @@ done
 <a id="day-10"></a>
 ## Day 10 · Prompting only — A sixth of Thessaly stands above 1,000 m, a ring of mountains around a flat plain
 
-[![](out/day10_prompting_only.png)](out/day10_prompting_only.png)
+**R file:** [`scripts/day10_prompting_only.R`](scripts/day10_prompting_only.R)
 
-Code: [`scripts/day10_prompting_only.R`](scripts/day10_prompting_only.R)
+[![](out/day10_prompting_only.png)](scripts/day10_prompting_only.R)
 
 **Idea**
 Thessaly is a lowland bowl walled in by mountains. The plain stays grey on a hillshade, land above 1,000 m is
@@ -435,9 +437,9 @@ done. Loukas could check whether he prefers "Kissavos" for Ossa (OSM tags only "
 <a id="day-11"></a>
 ## Day 11 · Sound — Thessaly on tape: 355 recordings, half of them grasshoppers
 
-[![](out/day11_sound.png)](out/day11_sound.png)
+**R file:** [`scripts/day11_sound.R`](scripts/day11_sound.R)
 
-Code: [`scripts/day11_sound.R`](scripts/day11_sound.R)
+[![](out/day11_sound.png)](scripts/day11_sound.R)
 
 **Idea**
 Map every animal sound recorded in Thessaly and shared on GBIF, each spot drawn as concentric "sound rings" (more
@@ -475,9 +477,9 @@ done
 <a id="day-12"></a>
 ## Day 12 · Power — 1,644 solar parks, 22 km² of panels
 
-[![](out/day12_power.png)](out/day12_power.png)
+**R file:** [`scripts/day12_power.R`](scripts/day12_power.R)
 
-Code: [`scripts/day12_power.R`](scripts/day12_power.R)
+[![](out/day12_power.png)](scripts/day12_power.R)
 
 **Idea**
 A night map of Thessaly's power: every solar site traced in OpenStreetMap as an amber dot (area to scale), the glowing
@@ -517,9 +519,9 @@ done
 <a id="day-13"></a>
 ## Day 13 · Interactions — Half of Thessaly's people live on 0.6 % of its land
 
-[![](out/day13_interactions.png)](out/day13_interactions.png)
+**R file:** [`scripts/day13_interactions.R`](scripts/day13_interactions.R) · [`out/day13_interactions.html`](out/day13_interactions.html)
 
-Code: [`scripts/day13_interactions.R`](scripts/day13_interactions.R) · [`out/day13_interactions.html`](out/day13_interactions.html)
+[![](out/day13_interactions.png)](scripts/day13_interactions.R)
 
 **Idea**
 An interactive Leaflet map of Thessaly with five layers you can switch on and off: people (Kontur hexagons),
@@ -563,9 +565,9 @@ done
 <a id="day-14"></a>
 ## Day 14 · A Borgesian map — The map of Larissa is still half in tatters
 
-[![](out/day14_larissa_buildings.png)](out/day14_larissa_buildings.png)
+**R file:** [`scripts/day14_larissa_buildings.R`](scripts/day14_larissa_buildings.R)
 
-Code: [`scripts/day14_larissa_buildings.R`](scripts/day14_larissa_buildings.R)
+[![](out/day14_larissa_buildings.png)](scripts/day14_larissa_buildings.R)
 
 **Idea**
 Borges' map that "coincided point for point" with the empire, applied to Larissa: every building footprint in OSM in an
@@ -598,9 +600,9 @@ needs Loukas: check the quote wording against Hurley's translation.
 <a id="day-15"></a>
 ## Day 15 · Inside out — Close the Vale of Tempe and Thessaly is a lake of 2,880 km² again
 
-[![](out/day15_inside_out.png)](out/day15_inside_out.png)
+**R file:** [`scripts/day15_inside_out.R`](scripts/day15_inside_out.R)
 
-Code: [`scripts/day15_inside_out.R`](scripts/day15_inside_out.R)
+[![](out/day15_inside_out.png)](scripts/day15_inside_out.R)
 
 **Idea**
 Herodotus (Histories 7.129) writes that Thessaly was once a lake ringed by mountains until the Pineios cut the Tempe gorge. Thought experiment on today's terrain: plug the gorge, let the water rise until it finds the next way out, and draw the basin as water and the mountains as the land. Towns get their depth "under the lake".
@@ -634,9 +636,9 @@ done
 <a id="day-16"></a>
 ## Day 16 · Collaborative map — 1,244 people built this map, 7 of them did half the work
 
-[![](out/day16_inaturalist.png)](out/day16_inaturalist.png)
+**R file:** [`scripts/day16_inaturalist.R`](scripts/day16_inaturalist.R)
 
-Code: [`scripts/day16_inaturalist.R`](scripts/day16_inaturalist.R)
+[![](out/day16_inaturalist.png)](scripts/day16_inaturalist.R)
 
 **Idea**
 Thessaly's nature map as citizen science: every research-grade iNaturalist observation, binned into 5 km hexagons
@@ -675,9 +677,9 @@ done
 <a id="day-17"></a>
 ## Day 17 · Light & dark — Shortest day, one hour before sunset: 32% of Thessaly already lies in shadow
 
-[![](out/day17_light_dark.png)](out/day17_light_dark.png)
+**R file:** [`scripts/day17_light_dark.R`](scripts/day17_light_dark.R)
 
-Code: [`scripts/day17_light_dark.R`](scripts/day17_light_dark.R)
+[![](out/day17_light_dark.png)](scripts/day17_light_dark.R)
 
 **Idea**
 Thessaly's relief lit by the real sun of the winter solstice, 21 December 2025 at 16:09 Greek time, one hour before sunset at Larissa. Warm light where slopes face the low south-west sun, ink where they face away or sit behind a ridge. A strip shows the sun's height through that day.
@@ -709,9 +711,9 @@ done
 <a id="day-18"></a>
 ## Day 18 · NULL — 36% of Thessaly has no resident at all
 
-[![](out/day18_null.png)](out/day18_null.png)
+**R file:** [`scripts/day18_null.R`](scripts/day18_null.R)
 
-Code: [`scripts/day18_null.R`](scripts/day18_null.R)
+[![](out/day18_null.png)](scripts/day18_null.R)
 
 **Idea**
 Kontur only lists 400 m hexagons with at least one person; the rest of the land is simply missing — NULL. The map
@@ -747,9 +749,9 @@ done
 <a id="day-19"></a>
 ## Day 19 · Smell — Sage rules the plain, mint and thyme the mountains
 
-[![](out/day19_herbs.png)](out/day19_herbs.png)
+**R file:** [`scripts/day19_herbs.R`](scripts/day19_herbs.R)
 
-Code: [`scripts/day19_herbs.R`](scripts/day19_herbs.R)
+[![](out/day19_herbs.png)](scripts/day19_herbs.R)
 
 **Idea**
 Thessaly's aromatic herbs — sage, thyme, mint, mountain tea, oregano, savory and lavender — as six small maps on a
@@ -787,9 +789,9 @@ done
 <a id="day-20"></a>
 ## Day 20 · Hexagons — Half of Thessaly lives in 8 hexagons
 
-[![](out/day20_hexagons.png)](out/day20_hexagons.png)
+**R file:** [`scripts/day20_hexagons.R`](scripts/day20_hexagons.R)
 
-Code: [`scripts/day20_hexagons.R`](scripts/day20_hexagons.R)
+[![](out/day20_hexagons.png)](scripts/day20_hexagons.R)
 
 **Idea**
 Kontur's 400 m hexagons summed into 397 H3 resolution-6 cells (~41 km² each) and drawn as hexagonal prisms in a
@@ -811,7 +813,7 @@ pure ggplot (no rayshader), one accent + greys.
 
 **Finding**
 **8 of 397 res-6 hexagons hold 51.5% of 678,559 people on 2.0% of the hexagon area (329 of 16,317 km²).**
-Volos 103,000 (one cell), Larissa 139,500 (3 cells), Trikala 54,400, Karditsa 41,700 (2 cells), Tyrnavos 11,100.
+Volos 103,000 (one cell), Larissa 139,500 (3 cells: 56,300 + 53,900 + 29,300), Trikala 54,400, Karditsa 41,700 (2 cells), Tyrnavos 11,100. Volos is the tallest prism because the fixed H3 grid keeps it in one cell while it cuts Larissa into three; labels and subtitle say so.
 
 **Caveats**
 Kontur is modelled population (2023). Res-6 cells on the border stick out of the region, so the area base (16,317 km²)
@@ -827,9 +829,9 @@ done
 <a id="day-21"></a>
 ## Day 21 · OpenStreetMap — Volos, in 1,370 km of mapped road
 
-[![](out/day21_volos_osm.png)](out/day21_volos_osm.png)
+**R file:** [`scripts/day21_volos_osm.R`](scripts/day21_volos_osm.R)
 
-Code: [`scripts/day21_volos_osm.R`](scripts/day21_volos_osm.R)
+[![](out/day21_volos_osm.png)](scripts/day21_volos_osm.R)
 
 **Idea**
 A poster of Volos between Mount Pelion and the Pagasetic Gulf from OpenStreetMap alone: sea, parks and woods, faint
@@ -863,9 +865,9 @@ done
 <a id="day-22"></a>
 ## Day 22 · Projections — Thessaly is 14,050 km². Web Mercator makes it 23,700, a far-side globe 3,310
 
-[![](out/day22_projections.png)](out/day22_projections.png)
+**R file:** [`scripts/day22_projections.R`](scripts/day22_projections.R)
 
-Code: [`scripts/day22_projections.R`](scripts/day22_projections.R)
+[![](out/day22_projections.png)](scripts/day22_projections.R)
 
 **Idea**
 The same outline of the Region of Thessaly (with the Sporades) drawn in nine projections at one common scale, each labelled with its EPSG/PROJ code and the area you would measure flat on that map. A dashed ghost shows the true shape; a dot strip puts all nine areas on one axis against the true area.
@@ -898,9 +900,9 @@ done
 <a id="day-23"></a>
 ## Day 23 · Taste — 27 protected foods and drinks carry a Thessaly address
 
-[![](out/day23_taste.png)](out/day23_taste.png)
+**R file:** [`scripts/day23_taste.R`](scripts/day23_taste.R)
 
-Code: [`scripts/day23_taste.R`](scripts/day23_taste.R)
+[![](out/day23_taste.png)](scripts/day23_taste.R)
 
 **Idea**
 Thessaly's larder as the EU sees it: every geographical indication (PDO / PGI) whose official area covers part of
@@ -954,9 +956,9 @@ done. Needs Loukas only to spot-check the 7 areas that come from excerpts (list 
 <a id="day-24"></a>
 ## Day 24 · Network — 42,400 km of road, 53% of it dirt track
 
-[![](out/day24_network.png)](out/day24_network.png)
+**R file:** [`scripts/day24_network.R`](scripts/day24_network.R)
 
-Code: [`scripts/day24_network.R`](scripts/day24_network.R)
+[![](out/day24_network.png)](scripts/day24_network.R)
 
 **Idea**
 Every OSM road of mainland Thessaly drawn as a hierarchy — motorway in red, then ever finer greys down to farm
@@ -996,9 +998,9 @@ done
 <a id="day-25"></a>
 ## Day 25 · Is this a map? — Half of Thessaly is trees, a quarter is fields
 
-[![](out/day25_is_this_a_map.png)](out/day25_is_this_a_map.png)
+**R file:** [`scripts/day25_is_this_a_map.R`](scripts/day25_is_this_a_map.R)
 
-Code: [`scripts/day25_is_this_a_map.R`](scripts/day25_is_this_a_map.R)
+[![](out/day25_is_this_a_map.png)](scripts/day25_is_this_a_map.R)
 
 **Idea**
 A chart that is also a map: the outline of Thessaly and its four regional units is real, but inside each unit the land is re-cut into a Voronoi treemap with one cell per land-cover class. Each cell's area is the real area of that class in that unit. Built with Loukas's own package ggvmap (`vmap_region()`), as the coordinator asked (replaces the waffle idea).
@@ -1028,9 +1030,9 @@ done
 <a id="day-26"></a>
 ## Day 26 · Water — Daniel flooded 926 km² of Thessaly
 
-[![](out/day26_water_daniel_flood.png)](out/day26_water_daniel_flood.png)
+**R file:** [`scripts/day26_water_daniel_flood.R`](scripts/day26_water_daniel_flood.R)
 
-Code: [`scripts/day26_water_daniel_flood.R`](scripts/day26_water_daniel_flood.R)
+[![](out/day26_water_daniel_flood.png)](scripts/day26_water_daniel_flood.R)
 
 **Idea**
 Every patch of land that the EU's Copernicus emergency service saw under water at least once after Storm Daniel, over the relief of the plain with the Pineios and Lake Karla. A strip shows how slowly the water went down in the four big mapped areas.
@@ -1059,9 +1061,9 @@ done
 <a id="day-27"></a>
 ## Day 27 · New tool — From the river to the gods: 2,815 m in 29 km
 
-[![](out/day27_new_tool.png)](out/day27_new_tool.png)
+**R file:** [`scripts/day27_new_tool.R`](scripts/day27_new_tool.R) · [`out/day27_new_tool.html`](out/day27_new_tool.html)
 
-Code: [`scripts/day27_new_tool.R`](scripts/day27_new_tool.R) · [`out/day27_new_tool.html`](out/day27_new_tool.html)
+[![](out/day27_new_tool.png)](scripts/day27_new_tool.R)
 
 **Idea**
 A 3D oblique view of Olympus, the Vale of Tempe and Ossa, made with a tool new to this project: **mapgl**
@@ -1103,9 +1105,9 @@ done
 <a id="day-28"></a>
 ## Day 28 · Feeling — 2 August 2021: the plain felt like 46 °C
 
-[![](out/day28_feeling_heat.png)](out/day28_feeling_heat.png)
+**R file:** [`scripts/day28_feeling_heat.R`](scripts/day28_feeling_heat.R)
 
-Code: [`scripts/day28_feeling_heat.R`](scripts/day28_feeling_heat.R)
+[![](out/day28_feeling_heat.png)](scripts/day28_feeling_heat.R)
 
 **Idea**
 How hot it felt, not how hot it was: ERA5 daily maximum apparent (feels-like) temperature on the worst day of the summer 2021 heatwave, over Thessaly. A strip below shows how often Larissa now passes 40 °C.
@@ -1135,9 +1137,9 @@ done
 <a id="day-29"></a>
 ## Day 29 · Raster — 58% of Thessaly's plain is fields
 
-[![](out/day29_raster_landcover.png)](out/day29_raster_landcover.png)
+**R file:** [`scripts/day29_raster_landcover.R`](scripts/day29_raster_landcover.R)
 
-Code: [`scripts/day29_raster_landcover.R`](scripts/day29_raster_landcover.R)
+[![](out/day29_raster_landcover.png)](scripts/day29_raster_landcover.R)
 
 **Idea**
 The ESA WorldCover 10 m land-cover raster of mainland Thessaly as a print poster: the yellow patchwork of the plain, ringed by the forests of Pindus, Olympus, Ossa, Pelion and Othrys, with towns in built-up red. A strip compares the plain with the hills and mountains.
@@ -1165,9 +1167,9 @@ done
 <a id="day-30"></a>
 ## Day 30 · Pen & paper — (title to be written by hand)
 
-[![](out/day30_pen_paper_template.png)](out/day30_pen_paper_template.png)
+**R file:** [`scripts/day30_pen_paper.R`](scripts/day30_pen_paper.R) · [`out/day30_pen_paper_template.pdf`](out/day30_pen_paper_template.pdf)
 
-Code: [`scripts/day30_pen_paper.R`](scripts/day30_pen_paper.R) · [`out/day30_pen_paper_template.pdf`](out/day30_pen_paper_template.pdf)
+[![](out/day30_pen_paper_template.png)](scripts/day30_pen_paper.R)
 
 **Idea**
 Loukas draws this map himself. The script only makes the paper: an A4 portrait drawing sheet with a faint

@@ -155,6 +155,35 @@ pre { font: 11px/1.5 var(--mono); color: var(--muted); white-space: pre-wrap; wo
 .chk.ok b { color: var(--ok); } .chk.no b { color: var(--bad); }
 .card .btn { justify-self: start; font-size: 12px; padding: 7px 11px; }
 .card { max-height: calc(100% - 140px); overflow-y: auto; }
+
+.pitch { margin: 0; font-size: 13.5px; color: var(--muted); }
+.pitch b { color: var(--ink); font-weight: 600; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.ex { display: grid; gap: 6px; }
+.ex > span { font: 600 10.5px var(--body); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.asked { font: 600 15px/1.35 var(--display); color: var(--ink); text-wrap: balance; }
+.hero { display: grid; gap: 6px; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+.bignum b { font: 600 34px/1 var(--mono); color: var(--sun); font-variant-numeric: tabular-nums; }
+.bignum span { font: 500 15px var(--mono); color: var(--sun); }
+.hero .sub { font: 12px var(--mono); color: var(--muted); }
+.hero .answer { margin: 4px 0 0; }
+.how { font-size: 12px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 6px; }
+.sec { margin: 4px 0 -6px; font: 650 14px var(--display); }
+.hint { margin: 0; font-size: 12px; color: var(--muted); }
+.step { grid-template-columns: 1fr auto 34px; padding: 5px 8px; }
+.step .bar { grid-column: 1 / 3; }
+.step .tog { appearance: none; width: 30px; height: 18px; border-radius: 999px; background: var(--line); position: relative; cursor: pointer; margin: 0; }
+.step .tog::after { content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: var(--muted); transition: transform .15s; }
+.step .tog:checked { background: color-mix(in srgb, var(--sun) 55%, var(--line)); }
+.step .tog:checked::after { transform: translateX(12px); background: var(--sun); }
+.more { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+.more summary { font-size: 13px; color: var(--ink); }
+.tools { display: grid; gap: 10px; margin-top: 10px; }
+.tool { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; }
+.tool b { display: block; font-size: 13px; font-weight: 600; }
+.tool span { font-size: 12px; color: var(--muted); }
+.tool .btn { font-size: 12px; padding: 6px 10px; white-space: nowrap; }
+.weights b { font-size: 13px; font-weight: 600; }
 @media (max-width: 820px) { .layers { width: 200px; top: auto; bottom: 16px; left: auto; right: 16px; } .layers:not([open]) { width: auto; } }
 @media (max-width: 820px) {
   body { overflow: auto; }
@@ -207,14 +236,15 @@ pre { font: 11px/1.5 var(--mono); color: var(--muted); white-space: pre-wrap; wo
   <aside>
     <div class="scroll">
       <div class="ask">
-        <label class="eyebrow" for="q">Ρώτα τα layers</label>
-        <textarea id="q" rows="3" placeholder="π.χ. Πού υπάρχουν κατοικημένες περιοχές κάτω από 100 m που πλημμύρισαν το 2023;"></textarea>
+        <p class="pitch">Κάνε μια ερώτηση για τη Θεσσαλία. Ο agent τη μετατρέπει σε κριτήρια και ο χάρτης δείχνει πού ισχύουν. <b>Οι αριθμοί υπολογίζονται από τα δεδομένα, όχι από το AI.</b></p>
+        <label class="sr" for="q">Ερώτηση</label>
+        <textarea id="q" rows="2" placeholder="π.χ. Πού ζουν άνθρωποι κάτω από 100 m που πλημμύρισαν το 2023;"></textarea>
         <div class="row">
           <button class="btn" id="askBtn">Ρώτα</button>
           <button class="btn ghost" id="stopBtn" hidden>Διακοπή</button>
-          <span class="status" id="status"></span>
         </div>
-        <div class="presets" id="presets"></div>
+        <div class="status" id="status"></div>
+        <div class="ex"><span>Παραδείγματα</span><div class="presets" id="presets"></div></div>
       </div>
       <section class="result" id="result" aria-live="polite"></section>
     </div>
@@ -255,7 +285,7 @@ const RU = ["Λάρισα", "Καρδίτσα & Τρίκαλα", "Μαγνησί
 const OPS = { "<": (a,b)=>a<b, "<=": (a,b)=>a<=b, ">": (a,b)=>a>b, ">=": (a,b)=>a>=b, "==": (a,b)=>a==b, "!=": (a,b)=>a!=b };
 
 const PRESETS = [
-  { q: "Επίπεδη αγροτική γη εκτός Natura, που δεν πλημμύρισε, κοντά σε υποσταθμό (agrivoltaics)",
+  { s: "Agrivoltaics", q: "Επίπεδη αγροτική γη εκτός Natura, που δεν πλημμύρισε, κοντά σε υποσταθμό (agrivoltaics)",
     spec: { title: "Πρώτο φίλτρο για agrivoltaics", answer: "Επίπεδα χωράφια εκτός Natura 2000, εκτός της πλημμύρας του Daniel και έως 5 km από υποσταθμό, βαθμολογημένα για σύνδεση και πρόσβαση.",
       filters: [
         {col:"slope", op:"<", value:5, label:"Κλίση κάτω από 5°"},
@@ -267,17 +297,17 @@ const PRESETS = [
       score: [{col:"dsub", dir:"low", cap:5, w:0.5, label:"Κοντά σε υποσταθμό"}, {col:"droad", dir:"low", cap:2, w:0.2, label:"Κοντά σε άσφαλτο"},
               {col:"south", dir:"high", cap:1, w:0.1, label:"Νότια έκθεση"}, {col:"crop", dir:"high", cap:1, w:0.2, label:"Μερίδιο καλλιεργειών"}],
       caveats: ["Λείπουν: χωρητικότητα δικτύου (κορεσμός), κτηματολόγιο, τιμές γης, επίσημοι χάρτες κινδύνου πλημμύρας.", "Οι υποσταθμοί είναι από OSM (71 στη Θεσσαλία) και πιθανώς ελλιπείς."] } },
-  { q: "Κατοικημένες περιοχές που πλημμύρισαν από τον Daniel",
+  { s: "Κάτοικοι στην πλημμύρα", q: "Κατοικημένες περιοχές που πλημμύρισαν από τον Daniel",
     spec: { title: "Ποιοι ζουν μέσα στην πλημμύρα του Daniel", answer: "Κελιά με κατοίκους όπου πάνω από το 20% πλημμύρισε τον Σεπτέμβριο 2023. Το ύψος δείχνει πόσο επέμεινε το νερό.",
       filters: [{col:"pop", op:">", value:0, label:"Έχει κατοίκους"}, {col:"flood", op:">", value:0.2, label:"Πάνω από 20% πλημμυρισμένο"}],
       score: [{col:"floodn", dir:"high", cap:6, w:0.6, label:"Ημέρες/προϊόντα με νερό"}, {col:"pop", dir:"high", cap:500, w:0.4, label:"Πληθυσμός"}],
       caveats: ["Ο πληθυσμός είναι μοντέλο Kontur 2023 σε εξάγωνα, όχι απογραφή.", "Εκτός των 7 περιοχών χαρτογράφησης του EMSR692 η πλημμύρα είναι άγνωστη, όχι μηδενική."] } },
-  { q: "Πόση γη κάτω από τη «λίμνη των Τεμπών» είναι σήμερα χωράφια;",
+  { s: "Χωράφια στη «λίμνη»", q: "Πόση γη κάτω από τη «λίμνη των Τεμπών» είναι σήμερα χωράφια;",
     spec: { title: "Η αρχαία λίμνη κάτω από τα χωράφια", answer: "Κελιά που θα ήταν κάτω από τη στάθμη αν έκλεινε η κοιλάδα των Τεμπών και σήμερα καλλιεργούνται κυρίως. Το ύψος δείχνει το υποθετικό βάθος.",
       filters: [{col:"lake", op:">", value:0.5, label:"Μέσα στη «λίμνη» (σενάριο)"}, {col:"crop", op:">", value:0.5, label:"Κυρίως καλλιέργειες"}],
       score: [{col:"lakedepth", dir:"high", cap:60, w:1, label:"Βάθος σεναρίου"}],
       caveats: ["Νοητικό πείραμα σε σημερινό ανάγλυφο, όχι ανακατασκευή αρχαίας λίμνης ούτε χάρτης κινδύνου."] } },
-  { q: "Φωτοβολταϊκά πάρκα μέσα σε Natura 2000",
+  { s: "Φωτοβολταϊκά σε Natura", q: "Φωτοβολταϊκά πάρκα μέσα σε Natura 2000",
     spec: { title: "Φωτοβολταϊκά μέσα σε Natura 2000", answer: "Κελιά με φωτοβολταϊκό πάρκο (OSM) που είναι κυρίως μέσα σε περιοχή Natura 2000.",
       filters: [{col:"solar", op:">", value:0, label:"Έχει φωτοβολταϊκό"}, {col:"natura", op:">", value:0.5, label:"Κυρίως σε Natura 2000"}],
       score: [{col:"solar", dir:"high", cap:0.3, w:1, label:"Κάλυψη με πάνελ"}],
@@ -327,7 +357,7 @@ function evaluate() {
 // ---------- rendering ----------
 const BOUNDS = [20.9, 38.8, 24.4, 40.3];
 let deck1, deck2, viewState = { longitude: 22.15, latitude: 39.36, zoom: 8.1, pitch: 52, bearing: -12, maxPitch: 75 };
-let failAt = null, EXC = [], showExcl = false, PIN = null, history = [], TOWNS = [], reveal = 1, revealT = null, EX = 2.5, LON, LAT, V = null, TL = null, tlIdx = 3, tlPlay = null;
+let openMore = false, failAt = null, EXC = [], showExcl = false, PIN = null, history = [], TOWNS = [], reveal = 1, revealT = null, EX = 2.5, LON, LAT, V = null, TL = null, tlIdx = 3, tlPlay = null;
 const IMG = {};
 const OV = [ // overlays: draped texture layers + vector layers
   { id: "landcover", l: "Κάλυψη γης", src: "ESA WorldCover 2021", kind: "tex", on: false, op: 0.55 },
@@ -457,60 +487,73 @@ function renderLegend() {
 }
 function renderResult(src) {
   const R = $("result"); R.replaceChildren();
+  const q = history[history.length - 1];
+  if (history.length > 1) { const T = el("div", "thread"); history.slice(0, -1).forEach(h => T.append(el("div", "turn", h))); R.append(T); }
+  if (q) R.append(el("div", "asked", q));
   if (spec.refuse) {
     const c = el("div", "caveat refuse"); c.append(el("b", null, "Δεν απαντιέται με αυτά τα δεδομένα"), el("div", null, spec.refuse)); R.append(c); return;
   }
-  if (history.length > 1) { const T = el("div", "thread"); history.slice(0, -1).forEach(h => T.append(el("div", "turn", h))); R.append(el("div", "eyebrow", "Προηγούμενα βήματα συζήτησης"), T); }
-  R.append(el("div", "eyebrow", src === "live" ? "Απάντηση agent · ζωντανά" : "Απάντηση agent · έτοιμο σενάριο"));
-  R.append(el("h2", null, spec.title || "Αποτέλεσμα"));
-  if (spec.answer) R.append(el("p", "answer", spec.answer));
+  // 1. the answer
   const last = steps[steps.length - 1];
-  const k = el("div", "kpis");
-  [[fmt(last.area), "km² κελιών"], [fmt(last.area / AREA_TOT * 100, 1) + "%", "της Θεσσαλίας"], [fmt(last.pop), "κάτοικοι"]].forEach(([b, s]) => { const d = el("div", "kpi"); d.append(el("b", null, b), el("span", null, s)); k.append(d); });
-  R.append(k);
+  const H = el("div", "hero");
+  const big = el("div", "bignum"); big.append(el("b", null, fmt(last.area)), el("span", null, " km²"));
+  H.append(big, el("div", "sub", `${fmt(last.area / AREA_TOT * 100, 1)}% της Θεσσαλίας · ${fmt(last.cells)} εξάγωνα · ${fmt(last.pop)} κάτοικοι`));
+  if (spec.answer) H.append(el("p", "answer", spec.answer));
+  H.append(el("div", "how", spec.score && spec.score.length ? "Στον χάρτη: κάθε στήλη είναι ένα εξάγωνο που πληροί όλα τα κριτήρια· όσο ψηλότερη, τόσο καλύτερη η βαθμολογία." : "Στον χάρτη: κάθε στήλη είναι ένα εξάγωνο που πληροί όλα τα κριτήρια."));
+  R.append(H);
   if (PIN) {
     let both = 0, onlyB = 0, onlyA = 0; RES.forEach(i => PIN.set.has(i) ? both += D.area[i] : onlyB += D.area[i]); PIN.ids.forEach(i => { if (!pass[i]) onlyA += D.area[i]; });
-    const C = el("div", "cmp"); C.append(el("div", "eyebrow", "Σύγκριση με το σενάριο Α: " + PIN.title));
-    [["κοινά", both, "var(--sun)"], ["νέα στο τρέχον", onlyB, "var(--ok)"], ["μόνο στο Α", onlyA, "var(--bad)"]].forEach(([l, v, c]) => { const r = el("div", "cmprow"); const dot = el("i"); dot.style.background = c; r.append(dot, el("span", null, l), el("b", null, fmt(v) + " km²")); C.append(r); });
+    const C = el("div", "cmp"); C.append(el("div", "eyebrow", "Σε σχέση με το σενάριο Α"));
+    [["κοινά", both, "var(--sun)"], ["νέα τώρα", onlyB, "var(--ok)"], ["υπήρχαν μόνο στο Α", onlyA, "var(--bad)"]].forEach(([l, v, c]) => { const r = el("div", "cmprow"); const dot = el("i"); dot.style.background = c; r.append(dot, el("span", null, l), el("b", null, fmt(v) + " km²")); C.append(r); });
     R.append(C);
   }
-  const A = el("div", "actions");
-  const bx = el("button", "btn ghost", showExcl ? "Κρύψε τα αποκλεισμένα" : "Γιατί αποκλείστηκαν;"); bx.onclick = () => { showExcl = !showExcl; renderResult(src); redraw(); };
-  const bp = el("button", "btn ghost", PIN ? "Καθάρισε το Α" : "Κράτα ως σενάριο Α"); bp.onclick = () => { PIN = PIN ? null : { title: spec.title, ids: RES.slice(), set: new Set(RES) }; renderResult(src); redraw(); };
-  const bc = el("button", "btn ghost", "Αντιγραφή προδιαγραφής"); bc.onclick = async () => { const t = JSON.stringify({ title: spec.title, filters: spec.filters.filter((f, k) => enabled[k]), score: spec.score?.map((t, k) => ({ ...t, w: weights[k] })) }, null, 1);
-    try { await navigator.clipboard.writeText(t); bc.textContent = "Αντιγράφηκε"; } catch { bc.textContent = "Δεν επιτράπηκε η αντιγραφή"; } setTimeout(() => bc.textContent = "Αντιγραφή προδιαγραφής", 1800); };
-  A.append(bx, bp, bc); R.append(A);
-  R.append(el("div", "eyebrow", "Πώς προέκυψε · κάθε βήμα ανοιγοκλείνει"));
+  // 2. how it was found
+  R.append(el("h3", "sec", "Πώς βρέθηκε"));
+  R.append(el("p", "hint", "Κάθε κριτήριο κόβει περιοχές. Απενεργοποίησέ το για να δεις τι αλλάζει."));
   const F = el("div", "funnel");
-  steps.forEach((s, j) => {
-    const row = el("label", "step" + (s.on ? "" : " off"));
-    if (j === 0) row.append(el("span")); else { const cb = el("input"); cb.type = "checkbox"; cb.checked = s.on; cb.id = "f" + j;
-      cb.onchange = () => { enabled[j - 1] = cb.checked; evaluate(); renderResult(src); renderLegend(); animateReveal(); }; row.append(cb); }
-    const lb = el("div", "lbl"); const tt = el("div", null, s.label);
+  steps.forEach((st, j) => {
+    const row = el("label", "step" + (st.on ? "" : " off"));
+    const lb = el("div", "lbl"); const tt = el("div", null, j === 0 ? "Όλη η Θεσσαλία" : st.label);
     if (showExcl && j > 0) { const sw = el("i", "sw"); const c = EXCL[(j - 1) % EXCL.length]; sw.style.background = `rgb(${c[0]},${c[1]},${c[2]})`; tt.prepend(sw); }
-    lb.append(tt); if (s.col && CAT[s.col]) lb.append(el("small", null, CAT[s.col].src)); row.append(lb);
-    row.append(el("div", "num", fmt(s.area) + " km²"));
-    const bar = el("div", "bar"), bi = el("i"); bi.style.width = (s.area / AREA_TOT * 100) + "%"; bar.append(bi); row.append(bar);
+    lb.append(tt); if (st.col && CAT[st.col]) lb.append(el("small", null, CAT[st.col].src));
+    row.append(lb, el("div", "num", fmt(st.area) + " km²"));
+    if (j === 0) row.append(el("span")); else { const cb = el("input"); cb.type = "checkbox"; cb.className = "tog"; cb.checked = st.on; cb.id = "f" + j; cb.setAttribute("aria-label", "Ενεργό: " + st.label);
+      cb.onchange = () => { enabled[j - 1] = cb.checked; evaluate(); renderResult(src); renderLegend(); animateReveal(); }; row.append(cb); }
+    const bar = el("div", "bar"), bi = el("i"); bi.style.width = (st.area / AREA_TOT * 100) + "%"; bar.append(bi); row.append(bar);
     F.append(row);
   });
   R.append(F);
+  // 3. what to keep in mind
+  const cav = el("div", "caveat"); cav.append(el("b", null, "Τι να προσέξεις"));
+  (spec.caveats && spec.caveats.length ? spec.caveats : ["Κάθε εξάγωνο είναι ~0,74 km²: αποτέλεσμα για πρώτο φίλτρο, όχι για συγκεκριμένο αγροτεμάχιο."]).forEach(t => cav.append(el("div", null, t)));
+  R.append(cav);
+  // 4. explore further (collapsed)
+  const X = el("details", "more"); if (showExcl || PIN || openMore) X.open = true; X.ontoggle = () => openMore = X.open;
+  X.append(el("summary", null, "Εξερεύνησε περισσότερο"));
+  const tools = el("div", "tools");
+  const tool = (title, desc, label, fn) => { const t = el("div", "tool"); const tx = el("div"); tx.append(el("b", null, title), el("span", null, desc)); const bt = el("button", "btn ghost", label); bt.onclick = fn; t.append(tx, bt); tools.append(t); return bt; };
+  tool("Γιατί αποκλείστηκαν", "Χρωματίζει κάθε περιοχή με το κριτήριο που την έκοψε.", showExcl ? "Απόκρυψη" : "Εμφάνιση", () => { showExcl = !showExcl; renderResult(src); redraw(); });
+  tool("Σύγκριση σεναρίων", PIN ? "Το Α είναι αποθηκευμένο. Άλλαξε κριτήρια ή ρώτα κάτι άλλο." : "Κράτα αυτό ως Α, άλλαξε κάτι και δες τη διαφορά.", PIN ? "Καθάρισε το Α" : "Κράτα ως Α", () => { PIN = PIN ? null : { title: spec.title, ids: RES.slice(), set: new Set(RES) }; renderResult(src); redraw(); });
+  const bc = tool("Αναπαραγωγή", "Αντιγράφει τα κριτήρια ως JSON, για να ξανατρέξει ακριβώς το ίδιο.", "Αντιγραφή", async () => {
+    const t = JSON.stringify({ title: spec.title, filters: spec.filters.filter((f, k) => enabled[k]), score: spec.score?.map((t, k) => ({ ...t, w: weights[k] })) }, null, 1);
+    try { await navigator.clipboard.writeText(t); bc.textContent = "Αντιγράφηκε"; } catch { bc.textContent = "Δεν επιτράπηκε"; } setTimeout(() => bc.textContent = "Αντιγραφή", 1800); });
   if (spec.score && spec.score.length) {
-    R.append(el("div", "eyebrow", "Βάρη βαθμολογίας"));
-    const W = el("div", "weights");
+    const W = el("div", "weights"); W.append(el("b", null, "Βαρύτητα στη βαθμολογία"));
     spec.score.forEach((t, k2) => {
       const r = el("label", "w"); r.htmlFor = "w" + k2; const inp = el("input"); inp.type = "range"; inp.min = 0; inp.max = 1; inp.step = 0.05; inp.value = weights[k2]; inp.id = "w" + k2;
       const o = el("output", null, fmt(weights[k2], 2));
       inp.oninput = () => { weights[k2] = +inp.value; o.textContent = fmt(weights[k2], 2); evaluate(); redraw(); };
       r.append(el("span", null, t.label || CAT[t.col]?.l || t.col), inp, o); W.append(r);
     });
-    R.append(W);
+    tools.prepend(W);
   }
-  const cav = el("div", "caveat"); cav.append(el("b", null, "Τι δεν λένε τα δεδομένα"));
-  (spec.caveats && spec.caveats.length ? spec.caveats : ["Κάθε κελί είναι ~0,74 km²: αποτέλεσμα για screening, όχι για συγκεκριμένο αγροτεμάχιο."]).forEach(t => cav.append(el("div", null, "· " + t)));
-  R.append(cav);
+  X.append(tools); R.append(X);
+  // 5. sources (collapsed)
   const used = [...new Set([...spec.filters.map(f => f.col), ...(spec.score || []).map(t => t.col)])].filter(c => CAT[c]);
-  const S = el("div", "src"); used.forEach(c => S.append(el("span", "badge", CAT[c].src))); R.append(el("div", "eyebrow", "Πηγές"), S);
-  const det = el("details"); det.append(el("summary", null, "Τι έστειλε ο agent (JSON)"), el("pre", null, JSON.stringify({ filters: spec.filters, score: spec.score }, null, 1))); R.append(det);
+  const S = el("details", "more"); S.append(el("summary", null, `Πηγές (${new Set(used.map(c => CAT[c].src)).size}) και τεχνικά στοιχεία`));
+  const sb = el("div", "src"); [...new Set(used.map(c => CAT[c].src))].forEach(t => sb.append(el("span", "badge", t)));
+  S.append(sb, el("div", "hint", src === "live" ? "Τα κριτήρια τα έγραψε ζωντανά ο agent." : "Έτοιμο παράδειγμα, χωρίς κλήση στο AI."), el("pre", null, JSON.stringify({ filters: spec.filters, score: spec.score }, null, 1)));
+  R.append(S);
 }
 function apply(s, src, fly, q, followup) {
   if (q) history = followup ? [...history, q] : [q];
@@ -657,7 +700,7 @@ function tourGo(k) {
   const big = V.towns.filter(t => (t.p || 0) >= 5000).sort((a, b) => (b.p || 0) - (a.p || 0));
   big.forEach(t => { if (!TOWNS.some(u => Math.hypot((u.x - t.x) * 0.77, u.y - t.y) < 0.065)) TOWNS.push(t); });
   TEX1 = composite();
-  const P = $("presets"); PRESETS.forEach(p => { const b = el("button", "chip", p.q); b.onclick = () => { $("q").value = p.q; if (mode !== "query") setMode("query"); apply(structuredClone(p.spec), "preset", true, p.q, false); }; P.append(b); });
+  const P = $("presets"); PRESETS.forEach(p => { const b = el("button", "chip", p.s); b.title = p.q; b.onclick = () => { $("q").value = p.q; if (mode !== "query") setMode("query"); apply(structuredClone(p.spec), "preset", true, p.q, false); }; P.append(b); });
   $("tlRange").max = TL.dates.length - 1;
   apply(structuredClone(PRESETS[0].spec), "preset", false, PRESETS[0].q, false);
   deck1 = makeDeck($("map"), queryLayers());
@@ -671,7 +714,7 @@ function tourGo(k) {
   $("askBtn").onclick = ask; $("stopBtn").onclick = () => ctl?.abort();
   $("q").addEventListener("keydown", e => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) ask(); });
   try { sample = await window.claude?.use("sample"); } catch { sample = null; }
-  if (!sample) $("status").textContent = "Έτοιμα ερωτήματα · ο ζωντανός agent ανοίγει μέσα στο Claude";
+  if (!sample) $("status").textContent = "Ο ζωντανός agent δουλεύει όταν η σελίδα ανοίγει μέσα στο Claude. Δοκίμασε τα παραδείγματα.";
 })();
 
 </script>

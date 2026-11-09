@@ -1,0 +1,59 @@
+# Layer catalog for thessaly_h3 (one row per H3 res-8 cell, ~0.74 km2). Read this before answering.
+grid:
+  table: cells
+  key: h3
+  resolution: "H3 res 8 (mean cell 0.74 km2, edge ~0.46 km); 17,504 cells covering NUTS-2 EL61 Thessaly incl. Sporades"
+  area_rule: "Always weight by area_km2 (= cell_km2 * in_region). Edge cells are partly outside the region or in the sea."
+  border: "Eurostat GISCO NUTS 2021 1:1M (EL61); regional_unit = NUTS-3 2021 (Larisa; Karditsa, Trikala merged; Magnisia, Sporades)"
+columns:
+  h3:              {desc: "H3 cell id (res 8)"}
+  lat:             {unit: deg, desc: "cell centre latitude (WGS84)"}
+  lon:             {unit: deg, desc: "cell centre longitude (WGS84)"}
+  regional_unit:   {desc: "NUTS-3 2021 unit of the cell centre: 'Larisa', 'Karditsa, Trikala', 'Magnisia, Sporades'"}
+  area_km2:        {unit: km2, desc: "land of the cell inside Thessaly (use as weight)"}
+  in_region:       {unit: share, desc: "share of the cell inside the region border (0-1)"}
+  elev_mean_m:     {unit: m, source: "Copernicus GLO-90 DEM (DLR/Airbus, ESA)", date: 2021, desc: "mean elevation"}
+  elev_min_m:      {unit: m, source: GLO-90, desc: "min elevation"}
+  elev_max_m:      {unit: m, source: GLO-90, desc: "max elevation"}
+  slope_mean_deg:  {unit: deg, source: "GLO-90 reprojected to EGSA87 90 m", desc: "mean slope", caveat: "90 m DEM smooths steep terrain"}
+  slope_lt5_share: {unit: share, desc: "share of the cell with slope < 5 deg"}
+  south_facing_share: {unit: share, desc: "share of the cell facing S (135-225 deg) with slope >= 2 deg"}
+  lc_tree_share:   {unit: share, source: "ESA WorldCover 10 m v200", date: 2021, desc: "tree cover"}
+  lc_shrub_share:  {unit: share, source: WorldCover 2021, desc: shrubland}
+  lc_grass_share:  {unit: share, source: WorldCover 2021, desc: grassland}
+  lc_crop_share:   {unit: share, source: WorldCover 2021, desc: "cropland (fields)"}
+  lc_built_share:  {unit: share, source: WorldCover 2021, desc: built-up}
+  lc_bare_share:   {unit: share, source: WorldCover 2021, desc: bare/sparse vegetation}
+  lc_water_share:  {unit: share, source: WorldCover 2021, desc: permanent water}
+  lc_wetland_share: {unit: share, source: WorldCover 2021, desc: herbaceous wetland}
+  population:      {unit: persons, source: "Kontur Population 2023-11-01 (H3 res 8, from GHSL/Meta/OSM)", caveat: "modelled, not census; total 701k vs ELSTAT 2021 ~688k"}
+  pop_density_km2: {unit: "persons/km2", desc: "population / cell area"}
+  daniel_flood_share: {unit: share, source: "Copernicus EMS rapid mapping EMSR692 (Storm Daniel, 6-22 Sep 2023), union of 'Flooded area' polygons over all DEL products", caveat: "one event, not a return-period hazard map; only inside the 7 mapped AOIs"}
+  daniel_mapped_share: {unit: share, desc: "share of the cell inside any EMSR692 area of interest. 0 = not mapped, so 'not flooded' is unknown there"}
+  daniel_products_flooded: {unit: count, desc: "number of EMSR692 products (dates) in which the cell was flooded: persistence proxy"}
+  road_km_major:   {unit: km, source: "OpenStreetMap via Overture Maps 2026-10-21.0 (ODbL)", desc: "motorway/trunk/primary/secondary length in cell"}
+  road_km_minor:   {unit: km, desc: "tertiary/residential/unclassified/service/living_street length"}
+  road_km_track:   {unit: km, desc: "track (mostly dirt) length", caveat: "track != unpaved; day 24 used surface tags"}
+  road_km_other:   {unit: km, desc: "other road classes (path, footway, unknown...)"}
+  dist_paved_road_km: {unit: km, desc: "cell centre to nearest non-track road"}
+  dist_major_road_km: {unit: km, desc: "cell centre to nearest major road"}
+  solar_km2:       {unit: km2, source: "OSM power=plant with plant:source=solar (via Overture)", desc: "solar-park area in cell", caveat: "OSM completeness; 19.6 km2 in region vs 22 km2 in day 12 (different tag set)"}
+  solar_share:     {unit: share, desc: "solar_km2 / cell area"}
+  dist_solar_km:   {unit: km, desc: "cell centre to nearest solar park"}
+  dist_hv_line_km: {unit: km, source: "OSM power=line (via Overture)", desc: "cell centre to nearest transmission line", caveat: "line voltage not filtered; grid capacity unknown"}
+  dist_substation_km: {unit: km, source: "OSM power=substation", desc: "cell centre to nearest substation"}
+  natura_habitats_share: {unit: share, source: "EEA Natura 2000 (discomap), SCI/SAC", desc: "share under Habitats Directive sites"}
+  natura_birds_share: {unit: share, source: "EEA Natura 2000, SPA", desc: "share under Birds Directive sites"}
+  natura_any_share: {unit: share, desc: "share under any Natura 2000 site"}
+  natura_sites:    {desc: "names of Natura 2000 sites touching the cell"}
+  threatened_records: {unit: count, source: "GBIF occurrences, IUCN global CR/EN/VU, coord. uncertainty <= 10 km or unknown, retrieved Nov 2026", caveat: "sampling bias: records follow observers, not species"}
+  threatened_species: {unit: count, desc: "distinct threatened species recorded in cell"}
+  tempe_lake_share: {unit: share, source: "derived from GLO-90 (day 15 method)", desc: "share of the cell under the hypothetical lake if the Vale of Tempe were closed (spill level 121.6 m)", caveat: "thought experiment, a proxy for low-lying basin land, not a hazard map"}
+  tempe_lake_depth_m: {unit: m, desc: "mean depth of that hypothetical lake in the cell"}
+  heat_days_35:    {unit: "days/yr", source: "ERA5 via Open-Meteo archive, 2015-2024, 0.5 deg points", desc: "mean days per year with Tmax >= 35 C", caveat: "~50 km point spacing: nearest point, no local detail"}
+  heat_days_40:    {unit: "days/yr", source: ERA5 2015-2024, desc: "mean days per year with Tmax >= 40 C"}
+  tmax_jja_mean:   {unit: C, source: ERA5 2015-2024, desc: "mean summer (JJA) daily Tmax"}
+  app_tmax_2021_08_02: {unit: C, source: ERA5, desc: "max apparent temperature on 2 Aug 2021 (day 28)"}
+not_included:
+  - "viewsheds (day 5), winter shadow (day 17), herbs (day 19), PDO foods (day 23): not yet layers"
+  - "official flood-hazard maps (YPEN FRMP), cadastre, grid capacity, land prices"

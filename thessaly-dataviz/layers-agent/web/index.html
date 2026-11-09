@@ -1,0 +1,450 @@
+<title>Θεσσαλία Layers Agent</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Commissioner:wght@500;650;800&family=Fira+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<script src="https://unpkg.com/deck.gl@8.9.35/dist.min.js"></script>
+<script src="https://unpkg.com/h3-js@4.1.0/dist/h3-js.umd.js"></script>
+<style>
+/* Layout: map-first operations room. Map fills the screen; the agent works in a docked right panel;
+   one quiet bar on top, a mode switch + legend bottom-left. Single deliberate dark look (night survey table). */
+:root {
+  --bg: #0D1522; --panel: #121D2E; --panel2: #172539; --ink: #E7ECF3; --muted: #8C9BB0; --line: #233149;
+  --sun: #F2A33A; --water: #4FA3E0; --scenario: #9A86EE; --ok: #5CC28E; --warn: #E9B44C; --bad: #E2675A;
+  --display: "Commissioner", "Fira Sans", system-ui, sans-serif;
+  --body: "Fira Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 14px; line-height: 1.45; overflow: hidden; }
+.app { position: fixed; inset: 0; display: grid; grid-template-columns: 1fr minmax(340px, 420px); }
+.stage { position: relative; min-width: 0; overflow: hidden; }
+#map, #map2 { position: absolute; inset: 0; }
+#map2 { clip-path: inset(0 0 0 50%); }
+#map2[hidden] { display: none; }
+
+.topbar { position: absolute; top: calc(14px + env(safe-area-inset-top, 0px)); left: max(16px, env(safe-area-inset-left, 0px)); right: 16px;
+  display: flex; align-items: baseline; gap: 18px; flex-wrap: wrap; pointer-events: none; z-index: 3; }
+.brand { font-family: var(--display); font-weight: 800; font-size: 22px; letter-spacing: -.01em; }
+.brand span { color: var(--sun); }
+.stats { font-family: var(--mono); font-size: 11.5px; color: var(--muted); letter-spacing: .02em; }
+
+.dock { position: absolute; left: max(16px, env(safe-area-inset-left, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  display: grid; gap: 10px; z-index: 3; max-width: min(460px, calc(100% - 32px)); }
+.seg { display: inline-flex; background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 3px; width: max-content; }
+.seg button { font: 500 12.5px var(--body); color: var(--muted); background: none; border: 0; padding: 7px 14px; border-radius: 999px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--panel2); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); }
+.seg button:focus-visible, button:focus-visible, textarea:focus-visible, input:focus-visible { outline: 2px solid var(--sun); outline-offset: 2px; }
+.legend { background: color-mix(in srgb, var(--panel) 92%, transparent); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; display: grid; gap: 6px; }
+.legend .ramp { height: 8px; border-radius: 4px; }
+.legend .lab { display: flex; justify-content: space-between; font: 11px var(--mono); color: var(--muted); }
+.legend .t { font-size: 12px; color: var(--ink); }
+
+.swipe-ui[hidden] { display: none; }
+.divider { position: absolute; top: 0; bottom: 0; left: 50%; width: 2px; background: var(--ink); z-index: 4; cursor: ew-resize; touch-action: none; }
+.divider::after { content: "⟷"; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: var(--ink); color: var(--bg);
+  font-size: 14px; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; }
+.tag { position: absolute; top: calc(58px + env(safe-area-inset-top, 0px)); z-index: 4; font: 600 12px var(--body); padding: 6px 10px; border-radius: 6px; background: var(--panel); border: 1px solid var(--line); max-width: 42%; }
+.tag.l { left: 16px; border-left: 3px solid var(--water); }
+.tag.r { right: 16px; border-left: 3px solid var(--scenario); }
+.tag small { display: block; font: 400 11px var(--mono); color: var(--muted); }
+
+/* panel */
+aside { background: var(--panel); border-left: 1px solid var(--line); display: flex; flex-direction: column; min-width: 0; min-height: 0;
+  padding-block: calc(16px + env(safe-area-inset-top, 0px)) calc(16px + env(safe-area-inset-bottom, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-left: 16px; }
+.scroll { overflow-y: auto; display: grid; gap: 16px; align-content: start; min-height: 0; padding-right: 4px; }
+.eyebrow { font: 600 10.5px var(--body); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.ask { display: grid; gap: 8px; }
+.ask textarea { width: 100%; box-sizing: border-box; resize: none; min-height: 64px; background: var(--bg); color: var(--ink); border: 1px solid var(--line);
+  border-radius: 10px; padding: 10px 12px; font: 14px var(--body); }
+.ask .row { display: flex; gap: 8px; align-items: center; }
+.btn { font: 600 13px var(--body); background: var(--sun); color: #1B1408; border: 0; border-radius: 8px; padding: 9px 14px; cursor: pointer; }
+.btn[disabled] { opacity: .5; cursor: progress; }
+.btn.ghost { background: none; color: var(--muted); border: 1px solid var(--line); }
+.status { font: 12px var(--mono); color: var(--muted); min-height: 1em; }
+.presets { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font: 12.5px var(--body); color: var(--ink); background: var(--panel2); border: 1px solid var(--line); border-radius: 999px; padding: 6px 11px; cursor: pointer; text-align: left; }
+.chip:hover { border-color: var(--sun); }
+
+.result { display: grid; gap: 10px; border-top: 1px solid var(--line); padding-top: 14px; }
+.result h2 { font: 650 17px/1.25 var(--display); margin: 0; text-wrap: balance; }
+.answer { color: var(--ink); margin: 0; }
+.kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.kpi { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; min-width: 0; }
+.kpi b { display: block; font: 600 18px var(--mono); font-variant-numeric: tabular-nums; }
+.kpi span { font-size: 11px; color: var(--muted); }
+
+.funnel { display: grid; gap: 4px; }
+.step { display: grid; grid-template-columns: 22px 1fr auto; gap: 8px; align-items: center; padding: 6px 8px; border-radius: 8px; }
+.step:hover { background: var(--panel2); }
+.step input { accent-color: var(--sun); width: 16px; height: 16px; margin: 0; }
+.step .lbl { min-width: 0; }
+.step .lbl div { font-size: 13px; }
+.step .lbl small { font: 10.5px var(--mono); color: var(--muted); }
+.step .num { font: 600 12.5px var(--mono); font-variant-numeric: tabular-nums; text-align: right; }
+.step .bar { grid-column: 2 / 4; height: 3px; background: var(--line); border-radius: 2px; overflow: hidden; }
+.step .bar i { display: block; height: 100%; background: var(--sun); transition: width .6s ease; }
+.step.off { opacity: .45; }
+.step.off .bar i { background: var(--muted); }
+
+.weights { display: grid; gap: 8px; }
+.w { display: grid; grid-template-columns: 1fr 90px 28px; gap: 8px; align-items: center; font-size: 12.5px; }
+.w input { width: 100%; accent-color: var(--sun); }
+.w output { font: 11px var(--mono); color: var(--muted); text-align: right; }
+
+.caveat { border: 1px solid color-mix(in srgb, var(--warn) 45%, var(--line)); background: color-mix(in srgb, var(--warn) 7%, var(--panel)); border-radius: 8px; padding: 9px 11px; font-size: 12.5px; display: grid; gap: 4px; }
+.caveat b { color: var(--warn); font-weight: 600; }
+.refuse { border-color: color-mix(in srgb, var(--bad) 50%, var(--line)); background: color-mix(in srgb, var(--bad) 8%, var(--panel)); }
+.refuse b { color: var(--bad); }
+details { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+summary { cursor: pointer; font-size: 12.5px; color: var(--muted); }
+pre { font: 11px/1.5 var(--mono); color: var(--muted); white-space: pre-wrap; word-break: break-word; margin: 8px 0 0; max-height: 240px; overflow: auto; }
+.src { display: flex; flex-wrap: wrap; gap: 5px; }
+.badge { font: 10.5px var(--mono); color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 2px 6px; }
+
+.card { position: absolute; z-index: 5; right: 16px; top: calc(56px + env(safe-area-inset-top, 0px)); width: min(300px, calc(100% - 32px)); background: var(--panel);
+  border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; display: grid; gap: 8px; box-shadow: 0 12px 40px rgb(0 0 0 / .35); }
+.card[hidden] { display: none; }
+.card h3 { margin: 0; font: 650 14px var(--display); }
+.card dl { margin: 0; display: grid; grid-template-columns: 1fr auto; gap: 3px 10px; font-size: 12px; }
+.card dt { color: var(--muted); }
+.card dd { margin: 0; font: 12px var(--mono); text-align: right; font-variant-numeric: tabular-nums; }
+.card .x { position: absolute; top: 8px; right: 10px; background: none; border: 0; color: var(--muted); font-size: 18px; cursor: pointer; }
+.loading { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font: 13px var(--mono); z-index: 2; }
+
+@media (max-width: 820px) {
+  body { overflow: auto; }
+  .app { position: static; display: block; }
+  .stage { height: 62vh; }
+  aside { border-left: 0; border-top: 1px solid var(--line); padding-left: max(16px, env(safe-area-inset-left, 0px)); }
+  .tag { max-width: 40%; font-size: 11px; }
+}
+@media (prefers-reduced-motion: reduce) { .step .bar i { transition: none; } }
+</style>
+
+<div class="app">
+  <div class="stage" id="stage">
+    <div id="map"></div>
+    <div id="map2" hidden></div>
+    <div class="loading" id="loading">Φόρτωση 17.504 εξαγώνων…</div>
+    <div class="topbar">
+      <div class="brand">Θεσσαλία <span>·</span> Layers Agent</div>
+      <div class="stats" id="stats">H3 res 8 · 17.504 κελιά · 14.053 km² · 40+ layers</div>
+    </div>
+    <div class="swipe-ui" id="swipeUI" hidden>
+      <div class="divider" id="divider" role="separator" aria-label="Σύρε για σύγκριση" tabindex="0"></div>
+      <div class="tag l">Πλημμύρα Daniel, Σεπ. 2023<small>Copernicus EMS EMSR692 · παρατήρηση</small></div>
+      <div class="tag r">Αν έκλειναν τα Τέμπη<small>σενάριο από DEM · στάθμη 121,6 m</small></div>
+    </div>
+    <div class="card" id="card" hidden></div>
+    <div class="dock">
+      <div class="seg" role="group" aria-label="Λειτουργία">
+        <button id="modeQuery" aria-pressed="true">Ερώτημα</button>
+        <button id="modeSwipe" aria-pressed="false">Daniel ↔ Τέμπη</button>
+      </div>
+      <div class="legend" id="legend"></div>
+    </div>
+  </div>
+
+  <aside>
+    <div class="scroll">
+      <div class="ask">
+        <label class="eyebrow" for="q">Ρώτα τα layers</label>
+        <textarea id="q" rows="3" placeholder="π.χ. Πού υπάρχουν κατοικημένες περιοχές κάτω από 100 m που πλημμύρισαν το 2023;"></textarea>
+        <div class="row">
+          <button class="btn" id="askBtn">Ρώτα</button>
+          <button class="btn ghost" id="stopBtn" hidden>Διακοπή</button>
+          <span class="status" id="status"></span>
+        </div>
+        <div class="presets" id="presets"></div>
+      </div>
+      <section class="result" id="result" aria-live="polite"></section>
+    </div>
+  </aside>
+</div>
+
+<script>
+// ---------- column catalog (shared with the agent prompt) ----------
+const CAT = {
+  elev:   {l:"Υψόμετρο", u:"m", src:"Copernicus GLO-90", d:"μέσο υψόμετρο κελιού"},
+  slope:  {l:"Κλίση", u:"°", src:"GLO-90", d:"μέση κλίση"},
+  flat:   {l:"Επίπεδο τμήμα", u:"0-1", src:"GLO-90", d:"μερίδιο με κλίση <5°"},
+  south:  {l:"Νότιος προσανατολισμός", u:"0-1", src:"GLO-90", d:"μερίδιο με νότια έκθεση"},
+  crop:   {l:"Καλλιέργειες", u:"0-1", src:"ESA WorldCover 2021", d:"μερίδιο αγροτικής γης"},
+  tree:   {l:"Δέντρα", u:"0-1", src:"WorldCover 2021", d:"δασική/δενδρώδης κάλυψη (και οπωρώνες)"},
+  grass:  {l:"Λιβάδια", u:"0-1", src:"WorldCover 2021", d:"χορτολίβαδα"},
+  built:  {l:"Δομημένο", u:"0-1", src:"WorldCover 2021", d:"δομημένη επιφάνεια"},
+  water:  {l:"Νερό", u:"0-1", src:"WorldCover 2021", d:"μόνιμο νερό"},
+  pop:    {l:"Πληθυσμός", u:"άτομα", src:"Kontur 2023", d:"κάτοικοι στο κελί (μοντέλο, όχι απογραφή)"},
+  flood:  {l:"Πλημμύρα Daniel", u:"0-1", src:"Copernicus EMS EMSR692, Σεπ 2023", d:"μερίδιο κελιού που πλημμύρισε (ένα γεγονός, όχι χάρτης κινδύνου)"},
+  mapped: {l:"Χαρτογραφήθηκε για Daniel", u:"0-1", src:"EMSR692", d:"μερίδιο εντός περιοχών χαρτογράφησης· 0 = άγνωστο"},
+  floodn: {l:"Επιμονή πλημμύρας", u:"προϊόντα", src:"EMSR692", d:"σε πόσα δορυφορικά προϊόντα/ημερομηνίες ήταν πλημμυρισμένο"},
+  lake:   {l:"Λίμνη Τεμπών (σενάριο)", u:"0-1", src:"DEM, σενάριο day 15", d:"μερίδιο κάτω από τη στάθμη 121,6 m αν έκλειναν τα Τέμπη· υποθετικό"},
+  lakedepth:{l:"Βάθος λίμνης (σενάριο)", u:"m", src:"DEM", d:"υποθετικό βάθος"},
+  natura: {l:"Natura 2000", u:"0-1", src:"EEA Natura 2000", d:"μερίδιο σε περιοχή Natura (SCI/SAC/SPA)"},
+  dsub:   {l:"Απόσταση από υποσταθμό", u:"km", src:"OSM (Overture 2026-10)", d:"OSM, ελλιπές: 71 υποσταθμοί"},
+  dline:  {l:"Απόσταση από γραμμή ΥΤ", u:"km", src:"OSM", d:"γραμμές μεταφοράς, τάση άγνωστη"},
+  droad:  {l:"Απόσταση από άσφαλτο", u:"km", src:"OSM", d:"πλησιέστερος μη χωματόδρομος"},
+  dmajor: {l:"Απόσταση από κύριο δρόμο", u:"km", src:"OSM", d:"motorway–secondary"},
+  solar:  {l:"Φωτοβολταϊκά", u:"0-1", src:"OSM power=plant solar", d:"μερίδιο κελιού με φωτοβολταϊκό πάρκο"},
+  dsolar: {l:"Απόσταση από ΦΒ πάρκο", u:"km", src:"OSM", d:"πλησιέστερο φωτοβολταϊκό"},
+  thr:    {l:"Απειλούμενα είδη (καταγραφές)", u:"πλήθος", src:"GBIF, IUCN CR/EN/VU", d:"δείχνει πού κοίταξαν παρατηρητές"},
+  thrsp:  {l:"Απειλούμενα είδη", u:"πλήθος", src:"GBIF", d:"διαφορετικά είδη"},
+  track:  {l:"Χωματόδρομοι", u:"km", src:"OSM", d:"μήκος track στο κελί"},
+  ru:     {l:"Περιφερειακή ενότητα", u:"0/1/2", src:"Eurostat NUTS-3", d:"0=Λάρισα, 1=Καρδίτσα+Τρίκαλα, 2=Μαγνησία+Σποράδες"},
+};
+const RU = ["Λάρισα", "Καρδίτσα & Τρίκαλα", "Μαγνησία & Σποράδες"];
+const OPS = { "<": (a,b)=>a<b, "<=": (a,b)=>a<=b, ">": (a,b)=>a>b, ">=": (a,b)=>a>=b, "==": (a,b)=>a==b, "!=": (a,b)=>a!=b };
+
+const PRESETS = [
+  { q: "Επίπεδη αγροτική γη εκτός Natura, που δεν πλημμύρισε, κοντά σε υποσταθμό (agrivoltaics)",
+    spec: { title: "Πρώτο φίλτρο για agrivoltaics", answer: "Επίπεδα χωράφια εκτός Natura 2000, εκτός της πλημμύρας του Daniel και έως 5 km από υποσταθμό, βαθμολογημένα για σύνδεση και πρόσβαση.",
+      filters: [
+        {col:"slope", op:"<", value:5, label:"Κλίση κάτω από 5°"},
+        {col:"crop", op:">", value:0.5, label:"Κυρίως καλλιέργειες"},
+        {col:"built", op:"<", value:0.1, label:"Όχι δομημένο"},
+        {col:"natura", op:"<", value:0.05, label:"Εκτός Natura 2000"},
+        {col:"flood", op:"<", value:0.05, label:"Δεν πλημμύρισε το 2023"},
+        {col:"dsub", op:"<", value:5, label:"Έως 5 km από υποσταθμό"}],
+      score: [{col:"dsub", dir:"low", cap:5, w:0.5, label:"Κοντά σε υποσταθμό"}, {col:"droad", dir:"low", cap:2, w:0.2, label:"Κοντά σε άσφαλτο"},
+              {col:"south", dir:"high", cap:1, w:0.1, label:"Νότια έκθεση"}, {col:"crop", dir:"high", cap:1, w:0.2, label:"Μερίδιο καλλιεργειών"}],
+      caveats: ["Λείπουν: χωρητικότητα δικτύου (κορεσμός), κτηματολόγιο, τιμές γης, επίσημοι χάρτες κινδύνου πλημμύρας.", "Οι υποσταθμοί είναι από OSM (71 στη Θεσσαλία) και πιθανώς ελλιπείς."] } },
+  { q: "Κατοικημένες περιοχές που πλημμύρισαν από τον Daniel",
+    spec: { title: "Ποιοι ζουν μέσα στην πλημμύρα του Daniel", answer: "Κελιά με κατοίκους όπου πάνω από το 20% πλημμύρισε τον Σεπτέμβριο 2023. Το ύψος δείχνει πόσο επέμεινε το νερό.",
+      filters: [{col:"pop", op:">", value:0, label:"Έχει κατοίκους"}, {col:"flood", op:">", value:0.2, label:"Πάνω από 20% πλημμυρισμένο"}],
+      score: [{col:"floodn", dir:"high", cap:6, w:0.6, label:"Ημέρες/προϊόντα με νερό"}, {col:"pop", dir:"high", cap:500, w:0.4, label:"Πληθυσμός"}],
+      caveats: ["Ο πληθυσμός είναι μοντέλο Kontur 2023 σε εξάγωνα, όχι απογραφή.", "Εκτός των 7 περιοχών χαρτογράφησης του EMSR692 η πλημμύρα είναι άγνωστη, όχι μηδενική."] } },
+  { q: "Πόση γη κάτω από τη «λίμνη των Τεμπών» είναι σήμερα χωράφια;",
+    spec: { title: "Η αρχαία λίμνη κάτω από τα χωράφια", answer: "Κελιά που θα ήταν κάτω από τη στάθμη αν έκλεινε η κοιλάδα των Τεμπών και σήμερα καλλιεργούνται κυρίως. Το ύψος δείχνει το υποθετικό βάθος.",
+      filters: [{col:"lake", op:">", value:0.5, label:"Μέσα στη «λίμνη» (σενάριο)"}, {col:"crop", op:">", value:0.5, label:"Κυρίως καλλιέργειες"}],
+      score: [{col:"lakedepth", dir:"high", cap:60, w:1, label:"Βάθος σεναρίου"}],
+      caveats: ["Νοητικό πείραμα σε σημερινό ανάγλυφο, όχι ανακατασκευή αρχαίας λίμνης ούτε χάρτης κινδύνου."] } },
+  { q: "Φωτοβολταϊκά πάρκα μέσα σε Natura 2000",
+    spec: { title: "Φωτοβολταϊκά μέσα σε Natura 2000", answer: "Κελιά με φωτοβολταϊκό πάρκο (OSM) που είναι κυρίως μέσα σε περιοχή Natura 2000.",
+      filters: [{col:"solar", op:">", value:0, label:"Έχει φωτοβολταϊκό"}, {col:"natura", op:">", value:0.5, label:"Κυρίως σε Natura 2000"}],
+      score: [{col:"solar", dir:"high", cap:0.3, w:1, label:"Κάλυψη με πάνελ"}],
+      caveats: ["Natura ≠ απαγόρευση: πολλές ζώνες SPA επιτρέπουν ΑΠΕ με περιβαλλοντική αδειοδότηση.", "Τα πάρκα είναι από OSM· επαλήθευση με ΡΑΑΕΥ πριν από οποιοδήποτε συμπέρασμα."] } },
+];
+
+// ---------- data ----------
+let D, N, POLY, AREA_TOT, POP_TOT;
+let spec = null, enabled = [], weights = [], pass = null, score = null, steps = [];
+const fmt = (x, d=0) => Number(x).toLocaleString("el-GR", {maximumFractionDigits: d, minimumFractionDigits: d});
+const $ = id => document.getElementById(id);
+const el = (t, cls, txt) => { const e = document.createElement(t); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
+
+function hexA(h, a=255) { const n = parseInt(h.slice(1), 16); return [(n>>16)&255, (n>>8)&255, n&255, a]; }
+function lerpC(stops, t) { t = Math.max(0, Math.min(1, t)); const k = t*(stops.length-1), i = Math.min(stops.length-2, Math.floor(k)), f = k-i;
+  return stops[i].map((v, j) => Math.round(v + (stops[i+1][j]-v)*f)); }
+const TERRAIN = [[22,36,54],[30,48,70],[44,62,86],[64,80,104],[96,108,128]];
+const AMBER = [[94,58,30],[176,96,38],[242,163,58],[255,214,120],[255,244,205]];
+const BLUE = [[20,45,80],[34,92,150],[79,163,224],[170,215,245]];
+const VIOLET = [[40,30,80],[86,64,170],[154,134,238],[215,205,255]];
+
+function baseColor(i, dim) { const c = lerpC(TERRAIN, Math.sqrt(Math.max(0, D.elev[i]) / 2200)); return dim ? [c[0]*.7, c[1]*.7, c[2]*.8, 255] : [...c, 255]; }
+
+// ---------- evaluation ----------
+function evaluate() {
+  const n = N; let m = new Uint8Array(n).fill(1);
+  steps = [{label: "Όλη η Θεσσαλία", area: AREA_TOT, pop: POP_TOT, cells: n, on: true}];
+  spec.filters.forEach((f, k) => {
+    const v = D[f.col], op = OPS[f.op];
+    if (enabled[k] && v && op) for (let i = 0; i < n; i++) if (m[i] && !op(v[i], f.value)) m[i] = 0;
+    let a = 0, p = 0, c = 0; for (let i = 0; i < n; i++) if (m[i]) { a += D.area[i]; p += D.pop[i]; c++; }
+    steps.push({label: f.label || `${f.col} ${f.op} ${f.value}`, col: f.col, area: a, pop: p, cells: c, on: enabled[k]});
+  });
+  pass = m; RES = IDX.filter(i => m[i]);
+  score = new Float32Array(n);
+  const terms = spec.score || [];
+  const wsum = terms.reduce((s, t, k) => s + weights[k], 0) || 1;
+  for (let i = 0; i < n; i++) {
+    if (!m[i]) continue;
+    let s = 0;
+    terms.forEach((t, k) => { const v = D[t.col] ? D[t.col][i] : 0; let x = Math.max(0, Math.min(1, v / (t.cap || 1))); if (t.dir === "low") x = 1 - x; s += weights[k] * x; });
+    score[i] = terms.length ? s / wsum : 0.6;
+  }
+}
+
+// ---------- rendering ----------
+let deck1, deck2, viewState = { longitude: 22.2, latitude: 39.38, zoom: 7.95, pitch: 45, bearing: -10 };
+let reveal = 1, revealT = null;
+
+function borderLayer(id) {
+  return new deck.PathLayer({ id, data: D.border, getPath: d => d, getColor: [231,236,243,150], widthUnits: "pixels", getWidth: 1.2 });
+}
+let IDX = [], RES = [];
+function queryLayers() {
+  const idx = IDX, res = RES;
+  const base = new deck.PolygonLayer({ id: "base", data: idx, getPolygon: i => POLY[i], stroked: false, filled: true, extruded: false,
+    getFillColor: i => pass[i] ? baseColor(i, false) : baseColor(i, true), updateTriggers: { getFillColor: [pass] }, pickable: true, opacity: 1 });
+  const top = new deck.PolygonLayer({ id: "result", data: res, getPolygon: i => POLY[i], extruded: true, wireframe: false, stroked: false,
+    getElevation: i => 300 + score[i] * 5200 * reveal, getFillColor: i => [...lerpC(AMBER, score[i]), 245],
+    material: { ambient: .55, diffuse: .6, shininess: 24 }, pickable: true,
+    updateTriggers: { getElevation: [score, reveal], getFillColor: [score] } });
+  return [base, top, borderLayer("b1")];
+}
+function swipeLayers(which) {
+  const idx = IDX;
+  const isFlood = which === "flood";
+  const v = isFlood ? D.flood : D.lake;
+  const sel = idx.filter(i => v[i] > 0.05);
+  const base = new deck.PolygonLayer({ id: which + "-base", data: idx, getPolygon: i => POLY[i], filled: true, stroked: false, getFillColor: i => baseColor(i, true), pickable: true });
+  const top = new deck.PolygonLayer({ id: which + "-top", data: sel, getPolygon: i => POLY[i], extruded: true, stroked: false,
+    getElevation: i => isFlood ? 200 + D.floodn[i] * 700 : 200 + Math.max(0, D.lakedepth[i]) * 70,
+    getFillColor: i => isFlood ? [...lerpC(BLUE, 0.25 + 0.75 * D.flood[i]), 240] : [...lerpC(VIOLET, Math.min(1, Math.max(0, D.lakedepth[i]) / 60)), 235],
+    material: { ambient: .55, diffuse: .6 }, pickable: true });
+  return [base, top, borderLayer(which + "-b")];
+}
+function tooltip(info) {
+  if (info.object == null) return null;
+  const i = info.object;
+  return { html: `<b>${RU[D.ru[i]]}</b><br>${fmt(D.elev[i])} m · ${fmt(D.pop[i])} κάτοικοι` + (pass && pass[i] && score ? `<br>score ${fmt(score[i]*100)}` : ""),
+    style: { background: "#121D2E", color: "#E7ECF3", font: "12px 'Fira Sans', sans-serif", border: "1px solid #233149", borderRadius: "6px", padding: "6px 8px" } };
+}
+function makeDeck(container, layers) {
+  return new deck.Deck({ parent: container, initialViewState: viewState, controller: true, layers,
+    getTooltip: tooltip, onClick: info => { if (info.object != null) showCard(info.object); },
+    onViewStateChange: ({ viewState: vs }) => { viewState = vs; if (deck1) deck1.setProps({ viewState: vs }); if (deck2) deck2.setProps({ viewState: vs }); return vs; },
+    viewState, style: { position: "absolute", inset: 0 }, parameters: { clearColor: [13/255, 21/255, 34/255, 1] } });
+}
+function redraw() { if (deck1 && mode === "query") deck1.setProps({ layers: queryLayers() }); }
+function animateReveal() {
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) { reveal = 1; redraw(); return; }
+  cancelAnimationFrame(revealT); const t0 = performance.now();
+  const tick = t => { const k = Math.min(1, (t - t0) / 900); reveal = 1 - Math.pow(1 - k, 3); redraw(); if (k < 1) revealT = requestAnimationFrame(tick); };
+  revealT = requestAnimationFrame(tick);
+}
+
+// ---------- panel ----------
+function renderLegend() {
+  const L = $("legend"); L.replaceChildren();
+  const ramp = (stops) => { const r = el("div", "ramp"); r.style.background = `linear-gradient(90deg, ${stops.map(c => `rgb(${c})`).join(",")})`; return r; };
+  if (mode === "query") {
+    L.append(el("div", "t", spec && spec.score && spec.score.length ? "Ύψος και χρώμα: score (0–100)" : "Κελιά που περνούν τα κριτήρια"), ramp(AMBER));
+    const lab = el("div", "lab"); lab.append(el("span", null, "0"), el("span", null, "100")); L.append(lab);
+    L.append(el("div", "lab", "Σκούρο ανάγλυφο = εκτός κριτηρίων"));
+  } else {
+    L.append(el("div", "t", "Αριστερά: πλημμύρα · Δεξιά: σενάριο λίμνης"), ramp(BLUE), ramp(VIOLET));
+    let fa = 0, fin = 0; for (let i = 0; i < N; i++) { const a = D.flood[i] * D.area[i]; fa += a; if (D.lake[i] > 0.5) fin += a; }
+    const s = el("div", "t"); s.innerHTML = `<b style="color:var(--sun);font-family:var(--mono)">${fmt(fin / fa * 100)}%</b> της πλημμύρας του Daniel έπεσε μέσα στη «λίμνη»`; L.append(s);
+  }
+}
+function renderResult(src) {
+  const R = $("result"); R.replaceChildren();
+  if (spec.refuse) {
+    const c = el("div", "caveat refuse"); c.append(el("b", null, "Δεν απαντιέται με αυτά τα δεδομένα"), el("div", null, spec.refuse)); R.append(c); return;
+  }
+  R.append(el("div", "eyebrow", src === "live" ? "Απάντηση agent · ζωντανά" : "Απάντηση agent · έτοιμο σενάριο"));
+  R.append(el("h2", null, spec.title || "Αποτέλεσμα"));
+  if (spec.answer) R.append(el("p", "answer", spec.answer));
+  const last = steps[steps.length - 1];
+  const k = el("div", "kpis");
+  [[fmt(last.area), "km² κελιών"], [fmt(last.area / AREA_TOT * 100, 1) + "%", "της Θεσσαλίας"], [fmt(last.pop), "κάτοικοι"]].forEach(([b, s]) => { const d = el("div", "kpi"); d.append(el("b", null, b), el("span", null, s)); k.append(d); });
+  R.append(k);
+  R.append(el("div", "eyebrow", "Πώς προέκυψε · κάθε βήμα ανοιγοκλείνει"));
+  const F = el("div", "funnel");
+  steps.forEach((s, j) => {
+    const row = el("label", "step" + (s.on ? "" : " off"));
+    if (j === 0) row.append(el("span")); else { const cb = el("input"); cb.type = "checkbox"; cb.checked = s.on; cb.id = "f" + j;
+      cb.onchange = () => { enabled[j - 1] = cb.checked; evaluate(); renderResult(src); renderLegend(); animateReveal(); }; row.append(cb); }
+    const lb = el("div", "lbl"); lb.append(el("div", null, s.label)); if (s.col && CAT[s.col]) lb.append(el("small", null, CAT[s.col].src)); row.append(lb);
+    row.append(el("div", "num", fmt(s.area) + " km²"));
+    const bar = el("div", "bar"), bi = el("i"); bi.style.width = (s.area / AREA_TOT * 100) + "%"; bar.append(bi); row.append(bar);
+    F.append(row);
+  });
+  R.append(F);
+  if (spec.score && spec.score.length) {
+    R.append(el("div", "eyebrow", "Βάρη βαθμολογίας"));
+    const W = el("div", "weights");
+    spec.score.forEach((t, k2) => {
+      const r = el("label", "w"); r.htmlFor = "w" + k2; const inp = el("input"); inp.type = "range"; inp.min = 0; inp.max = 1; inp.step = 0.05; inp.value = weights[k2]; inp.id = "w" + k2;
+      const o = el("output", null, fmt(weights[k2], 2));
+      inp.oninput = () => { weights[k2] = +inp.value; o.textContent = fmt(weights[k2], 2); evaluate(); redraw(); };
+      r.append(el("span", null, t.label || CAT[t.col]?.l || t.col), inp, o); W.append(r);
+    });
+    R.append(W);
+  }
+  const cav = el("div", "caveat"); cav.append(el("b", null, "Τι δεν λένε τα δεδομένα"));
+  (spec.caveats && spec.caveats.length ? spec.caveats : ["Κάθε κελί είναι ~0,74 km²: αποτέλεσμα για screening, όχι για συγκεκριμένο αγροτεμάχιο."]).forEach(t => cav.append(el("div", null, "· " + t)));
+  R.append(cav);
+  const used = [...new Set([...spec.filters.map(f => f.col), ...(spec.score || []).map(t => t.col)])].filter(c => CAT[c]);
+  const S = el("div", "src"); used.forEach(c => S.append(el("span", "badge", CAT[c].src))); R.append(el("div", "eyebrow", "Πηγές"), S);
+  const det = el("details"); det.append(el("summary", null, "Τι έστειλε ο agent (JSON)"), el("pre", null, JSON.stringify({ filters: spec.filters, score: spec.score }, null, 1))); R.append(det);
+}
+function apply(s, src) {
+  spec = s; spec.filters = (spec.filters || []).filter(f => D[f.col] && OPS[f.op] && typeof f.value === "number");
+  spec.score = (spec.score || []).filter(t => D[t.col]);
+  enabled = spec.filters.map(() => true); weights = spec.score.map(t => +t.w || 0.25);
+  if (spec.refuse) { pass = new Uint8Array(N); RES = []; score = new Float32Array(N); renderResult(src); redraw(); return; }
+  evaluate(); renderResult(src); renderLegend(); $("card").hidden = true; animateReveal();
+}
+function showCard(i) {
+  const C = $("card"); C.replaceChildren(); C.hidden = false;
+  const x = el("button", "x", "×"); x.setAttribute("aria-label", "Κλείσιμο"); x.onclick = () => C.hidden = true;
+  C.append(x, el("h3", null, `${RU[D.ru[i]]} · κελί ${D.h3[i].slice(-6)}`));
+  const dl = el("dl");
+  const rows = [["elev", 0], ["slope", 1], ["crop", 2], ["tree", 2], ["built", 2], ["pop", 0], ["flood", 2], ["lake", 2], ["natura", 2], ["dsub", 1], ["droad", 1], ["solar", 3], ["thr", 0]];
+  rows.forEach(([c, d]) => { const v = D[c][i]; dl.append(el("dt", null, CAT[c].l), el("dd", null, v < 0 ? "—" : (CAT[c].u === "0-1" ? fmt(v * 100) + "%" : fmt(v, d) + " " + CAT[c].u))); });
+  C.append(dl);
+  if (D.mapped[i] < 0.5) C.append(el("div", "lab", "Εκτός χαρτογράφησης EMSR692: η πλημμύρα εδώ είναι άγνωστη."));
+}
+
+// ---------- live agent (Claude via the viewer's account) ----------
+let sample = null, ctl = null;
+function catalogText() { return Object.entries(CAT).map(([k, c]) => `${k}: ${c.l} [${c.u}] — ${c.d} (πηγή: ${c.src})`).join("\n"); }
+function promptFor(q) {
+  return `Είσαι ο agent ενός εργαλείου που απαντά ερωτήσεις για τη Θεσσαλία συνδυάζοντας χωρικά layers. Τα δεδομένα είναι ένας πίνακας με 17.504 εξάγωνα H3 (~0,74 km² το καθένα), με αυτές τις στήλες:\n\n${catalogText()}\n\nΜετέτρεψε την ερώτηση του χρήστη σε προδιαγραφή φίλτρων. ΔΕΝ υπολογίζεις αποτελέσματα· η σελίδα εφαρμόζει τα φίλτρα.\nΚανόνες:\n- Χρησιμοποίησε ΜΟΝΟ τις παραπάνω στήλες. Μερίδια είναι 0-1.\n- Αν η ερώτηση χρειάζεται δεδομένα που δεν υπάρχουν (π.χ. τιμές γης, κτηματολόγιο, χωρητικότητα δικτύου, μελλοντικός κίνδυνος, ονόματα χωριών), απάντησε {"refuse": "<εξήγηση στα ελληνικά τι λείπει>"}.\n- Το 'lake' είναι υποθετικό σενάριο και το 'flood' ένα ιστορικό γεγονός: ανέφερέ το στα caveats όταν τα χρησιμοποιείς.\n- 2 έως 7 φίλτρα, με σύντομες ελληνικές ετικέτες.\n\nΑπάντησε ΜΟΝΟ με JSON αυτής της μορφής:\n{"title": "...", "answer": "1-2 προτάσεις τι δείχνει ο χάρτης", "filters": [{"col": "slope", "op": "<", "value": 5, "label": "Κλίση κάτω από 5°"}], "score": [{"col": "dsub", "dir": "low", "cap": 5, "w": 0.5, "label": "Κοντά σε υποσταθμό"}], "caveats": ["..."]}\nop ∈ <, <=, >, >=, ==, !=. dir ∈ low, high. cap = τιμή όπου ο όρος κορεστεί.\n\nΕρώτηση: ${q}`;
+}
+async function ask() {
+  const q = $("q").value.trim(); if (!q) return;
+  if (!sample) { $("status").textContent = "Ο ζωντανός agent δεν είναι διαθέσιμος εδώ· δοκίμασε ένα από τα έτοιμα ερωτήματα."; return; }
+  ctl = new AbortController(); $("askBtn").disabled = true; $("stopBtn").hidden = false; $("status").textContent = "Ο agent σκέφτεται…";
+  try {
+    const s = await sample.json(promptFor(q), { signal: ctl.signal, modelTier: "quick" });
+    if (!s || (typeof s !== "object")) throw { code: "invalid_json" };
+    apply(s, "live"); $("status").textContent = "";
+  } catch (e) {
+    const m = { cancelled: "", not_granted: "Δεν επιτράπηκε η χρήση του Claude από τη σελίδα.", rate_limited: "Πολλά αιτήματα· δοκίμασε σε λίγο.",
+      invalid_json: "Ο agent δεν επέστρεψε έγκυρη προδιαγραφή· ξαναδοκίμασε ή απλοποίησε την ερώτηση.", sampling_disabled: "Το Claude δεν είναι διαθέσιμο για αυτόν τον λογαριασμό." };
+    $("status").textContent = m[e.code] ?? "Κάτι πήγε στραβά· ξαναδοκίμασε.";
+    if (e.code === "not_granted" || e.code === "sampling_disabled") sample = null;
+  } finally { $("askBtn").disabled = false; $("stopBtn").hidden = true; }
+}
+
+// ---------- mode ----------
+let mode = "query";
+function setMode(m) {
+  mode = m; $("modeQuery").setAttribute("aria-pressed", m === "query"); $("modeSwipe").setAttribute("aria-pressed", m === "swipe");
+  $("swipeUI").hidden = m !== "swipe"; $("map2").hidden = m !== "swipe"; $("card").hidden = true;
+  if (m === "swipe") {
+    deck1.setProps({ layers: swipeLayers("flood") });
+    if (!deck2) deck2 = makeDeck($("map2"), swipeLayers("lake")); else deck2.setProps({ layers: swipeLayers("lake"), viewState });
+  } else deck1.setProps({ layers: queryLayers() });
+  renderLegend();
+}
+function initSwipe() {
+  const dv = $("divider"), st = $("stage");
+  const set = x => { const r = st.getBoundingClientRect(); const p = Math.max(5, Math.min(95, (x - r.left) / r.width * 100)); dv.style.left = p + "%"; $("map2").style.clipPath = `inset(0 0 0 ${p}%)`; };
+  dv.addEventListener("pointerdown", e => { dv.setPointerCapture(e.pointerId); const mv = ev => set(ev.clientX); dv.addEventListener("pointermove", mv); dv.addEventListener("pointerup", () => dv.removeEventListener("pointermove", mv), { once: true }); });
+  dv.addEventListener("keydown", e => { const r = st.getBoundingClientRect(); const cur = parseFloat(dv.style.left || "50"); if (e.key === "ArrowLeft") set(r.left + (cur - 3) / 100 * r.width); if (e.key === "ArrowRight") set(r.left + (cur + 3) / 100 * r.width); });
+}
+
+// ---------- boot ----------
+(async function boot() {
+  try {
+    D = await (await fetch("data.json")).json();
+  } catch (e) { $("loading").textContent = "Τα δεδομένα δεν φορτώθηκαν."; return; }
+  N = D.h3.length; IDX = [...Array(N).keys()]; POLY = D.h3.map(h => h3.cellToBoundary(h, true));
+  AREA_TOT = D.area.reduce((a, b) => a + b, 0); POP_TOT = D.pop.reduce((a, b) => a + b, 0);
+  $("stats").textContent = `H3 res 8 · ${fmt(N)} κελιά · ${fmt(AREA_TOT)} km² · ${fmt(POP_TOT)} κάτοικοι · 40+ layers`;
+  const P = $("presets"); PRESETS.forEach(p => { const b = el("button", "chip", p.q); b.onclick = () => { $("q").value = p.q; if (mode !== "query") setMode("query"); apply(structuredClone(p.spec), "preset"); }; P.append(b); });
+  apply(structuredClone(PRESETS[0].spec), "preset");
+  deck1 = makeDeck($("map"), queryLayers());
+  $("loading").remove(); renderLegend(); initSwipe();
+  $("modeQuery").onclick = () => setMode("query"); $("modeSwipe").onclick = () => setMode("swipe");
+  $("askBtn").onclick = ask; $("stopBtn").onclick = () => ctl?.abort();
+  $("q").addEventListener("keydown", e => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) ask(); });
+  try { sample = await window.claude?.use("sample"); } catch { sample = null; }
+  if (!sample) $("status").textContent = "Έτοιμα ερωτήματα · ο ζωντανός agent ανοίγει μέσα στο Claude";
+})();
+</script>

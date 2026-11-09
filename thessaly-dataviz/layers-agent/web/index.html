@@ -133,6 +133,28 @@ pre { font: 11px/1.5 var(--mono); color: var(--muted); white-space: pre-wrap; wo
 .tlrow { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: center; }
 .tlrow input { width: 100%; accent-color: var(--water); }
 .big { color: var(--sun); font: 600 20px var(--mono); }
+
+.tourbtn { pointer-events: auto; font: 600 12px var(--body); color: var(--bg); background: var(--ink); border: 0; border-radius: 999px; padding: 6px 12px; cursor: pointer; }
+.tour { position: absolute; z-index: 6; left: 50%; transform: translateX(-50%); top: calc(58px + env(safe-area-inset-top, 0px)); width: min(560px, calc(100% - 32px));
+  background: var(--panel); border: 1px solid var(--line); border-left: 3px solid var(--sun); border-radius: 10px; padding: 12px 14px; display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; align-items: start; box-shadow: 0 12px 40px rgb(0 0 0 / .4); }
+.tour[hidden] { display: none; }
+.tour p { margin: 0; font: 500 14.5px/1.45 var(--body); }
+.tour .tn { font: 600 11px var(--mono); color: var(--sun); padding-top: 3px; }
+.tour .tb { grid-column: 2; display: flex; gap: 8px; }
+.actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.actions .btn { font-size: 12px; padding: 6px 10px; }
+.thread { display: grid; gap: 4px; }
+.turn { font-size: 12.5px; color: var(--muted); border-left: 2px solid var(--line); padding-left: 8px; }
+.cmp { display: grid; gap: 4px; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+.cmprow { display: grid; grid-template-columns: 10px 1fr auto; gap: 8px; align-items: center; font-size: 12.5px; }
+.cmprow i { width: 10px; height: 10px; border-radius: 2px; }
+.cmprow b { font: 600 12px var(--mono); }
+.sw { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 6px; vertical-align: 1px; }
+.checks { display: grid; gap: 3px; border-top: 1px solid var(--line); padding-top: 8px; }
+.chk { display: grid; grid-template-columns: 14px 1fr; gap: 6px; font-size: 12px; }
+.chk.ok b { color: var(--ok); } .chk.no b { color: var(--bad); }
+.card .btn { justify-self: start; font-size: 12px; padding: 7px 11px; }
+.card { max-height: calc(100% - 140px); overflow-y: auto; }
 @media (max-width: 820px) { .layers { width: 200px; top: auto; bottom: 16px; left: auto; right: 16px; } .layers:not([open]) { width: auto; } }
 @media (max-width: 820px) {
   body { overflow: auto; }
@@ -151,6 +173,7 @@ pre { font: 11px/1.5 var(--mono); color: var(--muted); white-space: pre-wrap; wo
     <div class="loading" id="loading">Φόρτωση 17.504 εξαγώνων…</div>
     <div class="topbar">
       <div class="brand">Θεσσαλία <span>·</span> Layers Agent</div>
+      <button class="tourbtn" id="tourBtn">▶ Ξενάγηση</button>
       <div class="stats" id="stats">H3 res 8 · 17.504 κελιά · 14.053 km² · 40+ layers</div>
     </div>
     <div class="swipe-ui" id="swipeUI" hidden>
@@ -159,6 +182,7 @@ pre { font: 11px/1.5 var(--mono); color: var(--muted); white-space: pre-wrap; wo
       <div class="tag r">Αν έκλειναν τα Τέμπη<small>σενάριο από DEM · στάθμη 121,6 m</small></div>
     </div>
     <div class="card" id="card" hidden></div>
+    <div class="tour" id="tour" hidden role="status"><span class="tn" id="tourN"></span><p id="tourCap"></p><div class="tb"><button class="btn" id="tourNext">Επόμενο</button><button class="btn ghost" id="tourExit">Έξοδος</button></div></div>
     <details class="layers" open>
       <summary>Layers</summary>
       <div id="layersList"></div>
@@ -281,13 +305,14 @@ function baseColor(i, dim) { const c = lerpC(TERRAIN, Math.sqrt(Math.max(0, D.el
 function evaluate() {
   const n = N; let m = new Uint8Array(n).fill(1);
   steps = [{label: "Όλη η Θεσσαλία", area: AREA_TOT, pop: POP_TOT, cells: n, on: true}];
+  failAt = new Int8Array(n);
   spec.filters.forEach((f, k) => {
     const v = D[f.col], op = OPS[f.op];
-    if (enabled[k] && v && op) for (let i = 0; i < n; i++) if (m[i] && !op(v[i], f.value)) m[i] = 0;
+    if (enabled[k] && v && op) for (let i = 0; i < n; i++) if (m[i] && !op(v[i], f.value)) { m[i] = 0; failAt[i] = k + 1; }
     let a = 0, p = 0, c = 0; for (let i = 0; i < n; i++) if (m[i]) { a += D.area[i]; p += D.pop[i]; c++; }
     steps.push({label: f.label || `${f.col} ${f.op} ${f.value}`, col: f.col, area: a, pop: p, cells: c, on: enabled[k]});
   });
-  pass = m; RES = IDX.filter(i => m[i]);
+  pass = m; RES = IDX.filter(i => m[i]); EXC = IDX.filter(i => !m[i]);
   score = new Float32Array(n);
   const terms = spec.score || [];
   const wsum = terms.reduce((s, t, k) => s + weights[k], 0) || 1;
@@ -302,7 +327,7 @@ function evaluate() {
 // ---------- rendering ----------
 const BOUNDS = [20.9, 38.8, 24.4, 40.3];
 let deck1, deck2, viewState = { longitude: 22.15, latitude: 39.36, zoom: 8.1, pitch: 52, bearing: -12, maxPitch: 75 };
-let TOWNS = [], reveal = 1, revealT = null, EX = 2.5, LON, LAT, V = null, TL = null, tlIdx = 3, tlPlay = null;
+let failAt = null, EXC = [], showExcl = false, PIN = null, history = [], TOWNS = [], reveal = 1, revealT = null, EX = 2.5, LON, LAT, V = null, TL = null, tlIdx = 3, tlPlay = null;
 const IMG = {};
 const OV = [ // overlays: draped texture layers + vector layers
   { id: "landcover", l: "Κάλυψη γης", src: "ESA WorldCover 2021", kind: "tex", on: false, op: 0.55 },
@@ -349,12 +374,23 @@ function vectorLayers(id) {
   return L;
 }
 const RAD = 440;   // ~ H3 res-8 circumradius (461 m), slightly smaller to leave gaps
+const EXCL = ["#E2675A", "#C77DDB", "#5CC2C8", "#8FB85C", "#E3A0C8", "#7D8FE8", "#D9C25B"].map(c => hexA(c, 215));
+const NEWC = [92, 194, 142], GONEC = [226, 103, 90];
 function queryLayers() {
-  const cols = new deck.ColumnLayer({ id: "result", data: RES, diskResolution: 6, radius: RAD, angle: 0, extruded: true,
+  const L = [terrain("t1", TEX1)];
+  if (showExcl && EXC.length) L.push(new deck.ColumnLayer({ id: "excl", data: EXC.filter(i => failAt[i] > 0), diskResolution: 6, radius: RAD, angle: 0, extruded: true,
+    getPosition: i => [LON[i], LAT[i], zOf(D.elev[i], 10)], getElevation: 90 * Math.max(1, EX / 2), getFillColor: i => EXCL[(failAt[i] - 1) % EXCL.length],
+    material: { ambient: .7, diffuse: .4 }, pickable: true, updateTriggers: { getFillColor: failAt, getPosition: EX } }));
+  const inPin = i => PIN && PIN.set.has(i);
+  L.push(new deck.ColumnLayer({ id: "result", data: RES, diskResolution: 6, radius: RAD, angle: 0, extruded: true,
     getPosition: i => [LON[i], LAT[i], zOf(D.elev[i], 10)], getElevation: i => (250 + score[i] * 4200) * reveal * Math.max(1, EX / 2),
-    getFillColor: i => [...lerpC(AMBER, score[i]), 245], material: { ambient: .6, diffuse: .6, shininess: 20 }, pickable: true,
-    updateTriggers: { getElevation: [score, reveal, EX], getFillColor: [score], getPosition: EX } });
-  return [terrain("t1", TEX1), cols, ...vectorLayers("a")];
+    getFillColor: i => PIN && !inPin(i) ? [...NEWC, 245] : [...lerpC(AMBER, score[i]), 245], material: { ambient: .6, diffuse: .6, shininess: 20 }, pickable: true,
+    updateTriggers: { getElevation: [score, reveal, EX], getFillColor: [score, PIN], getPosition: EX } }));
+  if (PIN) { const gone = PIN.ids.filter(i => !pass[i]);
+    L.push(new deck.ColumnLayer({ id: "gone", data: gone, diskResolution: 6, radius: RAD, angle: 0, extruded: true,
+      getPosition: i => [LON[i], LAT[i], zOf(D.elev[i], 10)], getElevation: 600 * Math.max(1, EX / 2), getFillColor: [...GONEC, 200],
+      material: { ambient: .7, diffuse: .4 }, pickable: true, updateTriggers: { getPosition: EX } })); }
+  return [...L, ...vectorLayers("a")];
 }
 function timelineLayers() {
   const fr = TL.frames[tlIdx];
@@ -383,7 +419,7 @@ function redraw() {
   if (!deck1) return;
   if (mode === "query") deck1.setProps({ layers: queryLayers() });
   else if (mode === "time") deck1.setProps({ layers: timelineLayers() });
-  else { deck1.setProps({ layers: [terrain("tl", TEX_L), ...vectorLayers("l")] }); deck2 && deck2.setProps({ layers: [terrain("tr", TEX_R), ...vectorLayers("r")] }); }
+  else { deck1.setProps({ layers: [terrain("t1", TEX_L), ...vectorLayers("l")] }); deck2 && deck2.setProps({ layers: [terrain("tr", TEX_R), ...vectorLayers("r")] }); }
 }
 function animateReveal() {
   if (matchMedia("(prefers-reduced-motion: reduce)").matches) { reveal = 1; redraw(); return; }
@@ -424,6 +460,7 @@ function renderResult(src) {
   if (spec.refuse) {
     const c = el("div", "caveat refuse"); c.append(el("b", null, "Δεν απαντιέται με αυτά τα δεδομένα"), el("div", null, spec.refuse)); R.append(c); return;
   }
+  if (history.length > 1) { const T = el("div", "thread"); history.slice(0, -1).forEach(h => T.append(el("div", "turn", h))); R.append(el("div", "eyebrow", "Προηγούμενα βήματα συζήτησης"), T); }
   R.append(el("div", "eyebrow", src === "live" ? "Απάντηση agent · ζωντανά" : "Απάντηση agent · έτοιμο σενάριο"));
   R.append(el("h2", null, spec.title || "Αποτέλεσμα"));
   if (spec.answer) R.append(el("p", "answer", spec.answer));
@@ -431,13 +468,27 @@ function renderResult(src) {
   const k = el("div", "kpis");
   [[fmt(last.area), "km² κελιών"], [fmt(last.area / AREA_TOT * 100, 1) + "%", "της Θεσσαλίας"], [fmt(last.pop), "κάτοικοι"]].forEach(([b, s]) => { const d = el("div", "kpi"); d.append(el("b", null, b), el("span", null, s)); k.append(d); });
   R.append(k);
+  if (PIN) {
+    let both = 0, onlyB = 0, onlyA = 0; RES.forEach(i => PIN.set.has(i) ? both += D.area[i] : onlyB += D.area[i]); PIN.ids.forEach(i => { if (!pass[i]) onlyA += D.area[i]; });
+    const C = el("div", "cmp"); C.append(el("div", "eyebrow", "Σύγκριση με το σενάριο Α: " + PIN.title));
+    [["κοινά", both, "var(--sun)"], ["νέα στο τρέχον", onlyB, "var(--ok)"], ["μόνο στο Α", onlyA, "var(--bad)"]].forEach(([l, v, c]) => { const r = el("div", "cmprow"); const dot = el("i"); dot.style.background = c; r.append(dot, el("span", null, l), el("b", null, fmt(v) + " km²")); C.append(r); });
+    R.append(C);
+  }
+  const A = el("div", "actions");
+  const bx = el("button", "btn ghost", showExcl ? "Κρύψε τα αποκλεισμένα" : "Γιατί αποκλείστηκαν;"); bx.onclick = () => { showExcl = !showExcl; renderResult(src); redraw(); };
+  const bp = el("button", "btn ghost", PIN ? "Καθάρισε το Α" : "Κράτα ως σενάριο Α"); bp.onclick = () => { PIN = PIN ? null : { title: spec.title, ids: RES.slice(), set: new Set(RES) }; renderResult(src); redraw(); };
+  const bc = el("button", "btn ghost", "Αντιγραφή προδιαγραφής"); bc.onclick = async () => { const t = JSON.stringify({ title: spec.title, filters: spec.filters.filter((f, k) => enabled[k]), score: spec.score?.map((t, k) => ({ ...t, w: weights[k] })) }, null, 1);
+    try { await navigator.clipboard.writeText(t); bc.textContent = "Αντιγράφηκε"; } catch { bc.textContent = "Δεν επιτράπηκε η αντιγραφή"; } setTimeout(() => bc.textContent = "Αντιγραφή προδιαγραφής", 1800); };
+  A.append(bx, bp, bc); R.append(A);
   R.append(el("div", "eyebrow", "Πώς προέκυψε · κάθε βήμα ανοιγοκλείνει"));
   const F = el("div", "funnel");
   steps.forEach((s, j) => {
     const row = el("label", "step" + (s.on ? "" : " off"));
     if (j === 0) row.append(el("span")); else { const cb = el("input"); cb.type = "checkbox"; cb.checked = s.on; cb.id = "f" + j;
       cb.onchange = () => { enabled[j - 1] = cb.checked; evaluate(); renderResult(src); renderLegend(); animateReveal(); }; row.append(cb); }
-    const lb = el("div", "lbl"); lb.append(el("div", null, s.label)); if (s.col && CAT[s.col]) lb.append(el("small", null, CAT[s.col].src)); row.append(lb);
+    const lb = el("div", "lbl"); const tt = el("div", null, s.label);
+    if (showExcl && j > 0) { const sw = el("i", "sw"); const c = EXCL[(j - 1) % EXCL.length]; sw.style.background = `rgb(${c[0]},${c[1]},${c[2]})`; tt.prepend(sw); }
+    lb.append(tt); if (s.col && CAT[s.col]) lb.append(el("small", null, CAT[s.col].src)); row.append(lb);
     row.append(el("div", "num", fmt(s.area) + " km²"));
     const bar = el("div", "bar"), bi = el("i"); bi.style.width = (s.area / AREA_TOT * 100) + "%"; bar.append(bi); row.append(bar);
     F.append(row);
@@ -461,7 +512,8 @@ function renderResult(src) {
   const S = el("div", "src"); used.forEach(c => S.append(el("span", "badge", CAT[c].src))); R.append(el("div", "eyebrow", "Πηγές"), S);
   const det = el("details"); det.append(el("summary", null, "Τι έστειλε ο agent (JSON)"), el("pre", null, JSON.stringify({ filters: spec.filters, score: spec.score }, null, 1))); R.append(det);
 }
-function apply(s, src, fly) {
+function apply(s, src, fly, q, followup) {
+  if (q) history = followup ? [...history, q] : [q];
   spec = s; spec.filters = (spec.filters || []).filter(f => D[f.col] && OPS[f.op] && typeof f.value === "number");
   spec.score = (spec.score || []).filter(t => D[t.col]);
   enabled = spec.filters.map(() => true); weights = spec.score.map(t => +t.w || 0.25);
@@ -477,6 +529,28 @@ function showCard(i) {
   rows.forEach(([c, d]) => { const v = D[c][i]; dl.append(el("dt", null, CAT[c].l), el("dd", null, v < 0 ? "—" : (CAT[c].u === "0-1" ? fmt(v * 100) + "%" : fmt(v, d) + " " + CAT[c].u))); });
   C.append(dl);
   if (D.mapped[i] < 0.5) C.append(el("div", "lab", "Εκτός χαρτογράφησης EMSR692: η πλημμύρα εδώ είναι άγνωστη."));
+  if (spec && !spec.refuse && spec.filters.length) {
+    const ck = el("div", "checks"); ck.append(el("div", "eyebrow", "Κριτήρια τρέχοντος ερωτήματος"));
+    spec.filters.forEach((f, k) => { const ok = OPS[f.op](D[f.col][i], f.value); const r = el("div", "chk " + (ok ? "ok" : "no"));
+      r.append(el("b", null, ok ? "✓" : "✕"), el("span", null, f.label + (enabled[k] ? "" : " (ανενεργό)"))); ck.append(r); });
+    C.append(ck);
+  }
+  const b = el("button", "btn", "Φάκελος τοποθεσίας"); b.onclick = () => dossier(i, b); C.append(b);
+}
+let downloads = null;
+function dossier(i, btn) {
+  const esc = t => String(t).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const val = c => { const v = D[c][i]; return v < 0 ? "—" : (CAT[c].u === "0-1" ? fmt(v * 100) + "%" : fmt(v, 2) + " " + CAT[c].u); };
+  const rows = Object.keys(CAT).filter(c => D[c] && c !== "ru").map(c => `<tr><td>${esc(CAT[c].l)}</td><td class=n>${esc(val(c))}</td><td class=s>${esc(CAT[c].src)}</td></tr>`).join("");
+  const crit = spec && !spec.refuse ? spec.filters.map((f, k) => `<li>${OPS[f.op](D[f.col][i], f.value) ? "✓" : "✕"} ${esc(f.label)}${enabled[k] ? "" : " (ανενεργό)"}</li>`).join("") : "";
+  const today = new Date().toISOString().slice(0, 10);
+  const html = `<!doctype html><html lang="el"><meta charset="utf-8"><title>Φάκελος τοποθεσίας ${D.h3[i]}</title><style>body{font:14px/1.5 system-ui,sans-serif;max-width:760px;margin:40px auto;padding:0 16px;color:#1b2230}h1{font-size:22px;margin:0 0 4px}small,.s{color:#667}table{border-collapse:collapse;width:100%;margin:12px 0}td{border-bottom:1px solid #e3e6ea;padding:5px 6px}.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}.c{background:#fff6e6;border:1px solid #f0cf8f;padding:10px 12px;border-radius:6px}</style>
+<h1>Φάκελος τοποθεσίας</h1><small>Κελί H3 ${D.h3[i]} · ${esc(RU[D.ru[i]])} · κέντρο ${LAT[i].toFixed(4)}, ${LON[i].toFixed(4)} · έκταση ${fmt(D.area[i], 2)} km² · εξαγωγή ${today}</small>
+${crit ? `<h2>Ερώτημα: ${esc(spec.title)}</h2><ul>${crit}</ul>` : ""}<h2>Τιμές layers</h2><table>${rows}</table>
+<div class="c"><b>Περιορισμοί.</b> Το κελί H3 res 8 (~0,74 km²) είναι μονάδα screening, όχι αγροτεμάχιο. Η πλημμύρα Daniel είναι ένα γεγονός (EMSR692, Σεπ 2023), όχι χάρτης κινδύνου. Η «λίμνη Τεμπών» είναι υποθετικό σενάριο. OSM (υποσταθμοί, γραμμές, φωτοβολταϊκά) πιθανώς ελλιπές. Λείπουν: κτηματολόγιο, χωρητικότητα δικτύου, επίσημοι χάρτες κινδύνου πλημμύρας.</div>
+<p><small>Πηγές: Copernicus GLO-90 DEM · ESA WorldCover 2021 · Kontur Population 2023 · Copernicus EMS EMSR692 · EEA Natura 2000 · OpenStreetMap μέσω Overture Maps 2026-10 (ODbL) · GBIF · Eurostat GISCO NUTS 2021.</small></p></html>`;
+  if (!downloads) { btn.textContent = "Η λήψη δεν είναι διαθέσιμη εδώ"; return; }
+  downloads.save({ filename: `fakelos_${D.h3[i]}.html`, data: html }).then(() => { btn.textContent = "Αποθηκεύτηκε"; }).catch(e => { btn.textContent = e && e.code === "cancelled" || e && e.code === "declined" ? "Ακυρώθηκε" : "Η λήψη δεν ολοκληρώθηκε"; });
 }
 
 // ---------- live agent (Claude via the viewer's account) ----------
@@ -490,9 +564,11 @@ async function ask() {
   if (!sample) { $("status").textContent = "Ο ζωντανός agent δεν είναι διαθέσιμος εδώ· δοκίμασε ένα από τα έτοιμα ερωτήματα."; return; }
   ctl = new AbortController(); $("askBtn").disabled = true; $("stopBtn").hidden = false; $("status").textContent = "Ο agent σκέφτεται…";
   try {
-    const s = await sample.json(promptFor(q), { signal: ctl.signal, modelTier: "quick" });
+    const follow = !!(spec && !spec.refuse && history.length);
+    const cur = follow ? `\n\nΤΡΕΧΟΥΣΑ ΠΡΟΔΙΑΓΡΑΦΗ (απάντηση στην ερώτηση «${history.join(" → ")}»):\n${JSON.stringify({ title: spec.title, filters: spec.filters.filter((f, k) => enabled[k]), score: spec.score })}\n\nΑν το νέο μήνυμα τροποποιεί την τρέχουσα προδιαγραφή (π.χ. «μόνο στη Λάρισα», «χαλάρωσε την κλίση», «πρόσθεσε…», «βγάλε…»), επέστρεψε ΟΛΗ την τροποποιημένη προδιαγραφή και πρόσθεσε "followup": true. Αν είναι νέο ερώτημα, νέα προδιαγραφή με "followup": false.` : "";
+    const s = await sample.json(promptFor(q) + cur, { signal: ctl.signal, modelTier: "quick" });
     if (!s || (typeof s !== "object")) throw { code: "invalid_json" };
-    apply(s, "live", true); $("status").textContent = "";
+    apply(s, "live", true, q, follow && s.followup === true); $("status").textContent = ""; $("q").value = ""; $("q").placeholder = "Συνέχισε: π.χ. «μόνο στη Λάρισα» ή «χαλάρωσε την κλίση στις 8°»";
   } catch (e) {
     const m = { cancelled: "", not_granted: "Δεν επιτράπηκε η χρήση του Claude από τη σελίδα.", rate_limited: "Πολλά αιτήματα· δοκίμασε σε λίγο.",
       invalid_json: "Ο agent δεν επέστρεψε έγκυρη προδιαγραφή· ξαναδοκίμασε ή απλοποίησε την ερώτηση.", sampling_disabled: "Το Claude δεν είναι διαθέσιμο για αυτόν τον λογαριασμό." };
@@ -546,6 +622,26 @@ function renderLayersPanel() {
   });
 }
 
+// ---------- guided tour ----------
+let tourK = -1, tourT = null;
+const TOUR = [
+  { cap: "Θεσσαλία σε 17.504 εξάγωνα: ανάγλυφο από το Copernicus DEM, 40+ ανοιχτά layers σε ένα πλέγμα.", run: () => { setMode("query"); flyView({ longitude: 22.15, latitude: 39.36, zoom: 8.1, pitch: 52, bearing: -12 }); } },
+  { cap: "Σεπτέμβριος 2023: ο Daniel μέρα με τη μέρα, από 12 δορυφορικές λήψεις.", run: () => { setMode("time"); setTL(0); flyView({ longitude: 22.2, latitude: 39.5, zoom: 8.6, pitch: 55, bearing: -20 }); setTimeout(() => { if (tourK === 1) playTL(); }, 600); }, wait: 14500 },
+  { cap: "Αν έκλειναν τα Τέμπη, ο κάμπος θα γινόταν λίμνη. Το 95% της πλημμύρας του Daniel έπεσε ακριβώς εκεί.", run: () => { setMode("swipe"); flyView({ longitude: 22.3, latitude: 39.5, zoom: 8.5, pitch: 50, bearing: -10 }); } },
+  { cap: "Ρωτάς στα ελληνικά. Ο agent γράφει μόνο κριτήρια· ο υπολογισμός γίνεται στα δεδομένα, με πηγή για κάθε βήμα.", run: () => { setMode("query"); $("q").value = PRESETS[0].q; apply(structuredClone(PRESETS[0].spec), "preset", true, PRESETS[0].q, false); } },
+  { cap: "Γιατί αποκλείστηκε κάθε περιοχή: χρώμα ανά κριτήριο. Ό,τι μένει είναι υποψήφιο, με βαθμολογία στο ύψος.", run: () => { showExcl = true; renderResult("preset"); redraw(); flyView({ longitude: 22.25, latitude: 39.35, zoom: 8.3, pitch: 50, bearing: 8 }); } },
+];
+function flyView(v) { if (!deck1) return; const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  viewState = { ...viewState, ...v, transitionDuration: reduce ? 0 : 2200, transitionInterpolator: new deck.FlyToInterpolator(), transitionEasing: t => 1 - Math.pow(1 - t, 3) };
+  deck1.setProps({ viewState }); deck2 && deck2.setProps({ viewState }); }
+function tourGo(k) {
+  clearTimeout(tourT); stopTL();
+  if (k >= TOUR.length || k < 0) { tourK = -1; $("tour").hidden = true; showExcl = false; if (spec) renderResult("preset"); redraw(); return; }
+  if (tourK < 0) document.querySelector(".layers").open = false;
+  tourK = k; $("tour").hidden = false; $("tourCap").textContent = TOUR[k].cap; $("tourN").textContent = `${k + 1} / ${TOUR.length}`;
+  TOUR[k].run(); tourT = setTimeout(() => tourGo(k + 1), TOUR[k].wait || 7500);
+}
+
 // ---------- boot ----------
 (async function boot() {
   try {
@@ -561,13 +657,15 @@ function renderLayersPanel() {
   const big = V.towns.filter(t => (t.p || 0) >= 5000).sort((a, b) => (b.p || 0) - (a.p || 0));
   big.forEach(t => { if (!TOWNS.some(u => Math.hypot((u.x - t.x) * 0.77, u.y - t.y) < 0.065)) TOWNS.push(t); });
   TEX1 = composite();
-  const P = $("presets"); PRESETS.forEach(p => { const b = el("button", "chip", p.q); b.onclick = () => { $("q").value = p.q; if (mode !== "query") setMode("query"); apply(structuredClone(p.spec), "preset", true); }; P.append(b); });
+  const P = $("presets"); PRESETS.forEach(p => { const b = el("button", "chip", p.q); b.onclick = () => { $("q").value = p.q; if (mode !== "query") setMode("query"); apply(structuredClone(p.spec), "preset", true, p.q, false); }; P.append(b); });
   $("tlRange").max = TL.dates.length - 1;
-  apply(structuredClone(PRESETS[0].spec), "preset", false);
+  apply(structuredClone(PRESETS[0].spec), "preset", false, PRESETS[0].q, false);
   deck1 = makeDeck($("map"), queryLayers());
   $("loading").remove(); renderLegend(); renderLayersPanel(); initSwipe();
   if (innerWidth < 820) document.querySelector(".layers").open = false;
   ["query", "time", "swipe"].forEach(k => $("mode-" + k).onclick = () => setMode(k));
+  $("tourBtn").onclick = () => tourGo(0); $("tourNext").onclick = () => tourGo(tourK + 1); $("tourExit").onclick = () => tourGo(-1);
+  window.claude?.use?.("downloads")?.then(d => downloads = d).catch(() => {});
   $("exag").oninput = () => { EX = +$("exag").value; $("exagOut").textContent = "×" + fmt(EX, 1); redraw(); };
   $("tlRange").oninput = () => { stopTL(); setTL(+$("tlRange").value); }; $("tlPlay").onclick = playTL;
   $("askBtn").onclick = ask; $("stopBtn").onclick = () => ctl?.abort();

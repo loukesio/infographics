@@ -4,7 +4,7 @@ import sys, pathlib, json
 ROOT = pathlib.Path(__file__).resolve().parents[1]; sys.path.insert(0, str(ROOT / "agent"))
 import tools as T
 hard = ("slope_mean_deg < 5 AND natura_any_share < 0.05 AND (daniel_mapped_share < 0.5 OR daniel_flood_share < 0.05) "
-        "AND tempe_lake_share < 0.5 AND lc_crop_share > 0.5 AND lc_built_share < 0.1 AND dist_substation_km < 5")
+        "AND lc_crop_share > 0.5 AND lc_built_share < 0.1 AND dist_substation_km < 5")
 print("Hard constraints:", hard)
 print(json.dumps(T.area_stats(hard, "regional_unit")["rows"], indent=1, ensure_ascii=False))
 score = "1 - least(dist_substation_km,5)/5*0.5 - least(dist_paved_road_km,2)/2*0.2 + south_facing_share*0.1 - least(threatened_records,5)/5*0.2"

@@ -1,4 +1,5 @@
 """Benchmark.
+import os; os.environ["OGR_GEOJSON_MAX_OBJ_SIZE"] = "0"
 A) Can the H3 grid + tools reproduce the published 30-day-map findings (computed independently in R, on rasters)?
 B) Combination questions: tool answer vs. an independent 90 m raster/polygon computation (measures grid aggregation error)."""
 import sys, pathlib, json, numpy as np, rasterio, geopandas as gpd

@@ -37,7 +37,7 @@ body { background: var(--bg); color: var(--ink); font-family: var(--body); font-
 .seg button:focus-visible, button:focus-visible, textarea:focus-visible, input:focus-visible { outline: 2px solid var(--sun); outline-offset: 2px; }
 .legend { background: color-mix(in srgb, var(--panel) 92%, transparent); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; display: grid; gap: 6px; }
 .legend .ramp { height: 8px; border-radius: 4px; }
-.legend .lab { display: flex; justify-content: space-between; font: 11px var(--mono); color: var(--muted); }
+.lab { display: flex; justify-content: space-between; font: 11px var(--mono); color: var(--muted); }
 .legend .t { font-size: 12px; color: var(--ink); }
 
 .swipe-ui[hidden] { display: none; }
@@ -112,6 +112,28 @@ pre { font: 11px/1.5 var(--mono); color: var(--muted); white-space: pre-wrap; wo
 .card .x { position: absolute; top: 8px; right: 10px; background: none; border: 0; color: var(--muted); font-size: 18px; cursor: pointer; }
 .loading { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font: 13px var(--mono); z-index: 2; }
 
+
+.layers { position: absolute; z-index: 3; left: max(16px, env(safe-area-inset-left, 0px)); top: calc(56px + env(safe-area-inset-top, 0px)); width: 236px;
+  background: color-mix(in srgb, var(--panel) 94%, transparent); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
+.layers[hidden] { display: none; }
+.layers summary { font: 600 10.5px var(--body); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+#layersList { display: grid; gap: 2px; margin-top: 6px; }
+.lyr { display: grid; grid-template-columns: 16px 1fr; gap: 4px 8px; align-items: center; padding: 4px 2px; font-size: 12.5px; cursor: pointer; }
+.lyr input[type=checkbox] { accent-color: var(--sun); margin: 0; }
+.lyr small { display: block; font: 10px var(--mono); color: var(--muted); }
+.lyr input[type=range] { grid-column: 2; width: 100%; accent-color: var(--sun); height: 14px; margin: 0; }
+.lyr.ex { grid-template-columns: 1fr 70px 34px; border-top: 1px solid var(--line); margin-top: 4px; padding-top: 8px; }
+.lyr.ex input[type=range] { grid-column: auto; }
+.lyr output { font: 11px var(--mono); color: var(--muted); }
+.tl { background: color-mix(in srgb, var(--panel) 94%, transparent); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; display: grid; gap: 6px; }
+.tl[hidden] { display: none; }
+.tlhead { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; }
+.tlhead b { font: 650 18px var(--display); }
+.tlhead span { font: 600 13px var(--mono); color: var(--water); }
+.tlrow { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: center; }
+.tlrow input { width: 100%; accent-color: var(--water); }
+.big { color: var(--sun); font: 600 20px var(--mono); }
+@media (max-width: 820px) { .layers { width: 200px; top: auto; bottom: 16px; left: auto; right: 16px; } .layers:not([open]) { width: auto; } }
 @media (max-width: 820px) {
   body { overflow: auto; }
   .app { position: static; display: block; }
@@ -137,10 +159,22 @@ pre { font: 11px/1.5 var(--mono); color: var(--muted); white-space: pre-wrap; wo
       <div class="tag r">Αν έκλειναν τα Τέμπη<small>σενάριο από DEM · στάθμη 121,6 m</small></div>
     </div>
     <div class="card" id="card" hidden></div>
+    <details class="layers" open>
+      <summary>Layers</summary>
+      <div id="layersList"></div>
+      <label class="lyr ex" for="exag"><span><span>Υπερβολή ύψους</span><small>Copernicus DEM</small></span><input type="range" id="exag" min="1" max="5" step="0.5" value="2.5"><output id="exagOut">×2,5</output></label>
+    </details>
     <div class="dock">
       <div class="seg" role="group" aria-label="Λειτουργία">
-        <button id="modeQuery" aria-pressed="true">Ερώτημα</button>
-        <button id="modeSwipe" aria-pressed="false">Daniel ↔ Τέμπη</button>
+        <button id="mode-query" aria-pressed="true">Ερώτημα</button>
+        <button id="mode-time" aria-pressed="false">Daniel μέρα-μέρα</button>
+        <button id="mode-swipe" aria-pressed="false">Daniel ↔ Τέμπη</button>
+      </div>
+      <div class="tl" id="tlUI" hidden>
+        <div class="tlhead"><b id="tlDate"></b><span id="tlKm"></span></div>
+        <div class="tlrow"><button class="btn" id="tlPlay">▶ Αναπαραγωγή</button><input type="range" id="tlRange" min="0" max="11" step="1" value="3" aria-label="Ημερομηνία"></div>
+        <div class="lab" id="tlAoi"></div>
+        <div class="lab">Πηγή: Copernicus EMS EMSR692, 12 ημερομηνίες λήψης 6–22 Σεπ 2023</div>
       </div>
       <div class="legend" id="legend"></div>
     </div>
@@ -266,67 +300,123 @@ function evaluate() {
 }
 
 // ---------- rendering ----------
-let deck1, deck2, viewState = { longitude: 22.2, latitude: 39.38, zoom: 7.95, pitch: 45, bearing: -10 };
-let reveal = 1, revealT = null;
+const BOUNDS = [20.9, 38.8, 24.4, 40.3];
+let deck1, deck2, viewState = { longitude: 22.15, latitude: 39.36, zoom: 8.1, pitch: 52, bearing: -12, maxPitch: 75 };
+let TOWNS = [], reveal = 1, revealT = null, EX = 2.5, LON, LAT, V = null, TL = null, tlIdx = 3, tlPlay = null;
+const IMG = {};
+const OV = [ // overlays: draped texture layers + vector layers
+  { id: "landcover", l: "Κάλυψη γης", src: "ESA WorldCover 2021", kind: "tex", on: false, op: 0.55 },
+  { id: "natura", l: "Natura 2000", src: "EEA", kind: "tex", on: false, op: 0.9 },
+  { id: "flood", l: "Πλημμύρα Daniel (σύνολο)", src: "EMSR692", kind: "tex", on: false, op: 0.9 },
+  { id: "lake", l: "Λίμνη Τεμπών (σενάριο)", src: "DEM", kind: "tex", on: false, op: 0.85 },
+  { id: "rivers", l: "Ποτάμια", src: "OSM", kind: "vec", on: true },
+  { id: "grid", l: "Γραμμές ΥΤ & υποσταθμοί", src: "OSM", kind: "vec", on: false },
+  { id: "solar", l: "Φωτοβολταϊκά πάρκα", src: "OSM", kind: "vec", on: false },
+  { id: "towns", l: "Οικισμοί", src: "OSM/Overture", kind: "vec", on: true },
+];
+const ov = id => OV.find(o => o.id === id);
 
-function borderLayer(id) {
-  return new deck.PathLayer({ id, data: D.border, getPath: d => d, getColor: [231,236,243,150], widthUnits: "pixels", getWidth: 1.2 });
+function loadImg(src) { return new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = src; }); }
+function composite(extra) {          // base hillshade + enabled draped overlays -> one canvas texture
+  const c = document.createElement("canvas"); c.width = IMG.base.width; c.height = IMG.base.height;
+  const g = c.getContext("2d"); g.drawImage(IMG.base, 0, 0);
+  const list = extra ? extra : OV.filter(o => o.kind === "tex" && o.on);
+  list.forEach(o => { if (IMG[o.id]) { g.globalAlpha = o.op ?? 0.9; g.drawImage(IMG[o.id], 0, 0, c.width, c.height); } });
+  g.globalAlpha = 1; return c;
 }
-let IDX = [], RES = [];
+let TEX1 = null, TEX_L = null, TEX_R = null;
+function terrain(id, tex) {
+  return new deck.TerrainLayer({ id: id + "-" + EX, elevationData: "assets/dem.png", texture: tex, bounds: BOUNDS, meshMaxError: 12,
+    elevationDecoder: { rScaler: 256 * EX, gScaler: EX, bScaler: EX / 256, offset: -32768 * EX }, material: { ambient: .62, diffuse: .55, shininess: 8, specularColor: [40, 40, 40] } });
+}
+const zOf = (z, lift = 0) => Math.max(0, z) * EX + lift;
+function vectorLayers(id) {
+  const L = [];
+  if (ov("rivers").on) L.push(new deck.PathLayer({ id: id + "riv", data: V.rivers, getPath: p => p.map(q => [q[0], q[1], zOf(q[2], 25)]), getColor: [111, 182, 235, 210], widthUnits: "pixels", getWidth: 1.6, updateTriggers: { getPath: EX } }));
+  if (ov("grid").on) {
+    L.push(new deck.PathLayer({ id: id + "pl", data: V.lines, getPath: p => p.map(q => [q[0], q[1], zOf(q[2], 120)]), getColor: [242, 163, 58, 170], widthUnits: "pixels", getWidth: 1.2, updateTriggers: { getPath: EX } }));
+    L.push(new deck.ScatterplotLayer({ id: id + "sub", data: V.subs, getPosition: p => [p[0], p[1], zOf(p[2], 140)], getRadius: 5, radiusUnits: "pixels", getFillColor: [242, 163, 58], getLineColor: [13, 21, 34], lineWidthUnits: "pixels", getLineWidth: 1.5, stroked: true, updateTriggers: { getPosition: EX } }));
+  }
+  if (ov("solar").on) L.push(new deck.ScatterplotLayer({ id: id + "sol", data: V.solar, getPosition: p => [p[0], p[1], zOf(p[2], 60)], getRadius: 2.2, radiusUnits: "pixels", getFillColor: [255, 214, 120, 230], updateTriggers: { getPosition: EX } }));
+  if (ov("towns").on) {
+    const towns = TOWNS;
+    L.push(new deck.TextLayer({ id: id + "town", data: [...towns, { ...V.peak, p: 1e5 }], getPosition: t => [t.x, t.y, zOf(t.z, 200)], getText: t => t.n,
+      getSize: t => (t.p || 0) > 50000 ? 15 : (t.p || 0) > 10000 ? 12.5 : 11, characterSet: "auto", fontFamily: "Fira Sans, sans-serif", fontWeight: 600,
+      getColor: t => t.n === "Όλυμπος" ? [210, 200, 255] : [236, 241, 247], outlineWidth: 3, outlineColor: [13, 21, 34, 255], fontSettings: { sdf: true, fontSize: 64, buffer: 6 },
+      getTextAnchor: "middle", getAlignmentBaseline: "bottom", getPixelOffset: [0, -4], billboard: true, parameters: { depthTest: false }, updateTriggers: { getPosition: EX } }));
+    L.push(new deck.ScatterplotLayer({ id: id + "tdot", data: towns, getPosition: t => [t.x, t.y, zOf(t.z, 40)], getRadius: 2.5, radiusUnits: "pixels", getFillColor: [236, 241, 247], parameters: { depthTest: false }, updateTriggers: { getPosition: EX } }));
+  }
+  return L;
+}
+const RAD = 440;   // ~ H3 res-8 circumradius (461 m), slightly smaller to leave gaps
 function queryLayers() {
-  const idx = IDX, res = RES;
-  const base = new deck.PolygonLayer({ id: "base", data: idx, getPolygon: i => POLY[i], stroked: false, filled: true, extruded: false,
-    getFillColor: i => pass[i] ? baseColor(i, false) : baseColor(i, true), updateTriggers: { getFillColor: [pass] }, pickable: true, opacity: 1 });
-  const top = new deck.PolygonLayer({ id: "result", data: res, getPolygon: i => POLY[i], extruded: true, wireframe: false, stroked: false,
-    getElevation: i => 300 + score[i] * 5200 * reveal, getFillColor: i => [...lerpC(AMBER, score[i]), 245],
-    material: { ambient: .55, diffuse: .6, shininess: 24 }, pickable: true,
-    updateTriggers: { getElevation: [score, reveal], getFillColor: [score] } });
-  return [base, top, borderLayer("b1")];
+  const cols = new deck.ColumnLayer({ id: "result", data: RES, diskResolution: 6, radius: RAD, angle: 0, extruded: true,
+    getPosition: i => [LON[i], LAT[i], zOf(D.elev[i], 10)], getElevation: i => (250 + score[i] * 4200) * reveal * Math.max(1, EX / 2),
+    getFillColor: i => [...lerpC(AMBER, score[i]), 245], material: { ambient: .6, diffuse: .6, shininess: 20 }, pickable: true,
+    updateTriggers: { getElevation: [score, reveal, EX], getFillColor: [score], getPosition: EX } });
+  return [terrain("t1", TEX1), cols, ...vectorLayers("a")];
 }
-function swipeLayers(which) {
-  const idx = IDX;
-  const isFlood = which === "flood";
-  const v = isFlood ? D.flood : D.lake;
-  const sel = idx.filter(i => v[i] > 0.05);
-  const base = new deck.PolygonLayer({ id: which + "-base", data: idx, getPolygon: i => POLY[i], filled: true, stroked: false, getFillColor: i => baseColor(i, true), pickable: true });
-  const top = new deck.PolygonLayer({ id: which + "-top", data: sel, getPolygon: i => POLY[i], extruded: true, stroked: false,
-    getElevation: i => isFlood ? 200 + D.floodn[i] * 700 : 200 + Math.max(0, D.lakedepth[i]) * 70,
-    getFillColor: i => isFlood ? [...lerpC(BLUE, 0.25 + 0.75 * D.flood[i]), 240] : [...lerpC(VIOLET, Math.min(1, Math.max(0, D.lakedepth[i]) / 60)), 235],
-    material: { ambient: .55, diffuse: .6 }, pickable: true });
-  return [base, top, borderLayer(which + "-b")];
+function timelineLayers() {
+  const fr = TL.frames[tlIdx];
+  const cols = new deck.ColumnLayer({ id: "tl", data: fr, diskResolution: 6, radius: RAD, angle: 0, extruded: true,
+    getPosition: f => [LON[f[0]], LAT[f[0]], zOf(D.elev[f[0]], 10)], getElevation: f => (120 + f[1] * 18) * Math.max(1, EX / 2),
+    getFillColor: f => [...lerpC(BLUE, 0.25 + 0.75 * f[1] / 100), 235], material: { ambient: .6, diffuse: .6 },
+    transitions: matchMedia("(prefers-reduced-motion: reduce)").matches ? {} : { getElevation: 500 }, updateTriggers: { getPosition: EX, getElevation: EX } });
+  return [terrain("t1", TEX1), cols, ...vectorLayers("a")];
 }
 function tooltip(info) {
   if (info.object == null) return null;
-  const i = info.object;
-  return { html: `<b>${RU[D.ru[i]]}</b><br>${fmt(D.elev[i])} m · ${fmt(D.pop[i])} κάτοικοι` + (pass && pass[i] && score ? `<br>score ${fmt(score[i]*100)}` : ""),
+  const i = Array.isArray(info.object) ? info.object[0] : info.object;
+  if (typeof i !== "number") return info.object.n ? { text: info.object.n } : null;
+  return { html: `<b>${RU[D.ru[i]]}</b><br>${fmt(D.elev[i])} m · ${fmt(D.pop[i])} κάτοικοι` + (mode === "query" && pass && pass[i] ? `<br>score ${fmt(score[i] * 100)}` : "") + (Array.isArray(info.object) ? `<br>πλημμυρισμένο ${info.object[1]}%` : ""),
     style: { background: "#121D2E", color: "#E7ECF3", font: "12px 'Fira Sans', sans-serif", border: "1px solid #233149", borderRadius: "6px", padding: "6px 8px" } };
 }
 function makeDeck(container, layers) {
-  return new deck.Deck({ parent: container, initialViewState: viewState, controller: true, layers,
-    getTooltip: tooltip, onClick: info => { if (info.object != null) showCard(info.object); },
-    onViewStateChange: ({ viewState: vs }) => { viewState = vs; if (deck1) deck1.setProps({ viewState: vs }); if (deck2) deck2.setProps({ viewState: vs }); return vs; },
-    viewState, style: { position: "absolute", inset: 0 }, parameters: { clearColor: [13/255, 21/255, 34/255, 1] } });
+  return new deck.Deck({ parent: container, initialViewState: viewState, controller: { inertia: true }, layers,
+    getTooltip: tooltip, onClick: info => { const o = info.object; if (typeof o === "number") showCard(o); else if (Array.isArray(o)) showCard(o[0]); },
+    onViewStateChange: ({ viewState: vs }) => { viewState = vs; stopOrbit(); if (deck1) deck1.setProps({ viewState: vs }); if (deck2) deck2.setProps({ viewState: vs }); return vs; },
+    viewState, style: { position: "absolute", inset: 0 }, parameters: { clearColor: [13 / 255, 21 / 255, 34 / 255, 1] },
+    effects: [new deck.LightingEffect({ amb: new deck.AmbientLight({ color: [255, 255, 255], intensity: 1.1 }),
+      sun: new deck.DirectionalLight({ color: [255, 244, 225], intensity: 1.6, direction: [-3, -6, -4] }) })] });
 }
-function redraw() { if (deck1 && mode === "query") deck1.setProps({ layers: queryLayers() }); }
+function redraw() {
+  if (!deck1) return;
+  if (mode === "query") deck1.setProps({ layers: queryLayers() });
+  else if (mode === "time") deck1.setProps({ layers: timelineLayers() });
+  else { deck1.setProps({ layers: [terrain("tl", TEX_L), ...vectorLayers("l")] }); deck2 && deck2.setProps({ layers: [terrain("tr", TEX_R), ...vectorLayers("r")] }); }
+}
 function animateReveal() {
   if (matchMedia("(prefers-reduced-motion: reduce)").matches) { reveal = 1; redraw(); return; }
   cancelAnimationFrame(revealT); const t0 = performance.now();
-  const tick = t => { const k = Math.min(1, (t - t0) / 900); reveal = 1 - Math.pow(1 - k, 3); redraw(); if (k < 1) revealT = requestAnimationFrame(tick); };
+  const tick = t => { const k = Math.min(1, (t - t0) / 1100); reveal = 1 - Math.pow(1 - k, 3); redraw(); if (k < 1) revealT = requestAnimationFrame(tick); };
   revealT = requestAnimationFrame(tick);
+}
+// camera: fly to the result, slow idle orbit
+let orbitT = null;
+function stopOrbit() { if (orbitT) { cancelAnimationFrame(orbitT); orbitT = null; } }
+function flyTo(ids) {
+  if (!ids.length || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  let x0 = 99, x1 = -99, y0 = 99, y1 = -99; ids.forEach(i => { x0 = Math.min(x0, LON[i]); x1 = Math.max(x1, LON[i]); y0 = Math.min(y0, LAT[i]); y1 = Math.max(y1, LAT[i]); });
+  const span = Math.max(x1 - x0, (y1 - y0) * 1.6, 0.25); const zoom = Math.min(10.5, Math.max(7.6, Math.log2(360 / span) - 0.9));
+  const target = { ...viewState, longitude: (x0 + x1) / 2, latitude: (y0 + y1) / 2 - 0.04, zoom, pitch: 55,
+    transitionDuration: 1800, transitionInterpolator: new deck.FlyToInterpolator(), transitionEasing: t => 1 - Math.pow(1 - t, 3) };
+  viewState = target; deck1.setProps({ viewState: target }); deck2 && deck2.setProps({ viewState: target });
 }
 
 // ---------- panel ----------
 function renderLegend() {
   const L = $("legend"); L.replaceChildren();
   const ramp = (stops) => { const r = el("div", "ramp"); r.style.background = `linear-gradient(90deg, ${stops.map(c => `rgb(${c})`).join(",")})`; return r; };
+  const lab = (a, b) => { const x = el("div", "lab"); x.append(el("span", null, a), el("span", null, b)); return x; };
   if (mode === "query") {
-    L.append(el("div", "t", spec && spec.score && spec.score.length ? "Ύψος και χρώμα: score (0–100)" : "Κελιά που περνούν τα κριτήρια"), ramp(AMBER));
-    const lab = el("div", "lab"); lab.append(el("span", null, "0"), el("span", null, "100")); L.append(lab);
-    L.append(el("div", "lab", "Σκούρο ανάγλυφο = εκτός κριτηρίων"));
+    L.append(el("div", "t", spec && spec.score && spec.score.length ? "Ύψος και χρώμα στήλης: score" : "Κελιά που περνούν τα κριτήρια"), ramp(AMBER), lab("0", "100"));
+  } else if (mode === "time") {
+    L.append(el("div", "t", "Μερίδιο κελιού κάτω από νερό"), ramp(BLUE), lab("2%", "100%"));
+    L.append(el("div", "lab", "Κάθε περιοχή χαρτογράφησης δείχνει την τελευταία διαθέσιμη εικόνα της έως εκείνη τη μέρα."));
   } else {
-    L.append(el("div", "t", "Αριστερά: πλημμύρα · Δεξιά: σενάριο λίμνης"), ramp(BLUE), ramp(VIOLET));
     let fa = 0, fin = 0; for (let i = 0; i < N; i++) { const a = D.flood[i] * D.area[i]; fa += a; if (D.lake[i] > 0.5) fin += a; }
-    const s = el("div", "t"); s.innerHTML = `<b style="color:var(--sun);font-family:var(--mono)">${fmt(fin / fa * 100)}%</b> της πλημμύρας του Daniel έπεσε μέσα στη «λίμνη»`; L.append(s);
+    const s = el("div", "t"); const b = el("b", "big", fmt(fin / fa * 100) + "%"); s.append(b, document.createTextNode(" της πλημμύρας του Daniel έπεσε μέσα στη «λίμνη» των Τεμπών")); L.append(s);
+    L.append(el("div", "lab", "Σύρε τη γραμμή · αριστερά παρατήρηση 2023, δεξιά σενάριο"));
   }
 }
 function renderResult(src) {
@@ -371,12 +461,12 @@ function renderResult(src) {
   const S = el("div", "src"); used.forEach(c => S.append(el("span", "badge", CAT[c].src))); R.append(el("div", "eyebrow", "Πηγές"), S);
   const det = el("details"); det.append(el("summary", null, "Τι έστειλε ο agent (JSON)"), el("pre", null, JSON.stringify({ filters: spec.filters, score: spec.score }, null, 1))); R.append(det);
 }
-function apply(s, src) {
+function apply(s, src, fly) {
   spec = s; spec.filters = (spec.filters || []).filter(f => D[f.col] && OPS[f.op] && typeof f.value === "number");
   spec.score = (spec.score || []).filter(t => D[t.col]);
   enabled = spec.filters.map(() => true); weights = spec.score.map(t => +t.w || 0.25);
-  if (spec.refuse) { pass = new Uint8Array(N); RES = []; score = new Float32Array(N); renderResult(src); redraw(); return; }
-  evaluate(); renderResult(src); renderLegend(); $("card").hidden = true; animateReveal();
+  if (spec.refuse) { pass = new Uint8Array(N); RES = []; score = new Float32Array(N); renderResult(src); renderLegend(); redraw(); return; }
+  evaluate(); renderResult(src); renderLegend(); $("card").hidden = true; animateReveal(); if (fly && deck1) flyTo(RES);
 }
 function showCard(i) {
   const C = $("card"); C.replaceChildren(); C.hidden = false;
@@ -402,7 +492,7 @@ async function ask() {
   try {
     const s = await sample.json(promptFor(q), { signal: ctl.signal, modelTier: "quick" });
     if (!s || (typeof s !== "object")) throw { code: "invalid_json" };
-    apply(s, "live"); $("status").textContent = "";
+    apply(s, "live", true); $("status").textContent = "";
   } catch (e) {
     const m = { cancelled: "", not_granted: "Δεν επιτράπηκε η χρήση του Claude από τη σελίδα.", rate_limited: "Πολλά αιτήματα· δοκίμασε σε λίγο.",
       invalid_json: "Ο agent δεν επέστρεψε έγκυρη προδιαγραφή· ξαναδοκίμασε ή απλοποίησε την ερώτηση.", sampling_disabled: "Το Claude δεν είναι διαθέσιμο για αυτόν τον λογαριασμό." };
@@ -413,14 +503,30 @@ async function ask() {
 
 // ---------- mode ----------
 let mode = "query";
+const GR_MONTH = d => { const [y, m, dd] = d.split("-"); return `${+dd} Σεπ ${y}`; };
 function setMode(m) {
-  mode = m; $("modeQuery").setAttribute("aria-pressed", m === "query"); $("modeSwipe").setAttribute("aria-pressed", m === "swipe");
-  $("swipeUI").hidden = m !== "swipe"; $("map2").hidden = m !== "swipe"; $("card").hidden = true;
+  mode = m; ["query", "time", "swipe"].forEach(k => $("mode-" + k).setAttribute("aria-pressed", m === k));
+  $("swipeUI").hidden = m !== "swipe"; document.querySelector(".layers").hidden = m === "swipe"; $("map2").hidden = m !== "swipe"; $("card").hidden = true; $("tlUI").hidden = m !== "time";
+  stopTL();
   if (m === "swipe") {
-    deck1.setProps({ layers: swipeLayers("flood") });
-    if (!deck2) deck2 = makeDeck($("map2"), swipeLayers("lake")); else deck2.setProps({ layers: swipeLayers("lake"), viewState });
-  } else deck1.setProps({ layers: queryLayers() });
-  renderLegend();
+    TEX_L = composite([{ id: "flood", op: 0.95 }]); TEX_R = composite([{ id: "lake", op: 0.9 }]);
+    if (!deck2) deck2 = makeDeck($("map2"), []);
+    deck2.setProps({ viewState });
+  }
+  if (m === "time") setTL(tlIdx);
+  redraw(); renderLegend();
+}
+function setTL(k) {
+  tlIdx = k; $("tlRange").value = k; $("tlDate").textContent = GR_MONTH(TL.dates[k]);
+  $("tlKm").textContent = fmt(TL.km2[k]) + " km² υπό νερό";
+  $("tlAoi").textContent = "Νέες εικόνες: " + (TL.aoi_dates[TL.dates[k]] || []).join(", ");
+  redraw();
+}
+function stopTL() { if (tlPlay) { clearInterval(tlPlay); tlPlay = null; $("tlPlay").textContent = "▶ Αναπαραγωγή"; } }
+function playTL() {
+  if (tlPlay) { stopTL(); return; }
+  $("tlPlay").textContent = "❚❚ Παύση"; if (tlIdx >= TL.dates.length - 1) setTL(0);
+  tlPlay = setInterval(() => { if (tlIdx >= TL.dates.length - 1) { stopTL(); return; } setTL(tlIdx + 1); }, 1100);
 }
 function initSwipe() {
   const dv = $("divider"), st = $("stage");
@@ -428,23 +534,46 @@ function initSwipe() {
   dv.addEventListener("pointerdown", e => { dv.setPointerCapture(e.pointerId); const mv = ev => set(ev.clientX); dv.addEventListener("pointermove", mv); dv.addEventListener("pointerup", () => dv.removeEventListener("pointermove", mv), { once: true }); });
   dv.addEventListener("keydown", e => { const r = st.getBoundingClientRect(); const cur = parseFloat(dv.style.left || "50"); if (e.key === "ArrowLeft") set(r.left + (cur - 3) / 100 * r.width); if (e.key === "ArrowRight") set(r.left + (cur + 3) / 100 * r.width); });
 }
+function renderLayersPanel() {
+  const P = $("layersList"); P.replaceChildren();
+  OV.forEach(o => {
+    const r = el("label", "lyr"); const cb = el("input"); cb.type = "checkbox"; cb.checked = o.on; cb.id = "ov-" + o.id;
+    cb.onchange = () => { o.on = cb.checked; if (o.kind === "tex") { TEX1 = composite(); renderLayersPanel(); } redraw(); };
+    const t = el("span"); t.append(el("span", null, o.l), el("small", null, o.src)); r.append(cb, t);
+    if (o.kind === "tex" && o.on) { const s = el("input"); s.type = "range"; s.min = 0.1; s.max = 1; s.step = 0.05; s.value = o.op; s.id = "op-" + o.id; s.setAttribute("aria-label", "Διαφάνεια " + o.l);
+      s.oninput = () => { o.op = +s.value; if (o.on) { TEX1 = composite(); redraw(); } }; r.append(s); }
+    P.append(r);
+  });
+}
 
 // ---------- boot ----------
 (async function boot() {
   try {
-    D = await (await fetch("data.json")).json();
+    [D, V, TL] = await Promise.all(["data.json", "assets/vectors.json", "assets/daniel_timeline.json"].map(u => fetch(u).then(r => r.json())));
+    const names = ["base", "landcover", "natura", "flood", "lake"], files = ["assets/base.jpg", "assets/ov_landcover.png", "assets/ov_natura.png", "assets/ov_flood.png", "assets/ov_lake.png"];
+    (await Promise.all(files.map(loadImg))).forEach((im, k) => IMG[names[k]] = im);
   } catch (e) { $("loading").textContent = "Τα δεδομένα δεν φορτώθηκαν."; return; }
-  N = D.h3.length; IDX = [...Array(N).keys()]; POLY = D.h3.map(h => h3.cellToBoundary(h, true));
+  N = D.h3.length; IDX = [...Array(N).keys()];
+  LON = new Float64Array(N); LAT = new Float64Array(N); D.h3.forEach((h, i) => { const [la, lo] = h3.cellToLatLng(h); LAT[i] = la; LON[i] = lo; });
   AREA_TOT = D.area.reduce((a, b) => a + b, 0); POP_TOT = D.pop.reduce((a, b) => a + b, 0);
   $("stats").textContent = `H3 res 8 · ${fmt(N)} κελιά · ${fmt(AREA_TOT)} km² · ${fmt(POP_TOT)} κάτοικοι · 40+ layers`;
-  const P = $("presets"); PRESETS.forEach(p => { const b = el("button", "chip", p.q); b.onclick = () => { $("q").value = p.q; if (mode !== "query") setMode("query"); apply(structuredClone(p.spec), "preset"); }; P.append(b); });
-  apply(structuredClone(PRESETS[0].spec), "preset");
+  // towns: keep the larger of any two within ~7 km (drops suburbs that collide with their city)
+  const big = V.towns.filter(t => (t.p || 0) >= 5000).sort((a, b) => (b.p || 0) - (a.p || 0));
+  big.forEach(t => { if (!TOWNS.some(u => Math.hypot((u.x - t.x) * 0.77, u.y - t.y) < 0.065)) TOWNS.push(t); });
+  TEX1 = composite();
+  const P = $("presets"); PRESETS.forEach(p => { const b = el("button", "chip", p.q); b.onclick = () => { $("q").value = p.q; if (mode !== "query") setMode("query"); apply(structuredClone(p.spec), "preset", true); }; P.append(b); });
+  $("tlRange").max = TL.dates.length - 1;
+  apply(structuredClone(PRESETS[0].spec), "preset", false);
   deck1 = makeDeck($("map"), queryLayers());
-  $("loading").remove(); renderLegend(); initSwipe();
-  $("modeQuery").onclick = () => setMode("query"); $("modeSwipe").onclick = () => setMode("swipe");
+  $("loading").remove(); renderLegend(); renderLayersPanel(); initSwipe();
+  if (innerWidth < 820) document.querySelector(".layers").open = false;
+  ["query", "time", "swipe"].forEach(k => $("mode-" + k).onclick = () => setMode(k));
+  $("exag").oninput = () => { EX = +$("exag").value; $("exagOut").textContent = "×" + fmt(EX, 1); redraw(); };
+  $("tlRange").oninput = () => { stopTL(); setTL(+$("tlRange").value); }; $("tlPlay").onclick = playTL;
   $("askBtn").onclick = ask; $("stopBtn").onclick = () => ctl?.abort();
   $("q").addEventListener("keydown", e => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) ask(); });
   try { sample = await window.claude?.use("sample"); } catch { sample = null; }
   if (!sample) $("status").textContent = "Έτοιμα ερωτήματα · ο ζωντανός agent ανοίγει μέσα στο Claude";
 })();
+
 </script>

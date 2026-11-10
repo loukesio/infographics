@@ -15,14 +15,20 @@ R = pathlib.Path(__file__).resolve().parents[1]; RAW = R / "data/raw"
 cells = gpd.read_parquet(R / "data/thessaly_h3.parquet")[["h3", "geometry"]].to_crs(2100)
 cells["a"] = cells.area
 
+from rasterio.features import rasterize
+from rasterio.transform import from_origin
+RES = 40.0  # metres; shares from a 40 m raster (EPSG:2100), fast and accurate to ~1% per 0.74 km² cell
+x0, y0, x1, y1 = cells.total_bounds; W, H = int((x1 - x0) / RES) + 1, int((y1 - y0) / RES) + 1
+TR = from_origin(x0, y1, RES, RES)
+CID = rasterize(((g, i + 1) for i, g in enumerate(cells.geometry.values)), out_shape=(H, W), transform=TR, dtype="int32").ravel()
+NPX = np.bincount(CID, minlength=len(cells) + 1)[1:]
+
 def share(g, name):
-    """Share of each cell covered by polygons g (pairwise intersections, summed, clipped to 1)."""
-    g = g.to_crs(2100); geoms = shapely.make_valid(g.geometry.values)
-    geoms = geoms[shapely.intersects(geoms, shapely.box(*cells.total_bounds))]
-    tree = shapely.STRtree(geoms); ci, gi = tree.query(cells.geometry.values, predicate="intersects")
-    ar = shapely.area(shapely.intersection(cells.geometry.values[ci], geoms[gi]))
-    out = np.bincount(ci, weights=ar, minlength=len(cells)) / cells.a.values
-    print(name, f"{np.minimum(out, 1).dot(cells.a.values) / 1e6:,.0f} km² in grid")
+    """Share of each cell covered by polygons g (via 40 m raster)."""
+    g = g.to_crs(2100); geoms = [x for x in g.geometry.values if x is not None and not x.is_empty]
+    m = rasterize(((x, 1) for x in geoms), out_shape=(H, W), transform=TR, dtype="uint8").ravel().astype(bool)
+    out = np.bincount(CID[m], minlength=len(cells) + 1)[1:] / np.maximum(NPX, 1)
+    print(name, f"{(out * cells.a.values).sum() / 1e6:,.0f} km² in grid", flush=True)
     return np.clip(out, 0, 1).round(3)
 
 o = pd.DataFrame({"h3": cells.h3})
@@ -50,7 +56,7 @@ road = gpd.read_file(glob.glob(str(RAW / "roadless/Roadless_Areas_WGS84/*.kml"))
 o["roadless_share"] = share(road, "roadless areas")
 cent4326 = cent.to_crs(4326)
 arch_c = arch.to_crs(2100); d = arch_c.sindex.nearest(cent.geometry, return_distance=True)
-o["dist_arch_zone_km"] = (d[1] / 1000).round(1)
+o["dist_arch_zone_km"] = (pd.Series(d[1]).groupby(d[0][0]).min().reindex(range(len(o))).values / 1000).round(1)
 
 # historical flood events (points) per cell
 hf = gpd.read_file(RAW / "official/v_hyd_poi_all_floods_v1_EL08.json").to_crs(2100)

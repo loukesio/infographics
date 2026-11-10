@@ -518,18 +518,23 @@ let ORTHO = false, OPK = "", OKEYS = null;   // ORTHO: false | "live" (local rel
 const OLIFT = 45, ODX = 0.02, ODY = 0.015, OPATCH = {};
 const orthoOn = () => ORTHO && ov("ortho") && ov("ortho").on && CITYNOW && DEMH;
 function orthoKey(vs) { return ORTHO && cityAt(vs) && vs.zoom >= 12.2 ? Math.floor(vs.longitude / ODX) + "_" + Math.floor(vs.latitude / ODY) : ""; }
-function orthoLayers(id) {       // one photo quad per ~1.7 km patch around the camera target; corners sit on the DEM so neighbours meet
+function orthoLayers(id) {       // photo quads per ~1.7 km patch; corners sit on the DEM so neighbours meet. Hosted copy: light previews for the whole city at once, sharp tiles only around the camera target
   if (!orthoOn() || viewState.zoom < 12.2) return [];
-  const c = CITY[CITYNOW], cx = Math.floor(viewState.longitude / ODX), cy = Math.floor(viewState.latitude / ODY), L = [];
+  const c = CITY[CITYNOW], cx = Math.floor(viewState.longitude / ODX), cy = Math.floor(viewState.latitude / ODY), L = [], st = ORTHO === "static";
   const zc = (x, y) => zOf(demZ(x, y), OLIFT);
-  for (let i = cx - 2; i <= cx + 2; i++) for (let j = cy - 2; j <= cy + 2; j++) {
+  const i0 = st ? Math.floor((c[1] - .01) / ODX) : cx - 2, i1 = st ? Math.floor((c[3] + .01) / ODX) : cx + 2, j0 = st ? Math.floor((c[2] - .01) / ODY) : cy - 2, j1 = st ? Math.floor((c[4] + .01) / ODY) : cy + 2;
+  for (let i = i0; i <= i1; i++) for (let j = j0; j <= j1; j++) {
     const x0 = +(i * ODX).toFixed(4), y0 = +(j * ODY).toFixed(4), x1 = +(x0 + ODX).toFixed(4), y1 = +(y0 + ODY).toFixed(4);
     if (x1 < c[1] - .01 || x0 > c[3] + .01 || y1 < c[2] - .01 || y0 > c[4] + .01) continue;
     const k = i + "_" + j; let P = OPATCH[k];
-    if (ORTHO === "static" && !OKEYS.has(k)) continue;
-    if (!P) { P = OPATCH[k] = { img: null, x0, y0, city: CITYNOW }; loadImg(ORTHO === "static" ? `assets/ortho/${k}.jpg` : `/ortho?bbox=${x0},${y0},${x1},${y1}&w=1536&h=1490`).then(im => { P.img = im; redraw(); }).catch(() => { delete OPATCH[k]; }); }
-    if (P.img && !P.roof && BLD[CITYNOW] && BLD[CITYNOW].items) P.roof = roofMesh(BLD[CITYNOW].items, x0, y0, x1, y1);
-    if (P.img) L.push(new deck.BitmapLayer({ id: id + "or" + k, image: P.img, bounds: [[x0, y0, zc(x0, y0)], [x0, y1, zc(x0, y1)], [x1, y1, zc(x1, y1)], [x1, y0, zc(x1, y0)]], pickable: false }));
+    if (st && !OKEYS.has(k)) continue;
+    if (!P) { P = OPATCH[k] = { img: null, lo: null, hiReq: false, x0, y0, city: CITYNOW };
+      if (st) loadImg(`assets/ortho/lo/${k}.jpg`).then(im => { P.lo = im; redraw(); }).catch(() => {}); }
+    const near = Math.abs(i - cx) <= 1 && Math.abs(j - cy) <= 1;
+    if (!P.hiReq && (!st || near)) { P.hiReq = true; loadImg(st ? `assets/ortho/${k}.jpg` : `/ortho?bbox=${x0},${y0},${x1},${y1}&w=1536&h=1490`).then(im => { P.img = im; redraw(); }).catch(() => { P.hiReq = false; }); }
+    const im = P.img || P.lo; if (!im) continue;
+    if (!P.roof && BLD[CITYNOW] && BLD[CITYNOW].items) P.roof = roofMesh(BLD[CITYNOW].items, x0, y0, x1, y1);
+    L.push(new deck.BitmapLayer({ id: id + "or" + k, image: im, bounds: [[x0, y0, zc(x0, y0)], [x0, y1, zc(x0, y1)], [x1, y1, zc(x1, y1)], [x1, y0, zc(x1, y0)]], pickable: false }));
   }
   return L;
 }
@@ -544,8 +549,8 @@ function roofMesh(items, x0, y0, x1, y1) {   // one textured mesh with the roofs
 }
 function roofLayers(id) {
   if (!orthoOn() || viewState.zoom < 12.2 || !window.earcut) return [];
-  const L = []; for (const k in OPATCH) { const P = OPATCH[k]; if (!P.img || !P.roof || P.city !== CITYNOW) continue;
-    L.push(new deck.SimpleMeshLayer({ id: id + "rf" + k, data: [0], mesh: P.roof, texture: P.img, getPosition: () => [P.x0, P.y0, 0], getOrientation: [0, 0, 0], pickable: false,
+  const L = []; for (const k in OPATCH) { const P = OPATCH[k], im = P.img || P.lo; if (!im || !P.roof || P.city !== CITYNOW) continue;
+    L.push(new deck.SimpleMeshLayer({ id: id + "rf" + k, data: [0], mesh: P.roof, texture: im, getPosition: () => [P.x0, P.y0, 0], getOrientation: [0, 0, 0], pickable: false,
       material: { ambient: .9, diffuse: .25, shininess: 2, specularColor: [10, 10, 10] }, parameters: { cull: false } })); }
   return L;
 }

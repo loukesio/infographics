@@ -1,3 +1,4 @@
 cache/
 __pycache__/
 web/assets/ortho/*.jpg
+web/assets/ortho/lo/

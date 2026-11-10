@@ -360,6 +360,21 @@ const CAT = {
   roadless:{l:"Περιοχή χωρίς δρόμους", u:"0-1", src:"Πανεπ. Ιωαννίνων 2022 (CC BY)", d:"μερίδιο σε περιοχή χωρίς δρόμους· το ΕΧΠ αποκλείει όσες ορίσει ο ΥΠΕΝ (ο επίσημος κατάλογος μπορεί να διαφέρει)"},
   forest: {l:"Δάσος/θαμνώνες (προσέγγιση)", u:"0-1", src:"WorldCover 2021", d:"δέντρα+θάμνοι· ΠΡΟΣΕΓΓΙΣΗ του δασικού χάρτη, που είναι ο νόμιμος αποκλεισμός"},
   wetl:   {l:"Υγρότοπος", u:"0-1", src:"WorldCover 2021", d:"ποώδης υγρότοπος"},
+  subfree:  {l:"Απόσταση από υποσταθμό με ελεύθερο περιθώριο", u:"km", src:"ΔΕΔΔΗΕ Περιθώρια ΑΠΕ, 10/11/2026", d:"πλησιέστερος υποσταθμός ΥΤ/ΜΤ με μετασχηματιστή που έχει ≥2 MVA ελεύθερο για ΑΠΕ (σε λειτουργία + συμβάσεις + οριστικές προσφορές)"},
+  submargin:{l:"Περιθώριο πλησιέστερου υποσταθμού", u:"MVA", src:"ΔΕΔΔΗΕ, 10/11/2026", d:"άθροισμα ελεύθερου περιθωρίου (min θερμικό/βραχυκύκλωση) των μετασχηματιστών του· 0 = κορεσμένος"},
+  dsubd:  {l:"Απόσταση από υποσταθμό ΔΕΔΔΗΕ", u:"km", src:"ΔΕΔΔΗΕ", d:"πλησιέστερος υποσταθμός ΥΤ/ΜΤ (29 που εξυπηρετούν τη Θεσσαλία)"},
+  bld:    {l:"Κτίρια", u:"πλήθος", src:"Overture Maps 2026-10 (OSM + αποτυπώματα ML)", d:"κτίρια στο κελί (κάθε κατασκευή, όχι κατοικίες)"},
+  bldq100:{l:"Κτίρια σε επίσημη ζώνη πλημμύρας 100 ετών", u:"πλήθος", src:"Overture × ΥΠΕΝ ΣΔΚΠ EL08", d:"κέντρο κτιρίου μέσα στη ζώνη Q100"},
+  bldq1000:{l:"Κτίρια σε ζώνη πλημμύρας 1000 ετών", u:"πλήθος", src:"Overture × ΥΠΕΝ", d:"κέντρο κτιρίου μέσα στη ζώνη Q1000"},
+  blddan: {l:"Κτίρια που πλημμύρισαν στον Daniel", u:"πλήθος", src:"Overture × EMSR692", d:"κέντρο κτιρίου μέσα στην έκταση του Daniel (μόνο χαρτογραφημένες περιοχές)"},
+  blddanout:{l:"Κτίρια του Daniel εκτός ζώνης 1000 ετών", u:"πλήθος", src:"Overture × EMSR692 × ΥΠΕΝ", d:"πλημμύρισαν στον Daniel αλλά ήταν εκτός της επίσημης ζώνης Q1000"},
+  arable: {l:"Αρόσιμη γη (ετήσιες καλλιέργειες)", u:"0-1", src:"JRC EU Crop Map 2022 (10 m, CC BY)", d:"μερίδιο με ετήσιες καλλιέργειες"},
+  wheat:  {l:"Σιτάρι", u:"0-1", src:"JRC EU Crop Map 2022", d:"μαλακό + σκληρό σιτάρι"},
+  maize:  {l:"Καλαμπόκι", u:"0-1", src:"JRC EU Crop Map 2022", d:"αραβόσιτος"},
+  indcrop:{l:"Βιομηχανικές καλλιέργειες (κυρίως βαμβάκι)", u:"0-1", src:"JRC EU Crop Map 2022", d:"«λοιπές βιομηχανικές» + τεύτλα/πατάτες· στη Θεσσαλία κυρίως βαμβάκι, όχι επιβεβαιωμένο ανά αγροτεμάχιο"},
+  fodder: {l:"Κτηνοτροφικά φυτά", u:"0-1", src:"JRC EU Crop Map 2022", d:"μηδική, τριφύλλι κ.λπ."},
+  cereal2:{l:"Κριθάρι/βρώμη/λοιπά σιτηρά", u:"0-1", src:"JRC EU Crop Map 2022", d:"κριθάρι, σίκαλη, βρώμη, τριτικάλε"},
+  sunfl:  {l:"Ηλίανθος/ελαιοκράμβη/σόγια", u:"0-1", src:"JRC EU Crop Map 2022", d:"ελαιούχοι σπόροι"},
   pe:     {l:"Περιφερειακή Ενότητα (επίσημη)", u:"κωδ.", src:"ΥΠΕΝ/ΥΠΕΣ όρια", d:"0=Λάρισα, 1=Μαγνησία, 2=Σποράδες, 3=Καρδίτσα, 4=Τρίκαλα"},
   dimos:  {l:"Δήμος", u:"κωδ.", src:"OSM", d:"δείκτης στη λίστα δήμων"},
   lat:    {l:"Γεωγραφικό πλάτος", u:"°", src:"H3", d:"κέντρο κελιού"},
@@ -399,27 +414,38 @@ const PRESETS = [
     spec: { title: "Νέο φωτοβολταϊκό: εκτός ζωνών αποκλεισμού (ΕΧΠ ΑΠΕ 2026)", answer: "Επίπεδη, μη δομημένη γη εκτός Natura 2000, δάσους/θαμνώνων, αρχαιολογικής ζώνης Α, περιοχών χωρίς δρόμους και υγροτόπων, βαθμολογημένη για σύνδεση. Πρώτο φίλτρο, όχι γνωμοδότηση.",
       filters: [{col:"natura", op:"<", value:0.05, label:"Εκτός Natura 2000"}, {col:"forest", op:"<", value:0.2, label:"Χωρίς δάσος/θαμνώνες (προσέγγιση)"}, {col:"archA", op:"==", value:0, label:"Εκτός αρχαιολογικής ζώνης Α"},
         {col:"roadless", op:"<", value:0.05, label:"Εκτός περιοχής χωρίς δρόμους"}, {col:"wetl", op:"<", value:0.05, label:"Εκτός υγροτόπου"}, {col:"flat", op:">=", value:0.7, label:"Επίπεδο (≥70% κάτω από 5°)"}, {col:"built", op:"<", value:0.1, label:"Όχι δομημένο"}],
-      score: [{col:"dsub", dir:"low", cap:8, w:0.5, label:"Κοντά σε υποσταθμό"}, {col:"q100", dir:"low", cap:1, w:0.3, label:"Εκτός επίσημης ζώνης πλημμύρας"}, {col:"droad", dir:"low", cap:2, w:0.2, label:"Κοντά σε άσφαλτο"}],
-      caveats: ["Ο νόμιμος αποκλεισμός είναι ο κυρωμένος δασικός χάρτης· εδώ χρησιμοποιείται κάλυψη γης ως προσέγγιση.", "Λείπουν: αποστάσεις από οικισμούς, μνημεία χωρίς οριοθετημένη ζώνη, αναβαθμίδες, γη υψηλής παραγωγικότητας, περιθώριο δικτύου ΔΕΔΔΗΕ.", "Το όριο 1,5% ανά ΠΕ αφορά νέους σταθμούς χωρίς περιβαλλοντική άδεια (σημείωμα ΥΠΕΝ, διαβούλευση Μαΐου 2026)· το τελικό ΦΕΚ δεν διαβάστηκε."] } },
+      score: [{col:"subfree", dir:"low", cap:10, w:0.5, label:"Κοντά σε υποσταθμό με ελεύθερο περιθώριο (ΔΕΔΔΗΕ)"}, {col:"q100", dir:"low", cap:1, w:0.3, label:"Εκτός επίσημης ζώνης πλημμύρας"}, {col:"droad", dir:"low", cap:2, w:0.2, label:"Κοντά σε άσφαλτο"}],
+      caveats: ["Ο νόμιμος αποκλεισμός είναι ο κυρωμένος δασικός χάρτης· εδώ χρησιμοποιείται κάλυψη γης ως προσέγγιση.", "Λείπουν: αποστάσεις από οικισμούς, μνημεία χωρίς οριοθετημένη ζώνη, αναβαθμίδες, γη υψηλής παραγωγικότητας. Το περιθώριο ΔΕΔΔΗΕ μπαίνει στη βαθμολογία (10/11/2026).", "Το όριο 1,5% ανά ΠΕ αφορά νέους σταθμούς χωρίς περιβαλλοντική άδεια (σημείωμα ΥΠΕΝ, διαβούλευση Μαΐου 2026)· το τελικό ΦΕΚ δεν διαβάστηκε."] } },
   { s: "Μπαταρίες (BESS)", q: "Πού να μπει σταθμός αποθήκευσης: δίπλα σε υποσταθμό, εκτός πλημμύρας και αποκλεισμών;",
     spec: { title: "Σταθμοί αποθήκευσης (BESS): πρώτο φίλτρο", answer: "Επίπεδη γη έως 3 km από υποσταθμό και 1 km από άσφαλτο, εκτός επίσημης ζώνης πλημμύρας 1000 ετών, εκτός πλημμύρας Daniel και χαμηλής γης δίπλα σε ποτάμι, εκτός ζωνών αποκλεισμού.",
-      filters: [{col:"dsub", op:"<=", value:3, label:"Έως 3 km από υποσταθμό"}, {col:"droad", op:"<=", value:1, label:"Έως 1 km από άσφαλτο"}, {col:"flat", op:">=", value:0.7, label:"Επίπεδο"},
+      filters: [{col:"subfree", op:"<=", value:5, label:"Έως 5 km από υποσταθμό ΔΕΔΔΗΕ με ελεύθερο περιθώριο"}, {col:"droad", op:"<=", value:1, label:"Έως 1 km από άσφαλτο"}, {col:"flat", op:">=", value:0.7, label:"Επίπεδο"},
         {col:"q1000", op:"<", value:0.05, label:"Εκτός επίσημης ζώνης πλημμύρας 1000 ετών"}, {col:"flood", op:"<", value:0.05, label:"Δεν πλημμύρισε στον Daniel"}, {col:"hand3", op:"<", value:0.1, label:"Όχι χαμηλή γη δίπλα σε ποτάμι"},
         {col:"natura", op:"<", value:0.05, label:"Εκτός Natura 2000"}, {col:"forest", op:"<", value:0.2, label:"Χωρίς δάσος (προσέγγιση)"}, {col:"pop", op:"<", value:50, label:"Λίγοι κάτοικοι (<50)"}],
-      score: [{col:"dsub", dir:"low", cap:3, w:0.6, label:"Κοντά σε υποσταθμό"}, {col:"dmajor", dir:"low", cap:5, w:0.2, label:"Κοντά σε κύριο δρόμο"}, {col:"crop", dir:"high", cap:1, w:0.2, label:"Αγροτική γη (εύκολη πρόσβαση)"}],
-      caveats: ["Το κρίσιμο κριτήριο, το περιθώριο ισχύος κάθε υποσταθμού (ΔΕΔΔΗΕ «Περιθώρια ΑΠΕ»), δεν έχει ενσωματωθεί ακόμη.", "Υποσταθμοί από OSM (71), πιθανώς ελλιπείς· «Δεν πλημμύρισε» ισχύει μόνο όπου ο Daniel χαρτογραφήθηκε."] } },
+      score: [{col:"subfree", dir:"low", cap:5, w:0.4, label:"Κοντά σε υποσταθμό με περιθώριο"}, {col:"submargin", dir:"high", cap:60, w:0.3, label:"Περιθώριο υποσταθμού"}, {col:"dmajor", dir:"low", cap:5, w:0.15, label:"Κοντά σε κύριο δρόμο"}, {col:"crop", dir:"high", cap:1, w:0.15, label:"Αγροτική γη"}],
+      caveats: ["Περιθώρια ΔΕΔΔΗΕ για έγχυση ΑΠΕ, όπως διαβάστηκαν στις 10/11/2026 (21 από 51 μετασχηματιστές στη Θεσσαλία με μηδενικό περιθώριο). Η σύνδεση μπαταρίας κρίνεται και ως φορτίο· η τελική απάντηση είναι η προσφορά σύνδεσης.", "«Δεν πλημμύρισε» ισχύει μόνο όπου ο Daniel χαρτογραφήθηκε."] } },
+  { s: "Κτίρια σε ζώνη πλημμύρας", q: "Πού υπάρχουν τα περισσότερα κτίρια μέσα στην επίσημη ζώνη πλημμύρας 100 ετών;",
+    spec: { title: "Κτίρια μέσα στην επίσημη ζώνη πλημμύρας 100 ετών", answer: "Εξάγωνα με κτίρια μέσα στη ζώνη Q100 των επίσημων χαρτών. Στη Θεσσαλία: ~59.700 από ~528.000 κτίρια (11%) είναι σε ζώνη 100 ετών, ~96.000 σε ζώνη 1000 ετών. Για ασφαλιστές, τράπεζες και την υποχρεωτική ασφάλιση επιχειρήσεων.",
+      filters: [{col:"bldq100", op:">=", value:5, label:"Τουλάχιστον 5 κτίρια σε ζώνη 100 ετών"}],
+      score: [{col:"bldq100", dir:"high", cap:300, w:0.7, label:"Κτίρια σε Q100"}, {col:"blddan", dir:"high", cap:100, w:0.3, label:"Κτίρια που πλημμύρισαν στον Daniel"}],
+      caveats: ["Κτίρια = κάθε κατασκευή του Overture (OSM + αποτυπώματα από μηχανική μάθηση), όχι κατοικίες ή επιχειρήσεις· δεν υπάρχει χρήση ή αξία.", "Οι επίσημες ζώνες είναι πριν τον Daniel και δεν περιλαμβάνουν έργα που έγιναν μετά."] } },
+  { s: "Daniel: κτίρια έξω από τους χάρτες", q: "Ποια κτίρια πλημμύρισαν στον Daniel ενώ ήταν έξω από την επίσημη ζώνη 1000 ετών;",
+    spec: { title: "Κτίρια του Daniel έξω από την επίσημη ζώνη 1000 ετών", answer: "Από ~16.800 κτίρια που βρέθηκαν μέσα στην έκταση του Daniel, ~6.800 (40%) ήταν έξω ακόμη και από τη ζώνη 1000 ετών των επίσημων χαρτών· ~3.300 στον Δήμο Λαρισαίων.",
+      filters: [{col:"blddanout", op:">=", value:3, label:"Τουλάχιστον 3 κτίρια του Daniel εκτός ζώνης 1000 ετών"}],
+      score: [{col:"blddanout", dir:"high", cap:150, w:1, label:"Κτίρια εκτός ζώνης"}],
+      caveats: ["Ο Daniel χαρτογραφήθηκε μόνο σε 7 περιοχές του EMSR692 (π.χ. όχι η πόλη του Βόλου).", "Οι επίσημοι χάρτες καλύπτουν μόνο τα ποτάμια που μελετήθηκαν· «εκτός ζώνης» μπορεί να σημαίνει «δεν μελετήθηκε»."] } },
   { s: "Agrivoltaics", q: "Επίπεδη αγροτική γη εκτός Natura, που δεν πλημμύρισε, κοντά σε υποσταθμό (agrivoltaics)",
     spec: { title: "Πρώτο φίλτρο για agrivoltaics", answer: "Επίπεδα χωράφια εκτός Natura 2000, εκτός της πλημμύρας του Daniel και έως 5 km από υποσταθμό, βαθμολογημένα για σύνδεση και πρόσβαση.",
       filters: [
         {col:"slope", op:"<", value:5, label:"Κλίση κάτω από 5°"},
-        {col:"crop", op:">", value:0.5, label:"Κυρίως καλλιέργειες"},
+        {col:"arable", op:">", value:0.5, label:"Κυρίως ετήσιες καλλιέργειες (JRC)"},
         {col:"built", op:"<", value:0.1, label:"Όχι δομημένο"},
         {col:"natura", op:"<", value:0.05, label:"Εκτός Natura 2000"},
         {col:"flood", op:"<", value:0.05, label:"Δεν πλημμύρισε το 2023"},
-        {col:"dsub", op:"<", value:5, label:"Έως 5 km από υποσταθμό"}],
-      score: [{col:"dsub", dir:"low", cap:5, w:0.5, label:"Κοντά σε υποσταθμό"}, {col:"droad", dir:"low", cap:2, w:0.2, label:"Κοντά σε άσφαλτο"},
-              {col:"south", dir:"high", cap:1, w:0.1, label:"Νότια έκθεση"}, {col:"crop", dir:"high", cap:1, w:0.2, label:"Μερίδιο καλλιεργειών"}],
-      caveats: ["Λείπουν: χωρητικότητα δικτύου (κορεσμός), κτηματολόγιο, τιμές γης, επίσημοι χάρτες κινδύνου πλημμύρας.", "Οι υποσταθμοί είναι από OSM (71 στη Θεσσαλία) και πιθανώς ελλιπείς."] } },
+        {col:"q100", op:"<", value:0.05, label:"Εκτός επίσημης ζώνης πλημμύρας 100 ετών"},
+        {col:"subfree", op:"<=", value:8, label:"Έως 8 km από υποσταθμό με ελεύθερο περιθώριο (ΔΕΔΔΗΕ)"}],
+      score: [{col:"subfree", dir:"low", cap:8, w:0.5, label:"Κοντά σε υποσταθμό με περιθώριο"}, {col:"droad", dir:"low", cap:2, w:0.2, label:"Κοντά σε άσφαλτο"},
+              {col:"south", dir:"high", cap:1, w:0.1, label:"Νότια έκθεση"}, {col:"arable", dir:"high", cap:1, w:0.2, label:"Μερίδιο αρόσιμης"}],
+      caveats: ["Δοκίμασε συνέχεια: «μόνο σιτάρι» ή «μόνο βαμβάκι»: ο χάρτης καλλιεργειών JRC (2022, 10 m) δίνει είδος καλλιέργειας ανά εξάγωνο.", "Λείπουν: κτηματολόγιο, τιμές γης, οι όροι του προγράμματος αγροφωτοβολταϊκών 130 MW."] } },
 ];
 
 // ---------- data ----------
@@ -482,7 +508,9 @@ const OV = [ // overlays: draped texture layers + vector layers
   { id: "official", l: "Επίσημες ζώνες πλημμύρας Q100/Q1000", src: "ΥΠΕΝ ΣΔΚΠ", kind: "tex", on: false, op: 0.85 },
   { id: "excl", l: "Αποκλεισμοί ΕΧΠ: αρχαιολ. ζώνη Α, χωρίς δρόμους", src: "ΥΠΠΟ, Παν. Ιωαννίνων", kind: "tex", on: false, op: 0.9 },
   { id: "rivers", l: "Ποτάμια", src: "OSM", kind: "vec", on: true },
+  { id: "deddie", l: "Υποσταθμοί ΔΕΔΔΗΕ: ελεύθερο περιθώριο ΑΠΕ", src: "ΔΕΔΔΗΕ 10/11/2026", kind: "vec", on: false },
   { id: "grid", l: "Γραμμές ΥΤ & υποσταθμοί", src: "OSM", kind: "vec", on: false },
+  { id: "works", l: "Αντιπλημμυρικά έργα Περιφέρειας (θέση κατά προσέγγιση)", src: "Τεχνικό Πρόγραμμα 2026, διαγωνισμοί", kind: "vec", on: false },
   { id: "solar", l: "Φωτοβολταϊκά πάρκα", src: "OSM", kind: "vec", on: false },
   { id: "towns", l: "Οικισμοί", src: "OSM/Overture", kind: "vec", on: true },
 ];
@@ -508,6 +536,21 @@ function vectorLayers(id) {
   if (ov("grid").on) {
     L.push(new deck.PathLayer({ id: id + "pl", data: V.lines, getPath: p => p.map(q => [q[0], q[1], zOf(q[2], 120)]), getColor: [242, 163, 58, 170], widthUnits: "pixels", getWidth: 1.2, updateTriggers: { getPath: EX } }));
     L.push(new deck.ScatterplotLayer({ id: id + "sub", data: V.subs, getPosition: p => [p[0], p[1], zOf(p[2], 140)], getRadius: 5, radiusUnits: "pixels", getFillColor: [242, 163, 58], getLineColor: [13, 21, 34], lineWidthUnits: "pixels", getLineWidth: 1.5, stroked: true, updateTriggers: { getPosition: EX } }));
+  }
+  if (ov("deddie") && ov("deddie").on && D.deddie) {
+    const zc = r => { const i = IDXMAP.get(h3.latLngToCell(r[1], r[2], 8)); return i === undefined ? 0 : Math.max(0, D.elev[i]); };
+    const col = r => r[4] >= 2 ? [92, 194, 142] : r[4] > 0 ? [242, 163, 58] : [226, 92, 76];
+    L.push(new deck.ScatterplotLayer({ id: id + "dd", data: D.deddie, pickable: true, getPosition: r => [r[2], r[1], zOf(zc(r), 150)], getRadius: r => 5 + Math.sqrt(Math.max(r[3], 1)) * 1.4, radiusUnits: "pixels",
+      getFillColor: col, getLineColor: [13, 21, 34], lineWidthUnits: "pixels", getLineWidth: 1.5, stroked: true, parameters: { depthTest: false }, updateTriggers: { getPosition: EX } }));
+    L.push(new deck.TextLayer({ id: id + "ddt", data: D.deddie, getPosition: r => [r[2], r[1], zOf(zc(r), 150)], getText: r => `${r[3].toLocaleString("el-GR")} MVA`, characterSet: "auto", getSize: 10.5,
+      fontFamily: "Fira Sans, sans-serif", fontWeight: 600, getColor: r => col(r), outlineWidth: 3, outlineColor: [13, 21, 34, 255], fontSettings: { sdf: true, fontSize: 64, buffer: 6 },
+      getTextAnchor: "start", getAlignmentBaseline: "center", getPixelOffset: [9, 0], billboard: true, parameters: { depthTest: false }, updateTriggers: { getPosition: EX } }));
+  }
+  if (ov("works") && ov("works").on && D.works) {
+    const zc = r => { const i = IDXMAP.get(h3.latLngToCell(r[1], r[2], 8)); return i === undefined ? 0 : Math.max(0, D.elev[i]); };
+    const col = r => r[3] === "νέο 2026" ? [92, 194, 142] : r[3] === "σε εξέλιξη" ? [111, 182, 235] : [200, 200, 210];
+    L.push(new deck.ScatterplotLayer({ id: id + "wk", data: D.works, pickable: true, getPosition: r => [r[2], r[1], zOf(zc(r), 120)], getRadius: r => 4 + Math.sqrt(r[4] / 1e5), radiusUnits: "pixels",
+      getFillColor: col, getLineColor: [13, 21, 34], lineWidthUnits: "pixels", getLineWidth: 1.5, stroked: true, parameters: { depthTest: false }, updateTriggers: { getPosition: EX } }));
   }
   if (ov("solar").on) L.push(new deck.ScatterplotLayer({ id: id + "sol", data: V.solar, getPosition: p => [p[0], p[1], zOf(p[2], 60)], getRadius: 2.2, radiusUnits: "pixels", getFillColor: [255, 214, 120, 230], updateTriggers: { getPosition: EX } }));
   if (ov("towns").on) {
@@ -704,7 +747,9 @@ function cellAt(info) {
   const [lon, lat] = info.coordinate; const h = h3.latLngToCell(lat, lon, 8); return IDXMAP.has(h) ? IDXMAP.get(h) : -1;
 }
 function tooltip(info) {
-  const o = info.object;
+  const o = info.object, lid = info.layer && info.layer.id || "";
+  if (Array.isArray(o) && lid.endsWith("wk")) return { html: `<b>${o[0]}</b> (θέση οικισμού, όχι του έργου)<br>${o[5]}<br>${o[3]} · ${fmt(o[4] / 1e6, 2)} εκ. €` };
+  if (Array.isArray(o) && lid.endsWith("dd")) return { html: `<b>Υ/Σ ${o[0]}</b><br>Ελεύθερο περιθώριο ΑΠΕ: ${fmt(o[3], 1)} MVA (μεγαλύτερο σε μετασχηματιστή: ${fmt(o[4], 1)})<br>${fmt(o[5])} σταθμοί ΑΠΕ · ΔΕΔΔΗΕ 10/11/2026` };
   if (o && typeof o === "object" && !Array.isArray(o)) {
     if (o.mm != null) { const p = o.p; if (o.gr) return { text: `${o.n}: ${o.gr} (6ωρο από +${Math.floor(wxK / 2) * 6} ώρες) · ${fmt(WX.temp_c[p][wxK], 0)} °C · άνεμος ${fmt(WX.wind_ms[p][wxK], 0)} m/s · βροχή ως τότε ${fmt(o.mm, 1)} mm` }; return { text: `${fmt(o.mm, 1)} mm έως +${wxK * 3} ώρες · ${fmt(WX.temp_c[p][wxK], 0)} °C · άνεμος ${fmt(WX.wind_ms[p][wxK], 0)} m/s` }; }
     return o.n ? { text: o.n } : null;
@@ -719,7 +764,7 @@ function tooltip(info) {
 }
 function makeDeck(container, layers) {
   return new deck.Deck({ parent: container, initialViewState: viewState, controller: { inertia: true }, layers,
-    getTooltip: tooltip, onClick: info => { const i = cellAt(info); if (i >= 0 && (!info.object || typeof info.object !== "object" || Array.isArray(info.object))) showCard(i); },
+    getTooltip: tooltip, onClick: info => { const lid = info.layer && info.layer.id || ""; if (lid.endsWith("wk") || lid.endsWith("dd")) return; const i = cellAt(info); if (i >= 0 && (!info.object || typeof info.object !== "object" || Array.isArray(info.object))) showCard(i); },
     onViewStateChange: ({ viewState: vs }) => { viewState = vs; stopOrbit(); if (deck1) deck1.setProps({ viewState: vs }); if (deck2) deck2.setProps({ viewState: vs }); return vs; },
     viewState, style: { position: "absolute", inset: 0 }, parameters: { clearColor: [13 / 255, 21 / 255, 34 / 255, 1] },
     effects: [new deck.LightingEffect({ amb: new deck.AmbientLight({ color: [255, 255, 255], intensity: 1.1 }),

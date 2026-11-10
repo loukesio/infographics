@@ -490,7 +490,45 @@ function rainCanvas(k) {          // bilinear rain field from the 0.25° forecas
   }
   g.putImageData(im, 0, 0); return c;
 }
-let TEXWX = null, wxTexK = -1;
+let TEXWX = null, wxTexK = -1, WXATLAS = null;
+const WCAT = [ // priority order: the first matching category wins and is kept first when decluttering
+  ["thunder", /thunder/, "Καταιγίδα"], ["snow", /snow|sleet/, "Χιόνι/χιονόνερο"], ["heavy", /heavyrain/, "Ισχυρή βροχή"],
+  ["rain", /^rain/, "Βροχή"], ["light", /lightrain|drizzle/, "Ασθενής βροχή"], ["fog", /fog/, "Ομίχλη"],
+  ["cloudy", /^cloudy/, "Συννεφιά"], ["partly", /partlycloudy/, "Λίγα σύννεφα"], ["clear", /clearsky|fair/, "Καθαρός ουρανός"]];
+function wcat(code) { for (const [k, re, gr] of WCAT) if (re.test(code)) return { k, gr, night: /_night/.test(code) }; return null; }
+function weatherAtlas() {        // hand-drawn icon atlas (128 px cells): no external icon set needed
+  const S = 128, keys = ["clear", "clear_n", "partly", "partly_n", "cloudy", "fog", "light", "rain", "heavy", "thunder", "snow"];
+  const c = document.createElement("canvas"); c.width = S * keys.length; c.height = S; const g = c.getContext("2d"); const map = {};
+  const sun = (x, y, r) => { g.fillStyle = "#F2B33A"; g.strokeStyle = "#F2B33A"; g.lineWidth = 7; g.lineCap = "round"; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill();
+    for (let a = 0; a < 8; a++) { const t = a * Math.PI / 4; g.beginPath(); g.moveTo(x + Math.cos(t) * (r + 9), y + Math.sin(t) * (r + 9)); g.lineTo(x + Math.cos(t) * (r + 20), y + Math.sin(t) * (r + 20)); g.stroke(); } };
+  const moon = (x, y, r) => { g.fillStyle = "#D9DEF0"; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); g.globalCompositeOperation = "destination-out"; g.beginPath(); g.arc(x + r * .55, y - r * .35, r * .9, 0, 7); g.fill(); g.globalCompositeOperation = "source-over"; };
+  const cloud = (x, y, w, col = "#E7ECF3") => { g.fillStyle = col; g.strokeStyle = "#0D1522"; g.lineWidth = 4; g.beginPath();
+    g.arc(x - w * .28, y + 4, w * .24, Math.PI * .5, Math.PI * 1.5); g.arc(x - w * .02, y - w * .12, w * .3, Math.PI, Math.PI * 1.9); g.arc(x + w * .28, y + 2, w * .22, Math.PI * 1.4, Math.PI * .5); g.closePath(); g.fill(); g.stroke(); };
+  const drops = (x, y, n, col = "#6FB6EB") => { g.strokeStyle = col; g.lineWidth = 6; g.lineCap = "round"; for (let i = 0; i < n; i++) { const dx = x + (i - (n - 1) / 2) * 16; g.beginPath(); g.moveTo(dx + 4, y); g.lineTo(dx - 4, y + 18); g.stroke(); } };
+  keys.forEach((k, i) => { const x0 = i * S, cx = x0 + S / 2; g.save(); g.beginPath(); g.rect(x0, 0, S, S); g.clip();
+    if (k === "clear") sun(cx, 64, 24); if (k === "clear_n") moon(cx, 64, 30);
+    if (k === "partly") { sun(cx + 18, 44, 17); cloud(cx - 6, 78, 86); } if (k === "partly_n") { moon(cx + 20, 42, 22); cloud(cx - 6, 78, 86); }
+    if (k === "cloudy") { cloud(cx + 14, 52, 70, "#9AA7BA"); cloud(cx - 6, 74, 92); }
+    if (k === "fog") { g.strokeStyle = "#C9D1DD"; g.lineWidth = 8; g.lineCap = "round"; [44, 64, 84].forEach((y, j) => { g.beginPath(); g.moveTo(x0 + 26 + j * 6, y); g.lineTo(x0 + S - 26 + j * 4, y); g.stroke(); }); }
+    if (k === "light") { cloud(cx, 56, 92); drops(cx, 86, 2); } if (k === "rain") { cloud(cx, 52, 96, "#C9D1DD"); drops(cx, 84, 3); }
+    if (k === "heavy") { cloud(cx, 50, 100, "#9AA7BA"); drops(cx, 80, 4, "#4F8FE0"); }
+    if (k === "thunder") { cloud(cx, 50, 100, "#9AA7BA"); g.fillStyle = "#F2B33A"; g.beginPath(); g.moveTo(cx + 2, 70); g.lineTo(cx - 14, 98); g.lineTo(cx - 2, 98); g.lineTo(cx - 10, 120); g.lineTo(cx + 14, 90); g.lineTo(cx + 2, 90); g.lineTo(cx + 10, 70); g.closePath(); g.fill(); }
+    if (k === "snow") { cloud(cx, 52, 96); g.fillStyle = "#FFFFFF"; [-18, 0, 18].forEach(dx => { g.beginPath(); g.arc(cx + dx, 92 + (dx ? 0 : 10), 6, 0, 7); g.fill(); }); }
+    g.restore(); map[k] = { x: x0, y: 0, width: S, height: S, anchorY: S, mask: false }; });
+  return { canvas: c, mapping: map };
+}
+function wxIcons(pts) {          // one icon per weather pattern per area: skip a point if a nearby kept point already shows the same weather
+  const kept = [], nc = WX.lons.length;
+  const cand = pts.map(d => { const c = wcat(WX.symbol ? WX.symbol[d.p][wxK] : ""); return c ? { ...d, ...c, pr: WCAT.findIndex(w => w[0] === c.k), r: Math.floor(d.p / nc), c: d.p % nc } : null; }).filter(Boolean);
+  cand.sort((a, b) => a.pr - b.pr || b.mm - a.mm);
+  cand.forEach(d => {
+    const near = (q, rad) => Math.hypot((q.r - d.r) * 1.3, q.c - d.c) < rad;
+    if (kept.some(q => near(q, 1.6))) return;                 // keep icons apart
+    if (kept.some(q => q.k === d.k && near(q, 3.2))) return;  // same weather nearby: one icon is enough
+    kept.push(d);
+  });
+  return kept.map(d => ({ ...d, icon: (d.k === "clear" || d.k === "partly") && d.night ? d.k + "_n" : d.k }));
+}
 function wxLayers() {
   if (wxTexK !== wxK) { const rc = rainCanvas(wxK), base = composite(); const g = base.getContext("2d"); g.imageSmoothingEnabled = true; g.drawImage(rc, 0, 0, base.width, base.height); TEXWX = base; wxTexK = wxK; }
   const pts = WX.rain_cum_mm.map((r, p) => ({ p, lat: WX.lats[Math.floor(p / WX.lons.length)], lon: WX.lons[p % WX.lons.length], mm: r[wxK], base: WXB[p] })).filter(d => d.base >= 0);
@@ -500,9 +538,16 @@ function wxLayers() {
     material: { ambient: .6, diffuse: .6 }, pickable: true, updateTriggers: { getPosition: EX } });
   const lbl = new deck.TextLayer({ id: "rainlbl", data: pts.filter(d => d.mm >= 5), getPosition: d => [d.lon, d.lat, zOf(d.base, 500)],
     getText: d => fmt(d.mm) + " mm", getSize: 12, characterSet: "auto", fontFamily: "JetBrains Mono, monospace", fontWeight: 600, getColor: [236, 241, 247],
-    outlineWidth: 3, outlineColor: [13, 21, 34, 255], fontSettings: { sdf: true, fontSize: 64, buffer: 6 }, parameters: { depthTest: false }, pickable: true,
+    outlineWidth: 3, outlineColor: [13, 21, 34, 255], fontSettings: { sdf: true, fontSize: 64, buffer: 6 }, parameters: { depthTest: false }, pickable: true, getAlignmentBaseline: "top", getPixelOffset: [0, -10],
     updateTriggers: { getPosition: EX, getText: wxK } });
-  return [terrain("t1", TEXWX), watchL, ...vectorLayers("a"), lbl];
+  const L = [terrain("t1", TEXWX), watchL, ...vectorLayers("a"), lbl];
+  if (WX.symbol) {
+    WXATLAS = WXATLAS || weatherAtlas();
+    L.push(new deck.IconLayer({ id: "wxicons", data: wxIcons(pts), iconAtlas: WXATLAS.canvas, iconMapping: WXATLAS.mapping, getIcon: d => d.icon,
+      getPosition: d => [d.lon, d.lat, zOf(d.base, 500)], getSize: 46, sizeUnits: "pixels", getPixelOffset: [0, -16], parameters: { depthTest: false }, pickable: true,
+      updateTriggers: { getPosition: EX, getIcon: wxK } }));
+  }
+  return L;
 }
 function setWx(k) {
   wxK = k; $("wxRange").value = k;
@@ -539,7 +584,7 @@ function timelineLayers() {
 function tooltip(info) {
   if (info.object == null) return null;
   const i = Array.isArray(info.object) ? info.object[0] : info.object;
-  if (typeof i !== "number") { const o = info.object; if (o.mm != null) { const p = o.p; return { text: `Πρόγνωση: ${fmt(o.mm, 1)} mm έως +${wxK * 3} ώρες · ${fmt(WX.temp_c[p][wxK], 0)} °C · άνεμος ${fmt(WX.wind_ms[p][wxK], 0)} m/s` }; } return o.n ? { text: o.n } : null; }
+  if (typeof i !== "number") { const o = info.object; if (o.mm != null) { const p = o.p; if (o.gr) return { text: `${o.gr} (+${wxK * 3} ώρες) · ${fmt(WX.temp_c[p][wxK], 0)} °C · άνεμος ${fmt(WX.wind_ms[p][wxK], 0)} m/s · βροχή ως τότε ${fmt(o.mm, 1)} mm` }; return { text: `Πρόγνωση: ${fmt(o.mm, 1)} mm έως +${wxK * 3} ώρες · ${fmt(WX.temp_c[p][wxK], 0)} °C · άνεμος ${fmt(WX.wind_ms[p][wxK], 0)} m/s` }; } return o.n ? { text: o.n } : null; }
   return { html: `<b>${RU[D.ru[i]]}</b><br>${fmt(D.elev[i])} m · ${fmt(D.pop[i])} κάτοικοι` + (mode === "query" && pass && pass[i] ? `<br>score ${fmt(score[i] * 100)}` : "") + (Array.isArray(info.object) ? `<br>πλημμυρισμένο ${info.object[1]}%` : ""),
     style: { background: "#121D2E", color: "#E7ECF3", font: "12px 'Fira Sans', sans-serif", border: "1px solid #233149", borderRadius: "6px", padding: "6px 8px" } };
 }
@@ -587,6 +632,7 @@ function renderLegend() {
   } else if (mode === "wx") {
     L.append(el("div", "t", "Αθροιστική βροχή (mm) · λευκές γραμμές: 10, 25, 50, 100 mm"), ramp(RAINC), lab("0", "80+"));
     L.append(el("div", "lab", "Η πρόγνωση έχει σημεία ανά ~25 km· τα ενδιάμεσα χρώματα είναι εκτίμηση."));
+    L.append(el("div", "lab", "Εικονίδια: ο καιρός τη συγκεκριμένη ώρα· ένα ανά περιοχή με ίδιο καιρό."));
     const r = el("div", "t"); r.innerHTML = '<span class="sw" style="background:var(--sun)"></span>Χαμηλή γη με βροχή πάνω από το όριο'; L.append(r);
   } else if (mode === "sim") {
     L.append(el("div", "t", "Μερίδιο εξαγώνου κάτω από τη στάθμη"), ramp([[30, 70, 110], [40, 140, 190], [110, 215, 230], [215, 250, 255]]), lab("2%", "100%"));

@@ -42,7 +42,7 @@ with rasterio.open(ROOT / "cache" / "slope_90m.tif") as r: slope = r.read(1)
 import json as _j, pandas as pd
 nat = pd.concat([gpd.read_file(ROOT / "cache" / f"natura_{i}.geojson") for i in (0, 1)]).to_crs(crs)
 natr = rasterize([(g, 1) for g in nat.geometry], out_shape=dem.shape, transform=tr, fill=0).astype(bool)
-sol = gpd.read_file(ROOT / "data" / "solar_plants.geojson").to_crs(crs)
+sol = gpd.read_file(ROOT / "data" / "solar_plants.geojson").to_crs(crs).clip(reg)   # file covers the whole bbox
 
 t = (flood & inreg & (dem < 100)).sum() * px
 v = km2("daniel_flood_share", "elev_mean_m < 100")

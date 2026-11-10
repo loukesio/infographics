@@ -17,15 +17,30 @@ def warp(src_path, w, h, rs=Resampling.bilinear, nodata=np.nan, dtype="float32")
 reg = gpd.read_file(R / "data/border_el61.geojson")
 greece_mask_src = None
 
+# ---- DEM mosaic for the whole texture extent (GLO-90 tiles incl. E020, so the west edge is not empty) ----
+import sys; sys.path.insert(0, str(R / "pipeline")); from common import fetch
+from rasterio.merge import merge
+tiles = []
+for la in (38, 39, 40):
+    for lo in (20, 21, 22, 23, 24):
+        tid = f"Copernicus_DSM_COG_30_N{la:02d}_00_E{lo:03d}_00_DEM"
+        try: tiles.append(fetch(f"https://copernicus-dem-90m.s3.amazonaws.com/{tid}/{tid}.tif"))
+        except Exception as e: print("skip", tid)
+srcs = [rasterio.open(t) for t in tiles]; mos, mtr = merge(srcs, bounds=(W0 - .05, S0 - .05, E0 + .05, N0 + .05))
+prof = srcs[0].profile; prof.update(height=mos.shape[1], width=mos.shape[2], transform=mtr, driver="GTiff", count=1)
+with rasterio.open(C / "dem_mosaic_wgs84.tif", "w", **prof) as o: o.write(mos[0], 1)
+DEMSRC = C / "dem_mosaic_wgs84.tif"
 # ---- heightmap (terrarium) ----
-dem = warp(C / "dem_90m.tif", HW, HH)
+dem = warp(DEMSRC, HW, HH)
+dem[dem < -100] = np.nan
 dem = np.where(np.isnan(dem), -40, np.maximum(dem, -40))
 v = dem + 32768.0
 rgb = np.dstack([np.floor(v / 256), np.floor(v % 256), np.floor((v - np.floor(v)) * 256)]).astype("uint8")
 Image.fromarray(rgb, "RGB").save(OUT / "dem.png", optimize=True)
 
 # ---- base texture: night hillshade ----
-demT = warp(C / "dem_90m.tif", TW, TH); land = ~np.isnan(demT); d = np.nan_to_num(demT, nan=0)
+demT = warp(DEMSRC, TW, TH); demT[demT < -100] = np.nan
+land = ~np.isnan(demT) & (demT > 0.5); d = np.nan_to_num(demT, nan=0)
 lat = np.linspace(N0, S0, TH)[:, None]; dx = (E0 - W0) / TW * 111320 * np.cos(np.radians(lat)); dy = (N0 - S0) / TH * 110540
 gy, gx = np.gradient(d); gx = gx / dx; gy = -gy / dy
 def shade(az, alt):
@@ -94,6 +109,7 @@ pl = lines(pw[pw["class"] == "power_line"].geometry.clip(regw), 0.001)
 subs = pw[pw["class"] == "substation"].copy(); subs["geometry"] = subs.geometry.centroid; subs = subs[subs.within(regw)]
 sp = [[round(p.x, 4), round(p.y, 4), int(z)] for p, z in zip(subs.geometry, z_at(subs.geometry.x, subs.geometry.y))]
 sol = gpd.read_file(R / "data/solar_plants.geojson"); sol["geometry"] = sol.to_crs(2100).centroid.to_crs(4326)
+sol = sol[sol.within(reg.geometry.iloc[0].buffer(0.01))]
 so = [[round(p.x, 4), round(p.y, 4), int(z)] for p, z in zip(sol.geometry, z_at(sol.geometry.x, sol.geometry.y))]
 loc = pd.read_parquet(C / "ov_localities.parquet"); loc = loc[loc["class"].isin(["city", "town"])]
 loc = gpd.GeoDataFrame(loc, geometry=gpd.points_from_xy(loc.lon, loc.lat), crs=4326)

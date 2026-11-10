@@ -11,4 +11,4 @@ A,"Road km major+minor+track (day 24: 42,400)",46727.42,42400.0,10.2,15,True,cla
 B,"Daniel-flooded land below 100 m, km2",743.8,764.24,2.7,15,True,tool thresholds on cell mean elevation; truth on 90 m pixels
 B,"Daniel-flooded land inside the hypothetical Tempe lake, km2",869.7,873.52,0.4,15,True,
 B,"Flat (<5 deg) land outside Natura and outside Daniel flood, km2",3351.4,3247.23,3.2,15,True,PV screening core
-B,"Solar-park area inside Natura 2000, km2",8.73,9.69,9.9,30,True,small numbers: grid error large
+B,"Solar-park area inside Natura 2000, km2",8.73,9.0,3.0,30,True,small numbers: grid error large

@@ -255,8 +255,8 @@ pre { font: 11px/1.5 var(--mono); color: var(--muted); white-space: pre-wrap; wo
     </div>
     <div class="swipe-ui" id="swipeUI" hidden>
       <div class="divider" id="divider" role="separator" aria-label="Σύρε για σύγκριση" tabindex="0"></div>
-      <div class="tag l">Πλημμύρα Daniel, Σεπ. 2023<small>Copernicus EMS EMSR692 · παρατήρηση</small></div>
-      <div class="tag r">Αν έκλειναν τα Τέμπη<small>σενάριο από DEM · στάθμη 121,6 m</small></div>
+      <div class="tag l" id="tagL">Πλημμύρα Daniel, Σεπ. 2023<small>Copernicus EMS EMSR692 · παρατήρηση</small></div>
+      <div class="tag r" id="tagR">Αν έκλειναν τα Τέμπη<small>σενάριο από DEM · στάθμη 121,6 m</small></div>
     </div>
     <div class="card" id="card" hidden></div>
     <div class="tour" id="tour" hidden role="status"><span class="tn" id="tourN"></span><p id="tourCap"></p><div class="tb"><button class="btn" id="tourNext">Επόμενο</button><button class="btn ghost" id="tourExit">Έξοδος</button></div></div>
@@ -272,6 +272,7 @@ pre { font: 11px/1.5 var(--mono); color: var(--muted); white-space: pre-wrap; wo
         <button id="mode-swipe" aria-pressed="false">Daniel ↔ Τέμπη</button>
         <button id="mode-sim" aria-pressed="false">Σενάριο στάθμης</button>
         <button id="mode-wx" aria-pressed="false">Πρόγνωση βροχής</button>
+        <button id="mode-today" aria-pressed="false">Σήμερα από δορυφόρο</button>
       </div>
       <div class="tl" id="wxUI" hidden>
         <div class="tlhead"><b id="wxTime"></b><span id="wxMax"></span></div>
@@ -436,7 +437,7 @@ function homeView() {            // default camera: the Thessaly plain (Kalambak
   const v = new deck.WebMercatorViewport({ width: w, height: h }).fitBounds([[21.5, 39.12], [23.02, 39.92]], { padding: Math.round(Math.min(w, h) * 0.03) });
   return { longitude: v.longitude + 0.02, latitude: v.latitude - 0.1, zoom: v.zoom + 0.05, pitch: 55, bearing: -6, maxPitch: 75 };
 }
-let WXB = null, WX = null, wxK = 8, wxThr = 40, wxPlayT = null, WXI = null, HAND = null, simK = 2, HANDTEX = null, openMore = false, failAt = null, EXC = [], showExcl = false, PIN = null, history = [], TOWNS = [], reveal = 1, revealT = null, EX = 2.5, LON, LAT, V = null, TL = null, tlIdx = 3, tlPlay = null;
+let S2W = null, WXB = null, WX = null, wxK = 8, wxThr = 40, wxPlayT = null, WXI = null, HAND = null, simK = 2, HANDTEX = null, openMore = false, failAt = null, EXC = [], showExcl = false, PIN = null, history = [], TOWNS = [], reveal = 1, revealT = null, EX = 2.5, LON, LAT, V = null, TL = null, tlIdx = 3, tlPlay = null;
 const IMG = {};
 const OV = [ // overlays: draped texture layers + vector layers
   { id: "landcover", l: "Κάλυψη γης", src: "ESA WorldCover 2021", kind: "tex", on: false, op: 0.55 },
@@ -722,6 +723,13 @@ function renderLegend() {
     L.append(el("div", "t", "Ανάγλυφο από Copernicus DEM · το αποτέλεσμα χρωματίζεται πάνω στον χάρτη όταν κάνεις ερώτηση"));
   } else if (mode === "query") {
     L.append(el("div", "t", spec && spec.score && spec.score.length ? "Χρώμα: βαθμολογία των περιοχών που πληρούν τα κριτήρια" : "Περιοχές που πληρούν τα κριτήρια"), ramp(AMBER), lab("0", "100"));
+  } else if (mode === "today") {
+    const inBox = i => LAT[i] > 39.38 && LAT[i] < 39.62 && LON[i] > 22.7 && LON[i] < 22.95;
+    let now = 0; if (S2W) S2W.idx.forEach((i, j) => { if (inBox(i)) now += S2W.share[j] / 100 * D.area[i]; });
+    let dan = 0; TL.frames.forEach(fr => { let a = 0; fr.forEach(f => { if (inBox(f[0])) a += f[1] / 100 * D.area[f[0]]; }); dan = Math.max(dan, a); });
+    const t = el("div", "t"); t.append(el("b", "big", fmt(now) + " km²"), document.createTextNode(" νερό σήμερα στην περιοχή της Κάρλας"));
+    L.append(t, el("div", "lab", `Μέγιστο στην ίδια περιοχή κατά τον Daniel: ${fmt(dan)} km² · νερό = NDWI > 0,1 στα ~125 m`));
+    L.append(el("div", "lab", `${S2W ? S2W.source : ""} · σκηνές ${S2W ? S2W.scenes.length : 0}`));
   } else if (mode === "wx") {
     L.append(el("div", "t", "Αθροιστική βροχή (mm) · λευκές γραμμές: 10, 25, 50, 100 mm"), ramp(RAINC), lab("0", "80+"));
     L.append(el("div", "lab", "Η πρόγνωση έχει σημεία ανά ~25 km· τα ενδιάμεσα χρώματα είναι εκτίμηση."));
@@ -882,11 +890,24 @@ let mode = "query";
 const GR_MONTH = d => { const [y, m, dd] = d.split("-"); return `${+dd} Σεπ ${y}`; };
 function setMode(m) {
   stopWx(); $("wxUI").hidden = m !== "wx"; if (m === "wx") setTimeout(() => { setWx(WX.steps.length - 1); flyView({ longitude: 21.62, latitude: 39.12, zoom: 7.85, pitch: 42, bearing: 0 }); }, 0);
-  mode = m; ["query", "time", "swipe", "sim", "wx"].forEach(k => $("mode-" + k).setAttribute("aria-pressed", m === k));
+  mode = m; ["query", "time", "swipe", "sim", "wx", "today"].forEach(k => $("mode-" + k).setAttribute("aria-pressed", m === k));
   $("simUI").hidden = m !== "sim"; renderModeInfo(); if (m !== "query" && innerWidth >= 820) document.querySelector(".layers").open = false; if (m === "sim") { HANDTEX = HANDTEX || composite([{ id: "flood", op: 0.35 }]); setSim(simK); }
-  $("swipeUI").hidden = m !== "swipe"; document.querySelector(".layers").hidden = m === "swipe"; $("map2").hidden = m !== "swipe"; $("card").hidden = true; $("tlUI").hidden = m !== "time";
+  const sw = m === "swipe" || m === "today";
+  $("swipeUI").hidden = !sw; document.querySelector(".layers").hidden = sw; $("map2").hidden = !sw; $("card").hidden = true; $("tlUI").hidden = m !== "time";
   stopTL();
+  if (m === "today" && IMG.s2) {
+    const mk = extra => { const c = document.createElement("canvas"); c.width = IMG.base.width; c.height = IMG.base.height; const g = c.getContext("2d");
+      g.drawImage(IMG.s2, 0, 0, c.width, c.height); if (extra) { g.globalAlpha = .9; g.drawImage(IMG[extra], 0, 0, c.width, c.height); g.globalAlpha = 1; } return c; };
+    TEX_L = mk("s2water"); TEX_R = mk("flood");
+    $("tagL").replaceChildren(document.createTextNode(`Σήμερα · ${S2W ? new Date(S2W.date).toLocaleDateString("el-GR", { day: "numeric", month: "long", year: "numeric" }) : ""}`), el("small", null, "Sentinel-2 · γαλάζιο: νερό (NDWI)"));
+    $("tagR").replaceChildren(document.createTextNode("Ίδια εικόνα + πλημμύρα Daniel"), el("small", null, "EMSR692, Σεπ. 2023"));
+    if (!deck2) deck2 = makeDeck($("map2"), []);
+    deck2.setProps({ viewState });
+    flyView({ longitude: 22.62, latitude: 39.38, zoom: 9.1, pitch: 45, bearing: -10 });
+  }
   if (m === "swipe") {
+    $("tagL").replaceChildren(document.createTextNode("Πλημμύρα Daniel, Σεπ. 2023"), el("small", null, "Copernicus EMS EMSR692 · παρατήρηση"));
+    $("tagR").replaceChildren(document.createTextNode("Αν έκλειναν τα Τέμπη"), el("small", null, "σενάριο από DEM · στάθμη 121,6 m"));
     TEX_L = composite([{ id: "flood", op: 0.95 }]); TEX_R = composite([{ id: "lake", op: 0.9 }]);
     if (!deck2) deck2 = makeDeck($("map2"), []);
     deck2.setProps({ viewState });
@@ -897,6 +918,7 @@ function setMode(m) {
 const MODEINFO = {
   time: ["Ο Daniel μέρα με τη μέρα", "Πώς απλώθηκε και υποχώρησε το νερό από 6 έως 22 Σεπτεμβρίου 2023, από 12 δορυφορικές λήψεις του Copernicus EMS. Πάτα αναπαραγωγή κάτω αριστερά."],
   swipe: ["Daniel ↔ λίμνη των Τεμπών", "Αριστερά η πραγματική πλημμύρα του 2023, δεξιά ο κάμπος αν έκλειναν τα Τέμπη. Σύρε τη γραμμή: σχεδόν όλη η πλημμύρα έπεσε μέσα στην αρχαία λεκάνη."],
+  today: ["Σήμερα από δορυφόρο", "Η πιο πρόσφατη καθαρή εικόνα Sentinel-2 της Θεσσαλίας, με το νερό σε γαλάζιο. Σύρε τη γραμμή για να τη συγκρίνεις με την έκταση της πλημμύρας του Daniel πάνω στην ίδια εικόνα. Η εικόνα ανανεώνεται όποτε υπάρχει νέα λήψη χωρίς σύννεφα (κάθε 2–5 μέρες)."],
   wx: ["Πρόγνωση βροχής 72 ωρών", "Αθροιστική βροχή από την πρόγνωση του MET Norway (μοντέλο ECMWF). Τα σημεία πρόγνωσης απέχουν ~25 km· ανάμεσά τους το χρώμα είναι εκτίμηση. Τα πορτοκαλί εξάγωνα είναι χαμηλή γη δίπλα σε ποτάμια (από το σενάριο στάθμης) όπου η πρόγνωση ξεπερνά το όριο που ορίζεις: πού αξίζει να κοιτάξει κανείς πρώτα. Με ένα κλικ βγαίνει σημείωμα για το ΚΕΣΥΠΠ με έκθεση ανά ενότητα και οικισμό. Δεν είναι πρόγνωση πλημμύρας."],
   sim: ["Σενάριο στάθμης νερού", "Τι πλημμυρίζει αν το νερό ανέβει Χ μέτρα πάνω από την κοίτη των ποταμών. Κάθε στάθμη ελέγχεται απέναντι στην πραγματική πλημμύρα του Daniel, ώστε να ξέρεις πόσο να εμπιστευτείς την προσομοίωση."],
 };
@@ -916,6 +938,36 @@ function renderModeInfo() {
   I.replaceChildren(); const [t, d] = MODEINFO[mode];
   const b = el("button", "btn ghost", "← Πίσω στο ερώτημα"); b.onclick = () => setMode("query");
   I.append(el("div", "eyebrow", "Τρέχουσα προβολή"), el("h2", null, t), el("p", "answer", d), b);
+  if (mode === "time") I.insertBefore(danielAgain(), b);
+}
+function danielExposure() {        // today's people and assets inside the 2023 flood extent (EMSR692 union), by regional unit
+  const byRU = [0, 1, 2].map(() => ({ km2: 0, pop: 0, pv: 0, crop: 0 })); const inF = new Set();
+  for (let i = 0; i < N; i++) { const f = D.flood[i]; if (f <= 0.05) continue; inF.add(i); const r = byRU[D.ru[i]];
+    r.km2 += f * D.area[i]; r.pop += f * D.pop[i]; r.pv += Math.max(0, D.solar[i]) * D.area[i] * f; r.crop += f * D.area[i] * Math.max(0, D.crop[i]); }
+  const hit = (x, y, ring) => { const h = h3.latLngToCell(y, x, 8); return h3.gridDisk(h, ring).some(c => IDXMAP.has(c) && inF.has(IDXMAP.get(c)) && D.flood[IDXMAP.get(c)] > 0.2); };
+  const towns = V.towns.filter(t => hit(t.x, t.y, 1)).map(t => t.n);
+  const subs = V.subs.filter(p => hit(p[0], p[1], 0)).length;
+  return { byRU, towns, subs };
+}
+function danielAgain() {
+  const e = danielExposure(), box = el("div", "cmp"); const tot = e.byRU.reduce((a, r) => ({ km2: a.km2 + r.km2, pop: a.pop + r.pop, pv: a.pv + r.pv, crop: a.crop + r.crop }), { km2: 0, pop: 0, pv: 0, crop: 0 });
+  box.append(el("div", "eyebrow", "Αν ερχόταν ξανά αύριο: τι θα βρισκόταν σήμερα μέσα στην ίδια έκταση"));
+  [["Έκταση", fmt(tot.km2) + " km²"], ["Κάτοικοι (σήμερα)", fmt(tot.pop)], ["Καλλιέργειες", fmt(tot.crop) + " km²"], ["Φωτοβολταϊκά πάρκα", fmt(tot.pv, 1) + " km²"], ["Υποσταθμοί (OSM)", String(e.subs)]].forEach(([l, v]) => { const r = el("div", "cmprow"); r.append(el("i"), el("span", null, l), el("b", null, v)); box.append(r); });
+  e.byRU.forEach((r, k) => box.append(el("div", "lab", `${RU[k]}: ${fmt(r.km2)} km² · ${fmt(r.pop)} κάτοικοι`)));
+  if (e.towns.length) box.append(el("div", "lab", "Οικισμοί μέσα ή δίπλα: " + e.towns.join(", ")));
+  box.append(el("div", "lab", "Η ίδια έκταση πάνω στα σημερινά δεδομένα (Kontur 2023, WorldCover 2021, OSM 2026). Δεν λαμβάνει υπόψη έργα που έγιναν μετά το 2023."));
+  const b = el("button", "btn ghost", "Σημείωμα για το ΚΕΣΥΠΠ"); b.onclick = () => {
+    const rows = e.byRU.map((r, k) => `<tr><td>${RU[k]}</td><td class=n>${fmt(r.km2)}</td><td class=n>${fmt(r.pop)}</td><td class=n>${fmt(r.crop)}</td></tr>`).join("");
+    const html = `<!doctype html><html lang="el"><meta charset="utf-8"><title>Αν ερχόταν ξανά ο Daniel</title><style>body{font:14px/1.5 system-ui,sans-serif;max-width:720px;margin:36px auto;padding:0 16px;color:#1b2230}table{border-collapse:collapse;width:100%}td,th{border-bottom:1px solid #e3e6ea;padding:5px 6px;text-align:left}.n{text-align:right;font-variant-numeric:tabular-nums}.w{background:#fff6e6;border:1px solid #f0cf8f;padding:10px 12px;border-radius:6px}</style>
+<h1>Αν ερχόταν ξανά ο Daniel</h1><p>Έκταση πλημμύρας Σεπτεμβρίου 2023 (Copernicus EMS EMSR692) πάνω στα σημερινά δεδομένα.</p>
+<p>Σύνολο: <b>${fmt(tot.km2)} km²</b> · <b>${fmt(tot.pop)}</b> κάτοικοι · ${fmt(tot.crop)} km² καλλιέργειες · ${fmt(tot.pv, 1)} km² φωτοβολταϊκά · ${e.subs} υποσταθμοί (OSM)</p>
+<table><tr><th>Ενότητα</th><th class=n>km²</th><th class=n>κάτοικοι</th><th class=n>καλλιέργειες km²</th></tr>${rows}</table>
+<p><b>Οικισμοί μέσα ή δίπλα:</b> ${e.towns.join(", ") || "—"}</p>
+<div class="w">Σενάριο επανάληψης ενός ιστορικού γεγονότος, όχι πρόβλεψη. Δεν λαμβάνει υπόψη έργα μετά το 2023. Πληθυσμός: μοντέλο Kontur 2023.</div></html>`;
+    if (!downloads) { b.textContent = "Η λήψη δεν είναι διαθέσιμη εδώ"; return; }
+    downloads.save({ filename: "daniel_ksana.html", data: html }).then(() => b.textContent = "Αποθηκεύτηκε").catch(() => b.textContent = "Η λήψη δεν ολοκληρώθηκε");
+  };
+  box.append(b); return box;
 }
 function setSim(k) {
   simK = k; $("simRange").value = k; const lv = HAND.levels[k];
@@ -966,6 +1018,7 @@ let tourK = -1, tourT = null;
 const TOUR = [
   { cap: "Ανθεκτική Θεσσαλία: 14.053 km² σε 17.504 εξάγωνα, με ανάγλυφο και 40+ ανοιχτά δεδομένα σε ένα κοινό πλέγμα.", run: () => { setMode("query"); spec = null; renderWelcome(); renderLegend(); redraw(); flyView(homeView()); } },
   { cap: "Σεπτέμβριος 2023: ο Daniel μέρα με τη μέρα, από 12 δορυφορικές λήψεις του Copernicus.", run: () => { setMode("time"); setTL(0); flyView({ longitude: 22.2, latitude: 39.5, zoom: 8.6, pitch: 55, bearing: -20 }); setTimeout(() => { if (tourK === 1) playTL(); }, 600); }, wait: 14500 },
+  { cap: "Σήμερα από δορυφόρο: πόσο νερό έχει η Κάρλα τώρα, δίπλα στην έκταση του Daniel. Σύρε τη γραμμή.", run: () => { if (IMG.s2) setMode("today"); }, wait: 9000 },
   { cap: "Κάρλα: πού έμεινε το νερό τις περισσότερες μέρες, η βάση για τεκμηριωμένες αποφάσεις παραχώρησης.", run: () => { const p = PRESETS[1]; setMode("query"); $("q").value = p.q; apply(structuredClone(p.spec), "preset", true, p.q, false); }, wait: 8500 },
   { cap: "Αντιπλημμυρικά: πού ζουν οι περισσότεροι σε χαμηλή γη δίπλα σε ποτάμι, για ιεράρχηση έργων και καθαρισμών.", run: () => { const p = PRESETS[0]; $("q").value = p.q; apply(structuredClone(p.spec), "preset", true, p.q, false); }, wait: 8500 },
   { cap: "Σενάριο στάθμης +3 m: πιάνει το 83% της πραγματικής πλημμύρας. Περίπου μία στις δύο επισημάνσεις είναι ψευδής: πρώτο φίλτρο, όχι χάρτης κινδύνου.", run: () => { setMode("sim"); setSim(HAND.levels.indexOf(HAND.best.level)); flyView({ longitude: 22.2, latitude: 39.5, zoom: 8.5, pitch: 52, bearing: -15 }); }, wait: 9000 },
@@ -989,6 +1042,7 @@ function tourGo(k) {
     [D, V, TL, HAND] = await Promise.all(["data.json", "assets/vectors.json", "assets/daniel_timeline.json", "assets/hand.json"].map(u => fetch(u).then(r => r.json())));
     try { WX = await (await fetch("assets/forecast.json", { cache: "no-store" })).json(); } catch { WX = null; }
     const names = ["base", "landcover", "natura", "flood", "lake"], files = ["assets/base.jpg", "assets/ov_landcover.png", "assets/ov_natura.png", "assets/ov_flood.png", "assets/ov_lake.png"];
+    try { [IMG.s2, IMG.s2water] = await Promise.all([loadImg("assets/s2_today.jpg"), loadImg("assets/s2_water.png")]); S2W = await (await fetch("assets/s2_water.json")).json(); } catch { IMG.s2 = null; }
     (await Promise.all(files.map(loadImg))).forEach((im, k) => IMG[names[k]] = im);
   } catch (e) { $("loading").textContent = "Τα δεδομένα δεν φορτώθηκαν."; return; }
   N = D.h3.length; IDX = [...Array(N).keys()]; IDXMAP = new Map(D.h3.map((h, i) => [h, i]));
@@ -1007,7 +1061,8 @@ function tourGo(k) {
   deck1 = makeDeck($("map"), queryLayers());
   $("loading").remove(); renderLegend(); renderLayersPanel(); initSwipe();
   if (innerWidth >= 820 && innerHeight < 720) document.querySelector(".layers").open = false;
-  ["query", "time", "swipe", "sim", "wx"].forEach(k => $("mode-" + k).onclick = () => setMode(k));
+  ["query", "time", "swipe", "sim", "wx", "today"].forEach(k => $("mode-" + k).onclick = () => setMode(k));
+  if (!IMG.s2) $("mode-today").hidden = true;
   if (WX) {
     WXI = new Int16Array(N); WXB = new Float32Array(WX.rain_cum_mm.length).fill(-1);
     for (let i = 0; i < N; i++) { WXI[i] = wxIdx(i); WXB[WXI[i]] = Math.max(WXB[WXI[i]], D.elev[i]); }

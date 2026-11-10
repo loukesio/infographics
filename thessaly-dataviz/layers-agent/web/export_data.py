@@ -36,7 +36,11 @@ polys = [b] if b.geom_type == "Polygon" else list(b.geoms)
 out["border"] = [[[round(x, 4), round(y, 4)] for x, y in p.exterior.coords] for p in polys if p.area > 1e-5]
 sub = pd.read_csv(R / "data/deddie/deddie_substations_thessaly_2026-11-10.csv")
 out["deddie"] = [[r.substation, round(r.lat, 5), round(r.lon, 5), round(r.margin_mva, 1), round(r.max_tr_margin_mva, 1), int(r.n_res)] for r in sub.itertuples()]
-wk = pd.read_csv(R / "data/region_flood_works_points.csv")
-out["works"] = [[r.place, r.lat, r.lon, r.status, round(r.budget_eur), r.name[:120]] for r in wk.itertuples()]
+loc = pd.read_parquet(R / "cache/ov_localities.parquet"); loc = loc[loc["class"].isin(["village", "hamlet"])]
+loc = gpd.GeoDataFrame(loc, geometry=gpd.points_from_xy(loc.lon, loc.lat), crs=4326)
+loc = loc[loc.within(gpd.read_file(R / "data/border_el61.geojson").to_crs(4326).geometry.iloc[0].buffer(0.003))]
+loc = loc.assign(pp=loc.population.fillna(0)).sort_values(["class", "pp"], ascending=[False, False])
+out["vill"] = [[r.nm, round(r.lat, 4), round(r.lon, 4), 0 if r["class"] == "village" else 1, int(r.pp)] for _, r in loc.iterrows()]
+print(len(out["vill"]), "villages/hamlets")
 s = json.dumps(out, separators=(",", ":"))
 (R / "web/data.json").write_text(s); print(len(s) / 1e6, "MB", len(out["h3"]))

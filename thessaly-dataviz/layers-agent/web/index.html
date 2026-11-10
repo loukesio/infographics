@@ -490,6 +490,7 @@ function evaluate() {
 
 // ---------- rendering ----------
 const BOUNDS = [20.9, 38.8, 24.4, 40.3];
+let ZB = 0;                      // zoom bucket: 0 towns only, 1 + villages, 2 + hamlets
 let deck1, deck2, viewState = { longitude: 22.3, latitude: 39.4, zoom: 8.4, pitch: 55, bearing: -6, maxPitch: 75 };
 function homeView() {            // default camera: the Thessaly plain (Kalambaka to Volos, Elassona to Almyros) fitted to the map area at any screen size
   const st = document.getElementById("stage"), w = Math.max(320, st.clientWidth), h = Math.max(300, st.clientHeight);
@@ -510,9 +511,8 @@ const OV = [ // overlays: draped texture layers + vector layers
   { id: "rivers", l: "Ποτάμια", src: "OSM", kind: "vec", on: true },
   { id: "deddie", l: "Υποσταθμοί ΔΕΔΔΗΕ: ελεύθερο περιθώριο ΑΠΕ", src: "ΔΕΔΔΗΕ 10/11/2026", kind: "vec", on: false },
   { id: "grid", l: "Γραμμές ΥΤ & υποσταθμοί", src: "OSM", kind: "vec", on: false },
-  { id: "works", l: "Αντιπλημμυρικά έργα Περιφέρειας (θέση κατά προσέγγιση)", src: "Τεχνικό Πρόγραμμα 2026, διαγωνισμοί", kind: "vec", on: false },
   { id: "solar", l: "Φωτοβολταϊκά πάρκα", src: "OSM", kind: "vec", on: false },
-  { id: "towns", l: "Οικισμοί", src: "OSM/Overture", kind: "vec", on: true },
+  { id: "towns", l: "Οικισμοί (χωριά εμφανίζονται με ζουμ)", src: "OSM/Overture", kind: "vec", on: true },
 ];
 const ov = id => OV.find(o => o.id === id);
 
@@ -546,12 +546,6 @@ function vectorLayers(id) {
       fontFamily: "Fira Sans, sans-serif", fontWeight: 600, getColor: r => col(r), outlineWidth: 3, outlineColor: [13, 21, 34, 255], fontSettings: { sdf: true, fontSize: 64, buffer: 6 },
       getTextAnchor: "start", getAlignmentBaseline: "center", getPixelOffset: [9, 0], billboard: true, parameters: { depthTest: false }, updateTriggers: { getPosition: EX } }));
   }
-  if (ov("works") && ov("works").on && D.works) {
-    const zc = r => { const i = IDXMAP.get(h3.latLngToCell(r[1], r[2], 8)); return i === undefined ? 0 : Math.max(0, D.elev[i]); };
-    const col = r => r[3] === "νέο 2026" ? [92, 194, 142] : r[3] === "σε εξέλιξη" ? [111, 182, 235] : [200, 200, 210];
-    L.push(new deck.ScatterplotLayer({ id: id + "wk", data: D.works, pickable: true, getPosition: r => [r[2], r[1], zOf(zc(r), 120)], getRadius: r => 4 + Math.sqrt(r[4] / 1e5), radiusUnits: "pixels",
-      getFillColor: col, getLineColor: [13, 21, 34], lineWidthUnits: "pixels", getLineWidth: 1.5, stroked: true, parameters: { depthTest: false }, updateTriggers: { getPosition: EX } }));
-  }
   if (ov("solar").on) L.push(new deck.ScatterplotLayer({ id: id + "sol", data: V.solar, getPosition: p => [p[0], p[1], zOf(p[2], 60)], getRadius: 2.2, radiusUnits: "pixels", getFillColor: [255, 214, 120, 230], updateTriggers: { getPosition: EX } }));
   if (ov("towns").on) {
     const towns = TOWNS;
@@ -559,6 +553,16 @@ function vectorLayers(id) {
       getSize: t => (t.p || 0) > 50000 ? 15 : (t.p || 0) > 10000 ? 12.5 : 11, characterSet: "auto", fontFamily: "Fira Sans, sans-serif", fontWeight: 600,
       getColor: t => t.n === "Όλυμπος" ? [210, 200, 255] : [236, 241, 247], outlineWidth: 3, outlineColor: [13, 21, 34, 255], fontSettings: { sdf: true, fontSize: 64, buffer: 6 },
       getTextAnchor: "middle", getAlignmentBaseline: "bottom", getPixelOffset: [0, -4], billboard: true, parameters: { depthTest: false }, updateTriggers: { getPosition: EX } }));
+    if (D.vill && ZB > 0) {
+      const vz = r => { const i = IDXMAP.get(h3.latLngToCell(r[1], r[2], 8)); return i === undefined ? 0 : Math.max(0, D.elev[i]); };
+      const vd = D.vill.filter(r => r[3] === 0 || ZB > 1);
+      const ext = false && deck.CollisionFilterExtension ? { extensions: [new deck.CollisionFilterExtension()], collisionEnabled: true, getCollisionPriority: r => (r[3] ? 0 : 1000) + Math.min(r[4], 999) } : {};
+      L.push(new deck.TextLayer({ id: id + "vill" + ZB, data: vd, getPosition: r => [r[2], r[1], zOf(vz(r), 60)], getText: r => r[0], getSize: r => r[3] ? 11 : 12.5,
+        characterSet: "auto", fontFamily: "Fira Sans, sans-serif", fontWeight: 500, getColor: r => r[3] ? [200, 210, 222, 220] : [226, 233, 241, 240],
+        outlineWidth: 2, outlineColor: [13, 21, 34, 230], fontSettings: { sdf: true, fontSize: 64, buffer: 6 }, getTextAnchor: "middle", getAlignmentBaseline: "bottom", getPixelOffset: [0, -3],
+        billboard: true, parameters: { depthTest: false }, updateTriggers: { getPosition: EX }, ...ext }));
+      L.push(new deck.ScatterplotLayer({ id: id + "vdot" + ZB, data: vd, getPosition: r => [r[2], r[1], zOf(vz(r), 30)], getRadius: 1.6, radiusUnits: "pixels", getFillColor: [226, 233, 241, 200], parameters: { depthTest: false }, updateTriggers: { getPosition: EX } }));
+    }
     L.push(new deck.ScatterplotLayer({ id: id + "tdot", data: towns, getPosition: t => [t.x, t.y, zOf(t.z, 40)], getRadius: 2.5, radiusUnits: "pixels", getFillColor: [236, 241, 247], parameters: { depthTest: false }, updateTriggers: { getPosition: EX } }));
   }
   return L;
@@ -748,7 +752,6 @@ function cellAt(info) {
 }
 function tooltip(info) {
   const o = info.object, lid = info.layer && info.layer.id || "";
-  if (Array.isArray(o) && lid.endsWith("wk")) return { html: `<b>${o[0]}</b> (θέση οικισμού, όχι του έργου)<br>${o[5]}<br>${o[3]} · ${fmt(o[4] / 1e6, 2)} εκ. €` };
   if (Array.isArray(o) && lid.endsWith("dd")) return { html: `<b>Υ/Σ ${o[0]}</b><br>Ελεύθερο περιθώριο ΑΠΕ: ${fmt(o[3], 1)} MVA (μεγαλύτερο σε μετασχηματιστή: ${fmt(o[4], 1)})<br>${fmt(o[5])} σταθμοί ΑΠΕ · ΔΕΔΔΗΕ 10/11/2026` };
   if (o && typeof o === "object" && !Array.isArray(o)) {
     if (o.mm != null) { const p = o.p; if (o.gr) return { text: `${o.n}: ${o.gr} (6ωρο από +${Math.floor(wxK / 2) * 6} ώρες) · ${fmt(WX.temp_c[p][wxK], 0)} °C · άνεμος ${fmt(WX.wind_ms[p][wxK], 0)} m/s · βροχή ως τότε ${fmt(o.mm, 1)} mm` }; return { text: `${fmt(o.mm, 1)} mm έως +${wxK * 3} ώρες · ${fmt(WX.temp_c[p][wxK], 0)} °C · άνεμος ${fmt(WX.wind_ms[p][wxK], 0)} m/s` }; }
@@ -764,8 +767,8 @@ function tooltip(info) {
 }
 function makeDeck(container, layers) {
   return new deck.Deck({ parent: container, initialViewState: viewState, controller: { inertia: true }, layers,
-    getTooltip: tooltip, onClick: info => { const lid = info.layer && info.layer.id || ""; if (lid.endsWith("wk") || lid.endsWith("dd")) return; const i = cellAt(info); if (i >= 0 && (!info.object || typeof info.object !== "object" || Array.isArray(info.object))) showCard(i); },
-    onViewStateChange: ({ viewState: vs }) => { viewState = vs; stopOrbit(); if (deck1) deck1.setProps({ viewState: vs }); if (deck2) deck2.setProps({ viewState: vs }); return vs; },
+    getTooltip: tooltip, onClick: info => { const lid = info.layer && info.layer.id || ""; if (lid.endsWith("dd")) return; const i = cellAt(info); if (i >= 0 && (!info.object || typeof info.object !== "object" || Array.isArray(info.object))) showCard(i); },
+    onViewStateChange: ({ viewState: vs }) => { viewState = vs; { const zb = vs.zoom >= 10.6 ? 2 : vs.zoom >= 9.4 ? 1 : 0; if (zb !== ZB) { ZB = zb; setTimeout(redraw, 0); } } stopOrbit(); if (deck1) deck1.setProps({ viewState: vs }); if (deck2) deck2.setProps({ viewState: vs }); return vs; },
     viewState, style: { position: "absolute", inset: 0 }, parameters: { clearColor: [13 / 255, 21 / 255, 34 / 255, 1] },
     effects: [new deck.LightingEffect({ amb: new deck.AmbientLight({ color: [255, 255, 255], intensity: 1.1 }),
       sun: new deck.DirectionalLight({ color: [255, 244, 225], intensity: 1.6, direction: [-3, -6, -4] }) })] });

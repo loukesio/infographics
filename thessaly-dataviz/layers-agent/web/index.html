@@ -4,6 +4,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Commissioner:wght@500;650;800&family=Fira+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
 <script src="https://unpkg.com/deck.gl@8.9.35/dist.min.js"></script>
 <script src="https://unpkg.com/h3-js@4.1.0/dist/h3-js.umd.js"></script>
+<script src="https://unpkg.com/earcut@2.2.4/dist/earcut.min.js"></script>
 <style>
 /* Layout: map-first operations room. Map fills the screen; the agent works in a docked right panel;
    one quiet bar on top, a mode switch + legend bottom-left. Single deliberate dark look (night survey table). */
@@ -512,6 +513,41 @@ function loadCity(k) {
     BLD[k] = { items }; if (CITYNOW === k) { redraw(); renderLegend(); }
   }).catch(() => { delete BLD[k]; });
 }
+// ---- aerial orthophotos (local demo only): relayed by serve_local.py from the Hellenic Cadastre viewing service; the hosted page cannot load them ----
+let ORTHO = false, OPK = "";
+const OLIFT = 45, ODX = 0.02, ODY = 0.015, OPATCH = {};
+const orthoOn = () => ORTHO && ov("ortho") && ov("ortho").on && CITYNOW && DEMH;
+function orthoKey(vs) { return ORTHO && cityAt(vs) && vs.zoom >= 12.2 ? Math.floor(vs.longitude / ODX) + "_" + Math.floor(vs.latitude / ODY) : ""; }
+function orthoLayers(id) {       // one photo quad per ~1.7 km patch around the camera target; corners sit on the DEM so neighbours meet
+  if (!orthoOn() || viewState.zoom < 12.2) return [];
+  const c = CITY[CITYNOW], cx = Math.floor(viewState.longitude / ODX), cy = Math.floor(viewState.latitude / ODY), L = [];
+  const zc = (x, y) => zOf(demZ(x, y), OLIFT);
+  for (let i = cx - 2; i <= cx + 2; i++) for (let j = cy - 2; j <= cy + 2; j++) {
+    const x0 = +(i * ODX).toFixed(4), y0 = +(j * ODY).toFixed(4), x1 = +(x0 + ODX).toFixed(4), y1 = +(y0 + ODY).toFixed(4);
+    if (x1 < c[1] - .01 || x0 > c[3] + .01 || y1 < c[2] - .01 || y0 > c[4] + .01) continue;
+    const k = i + "_" + j; let P = OPATCH[k];
+    if (!P) { P = OPATCH[k] = { img: null, x0, y0, city: CITYNOW }; loadImg(`/ortho?bbox=${x0},${y0},${x1},${y1}&w=1536&h=1490`).then(im => { P.img = im; redraw(); }).catch(() => { delete OPATCH[k]; }); }
+    if (P.img && !P.roof && BLD[CITYNOW] && BLD[CITYNOW].items) P.roof = roofMesh(BLD[CITYNOW].items, x0, y0, x1, y1);
+    if (P.img) L.push(new deck.BitmapLayer({ id: id + "or" + k, image: P.img, bounds: [[x0, y0, zc(x0, y0)], [x0, y1, zc(x0, y1)], [x1, y1, zc(x1, y1)], [x1, y0, zc(x1, y0)]], pickable: false }));
+  }
+  return L;
+}
+function roofMesh(items, x0, y0, x1, y1) {   // one textured mesh with the roofs of the buildings outside flood zones in this patch: the aerial photo is laid on each roof
+  const mx = 111320 * Math.cos((y0 + y1) / 2 * Math.PI / 180), my = 110574, pos = [], uv = [], idx = [];
+  for (const d of items) { if (d.f & 7) continue; const c = d.poly[0]; if (c[0] < x0 || c[0] >= x1 || c[1] < y0 || c[1] >= y1) continue;
+    const flat = []; for (const q of d.poly) flat.push(q[0], q[1]); const tri = earcut(flat), base = pos.length / 3, z = zOf(d.z, 1) + d.h + OLIFT + 0.4;
+    for (const q of d.poly) { pos.push((q[0] - x0) * mx, (q[1] - y0) * my, z); uv.push((q[0] - x0) / (x1 - x0), (y1 - q[1]) / (y1 - y0)); }
+    for (const t of tri) idx.push(base + t); }
+  if (!idx.length) return null; const nrm = new Float32Array(pos.length); for (let i = 2; i < nrm.length; i += 3) nrm[i] = 1;
+  return { attributes: { POSITION: { value: new Float32Array(pos), size: 3 }, TEXCOORD_0: { value: new Float32Array(uv), size: 2 }, NORMAL: { value: nrm, size: 3 } }, indices: { value: new Uint32Array(idx), size: 1 } };
+}
+function roofLayers(id) {
+  if (!orthoOn() || viewState.zoom < 12.2 || !window.earcut) return [];
+  const L = []; for (const k in OPATCH) { const P = OPATCH[k]; if (!P.img || !P.roof || P.city !== CITYNOW) continue;
+    L.push(new deck.SimpleMeshLayer({ id: id + "rf" + k, data: [0], mesh: P.roof, texture: P.img, getPosition: () => [P.x0, P.y0, 0], getOrientation: [0, 0, 0], pickable: false,
+      material: { ambient: .9, diffuse: .25, shininess: 2, specularColor: [10, 10, 10] }, parameters: { cull: false } })); }
+  return L;
+}
 let ZB = 0;                      // zoom bucket: 0 towns only, 1 + villages, 2 + hamlets
 let deck1, deck2, viewState = { longitude: 22.3, latitude: 39.4, zoom: 8.4, pitch: 55, bearing: -6, maxPitch: 75 };
 function homeView() {            // default camera: the Thessaly plain (Kalambaka to Volos, Elassona to Almyros) fitted to the map area at any screen size
@@ -554,7 +590,7 @@ function terrain(id, tex) {
 }
 const zOf = (z, lift = 0) => Math.max(0, z) * EX + lift;
 function vectorLayers(id) {
-  const L = [];
+  const L = [...orthoLayers(id)];
   if (ov("rivers").on) L.push(new deck.PathLayer({ id: id + "riv", data: V.rivers, getPath: p => p.map(q => [q[0], q[1], zOf(q[2], 25)]), getColor: [111, 182, 235, 210], widthUnits: "pixels", getWidth: 1.6, updateTriggers: { getPath: EX } }));
   if (ov("grid").on) {
     L.push(new deck.PathLayer({ id: id + "pl", data: V.lines, getPath: p => p.map(q => [q[0], q[1], zOf(q[2], 120)]), getColor: [242, 163, 58, 170], widthUnits: "pixels", getWidth: 1.2, updateTriggers: { getPath: EX } }));
@@ -572,7 +608,8 @@ function vectorLayers(id) {
   if (ov("bld") && ov("bld").on && CITYNOW && BLD[CITYNOW] && BLD[CITYNOW].items) {
     // extruded from sea level up to ground + building height: the part below the terrain mesh is hidden by the depth test, so each volume stands on the ground
     L.push(new deck.SolidPolygonLayer({ id: id + "bld" + CITYNOW, data: BLD[CITYNOW].items, pickable: true, getPolygon: d => d.poly, getFillColor: d => BCOL(d.f),
-      extruded: true, getElevation: d => zOf(d.z, 1) + d.h, material: { ambient: .5, diffuse: .65, shininess: 18, specularColor: [50, 50, 55] }, updateTriggers: { getElevation: EX } }));
+      extruded: true, getElevation: d => zOf(d.z, 1) + d.h + (orthoOn() ? OLIFT : 0), material: { ambient: .5, diffuse: .65, shininess: 18, specularColor: [50, 50, 55] }, updateTriggers: { getElevation: [EX, orthoOn()] } }));
+    L.push(...roofLayers(id));
   }
   if (ov("solar").on) L.push(new deck.ScatterplotLayer({ id: id + "sol", data: V.solar, getPosition: p => [p[0], p[1], zOf(p[2], 60)], getRadius: 2.2, radiusUnits: "pixels", getFillColor: [255, 214, 120, 230], updateTriggers: { getPosition: EX } }));
   if (ov("towns").on) {
@@ -797,7 +834,7 @@ function tooltip(info) {
 function makeDeck(container, layers) {
   return new deck.Deck({ parent: container, initialViewState: viewState, controller: { inertia: true }, layers,
     getTooltip: tooltip, onClick: info => { const lid = info.layer && info.layer.id || ""; if (lid.endsWith("dd") || lid.includes("bld")) return; const i = cellAt(info); if (i >= 0 && (!info.object || typeof info.object !== "object" || Array.isArray(info.object))) showCard(i); },
-    onViewStateChange: ({ viewState: vs }) => { viewState = vs; { const zb = vs.zoom >= 10.6 ? 2 : vs.zoom >= 9.4 ? 1 : 0, ck = cityAt(vs); if (ck && ov("bld").on) loadCity(ck); if (zb !== ZB || ck !== CITYNOW) { ZB = zb; CITYNOW = ck; setTimeout(() => { redraw(); renderLegend(); }, 0); } } stopOrbit(); if (deck1) deck1.setProps({ viewState: vs }); if (deck2) deck2.setProps({ viewState: vs }); return vs; },
+    onViewStateChange: ({ viewState: vs }) => { viewState = vs; { const zb = vs.zoom >= 10.6 ? 2 : vs.zoom >= 9.4 ? 1 : 0, ck = cityAt(vs); if (ck && ov("bld").on) loadCity(ck); const ok_ = orthoKey(vs); if (zb !== ZB || ck !== CITYNOW || ok_ !== OPK) { ZB = zb; CITYNOW = ck; OPK = ok_; setTimeout(() => { redraw(); renderLegend(); }, 0); } } stopOrbit(); if (deck1) deck1.setProps({ viewState: vs }); if (deck2) deck2.setProps({ viewState: vs }); return vs; },
     viewState, style: { position: "absolute", inset: 0 }, parameters: { clearColor: [13 / 255, 21 / 255, 34 / 255, 1] },
     effects: [new deck.LightingEffect({ amb: new deck.AmbientLight({ color: [255, 255, 255], intensity: 1.1 }),
       sun: new deck.DirectionalLight({ color: [255, 244, 225], intensity: 1.6, direction: [-3, -6, -4] }) })] });
@@ -840,6 +877,7 @@ function renderLegend() {
       L.append(t, row(BCOL(4), `Πλημμύρισε στον Daniel εκτός ζώνης 1000 ετών: ${fmt(c(f => (f & 4) && !(f & 2)))}`), row(BCOL(6), `Πλημμύρισε στον Daniel, εντός ζώνης: ${fmt(c(f => (f & 4) && (f & 2)))}`),
         row(BCOL(1), `Επίσημη ζώνη 100 ετών: ${fmt(c(f => !(f & 4) && (f & 1)))}`), row(BCOL(2), `Επίσημη ζώνη 1000 ετών: ${fmt(c(f => !(f & 4) && !(f & 1) && (f & 2)))}`), row(BCOL(0), "Εκτός ζωνών"));
       if (CITYNOW === "volos") L.append(el("div", "lab", "Ο Daniel δεν χαρτογραφήθηκε στην πόλη του Βόλου (EMSR692): εδώ φαίνονται μόνο οι επίσημες ζώνες."));
+      if (orthoOn()) L.append(el("div", "lab", "Έδαφος: ορθοφωτογραφίες © Ελληνικό Κτηματολόγιο (υπηρεσία θέασης, ζωντανά· μόνο στην τοπική έκδοση)."));
       L.append(el("div", "lab", "Κτίριο = κάθε κατασκευή (Overture/OSM), όχι κατοικία. Ύψη: OSM όπου υπάρχουν, αλλιώς μέσο ύψος δόμησης της γειτονιάς (JRC GHSL 2018).")); }
     return;
   }
@@ -1208,6 +1246,8 @@ function tourGo(k) {
   if (innerWidth >= 820 && innerHeight < 720) document.querySelector(".layers").open = false;
   ["query", "time", "swipe", "sim", "wx", "today"].forEach(k => $("mode-" + k).onclick = () => setMode(k));
   if (!IMG.s2) { $("mode-today").hidden = true; OV.splice(OV.findIndex(o => o.id === "s2"), 2); }
+  if (location.hostname === "localhost" || location.hostname === "127.0.0.1") fetch("/ortho?ping=1").then(r => r.ok ? r.json() : null).then(j => { if (j && j.ok) { ORTHO = true;
+    OV.splice(OV.findIndex(o => o.id === "bld") + 1, 0, { id: "ortho", l: "Αεροφωτογραφίες Κτηματολογίου (στις 4 πόλεις, με ζουμ)", src: "Ελληνικό Κτηματολόγιο · ζωντανά, μόνο τοπικά", kind: "vec", on: true }); renderLayersPanel(); } }).catch(() => {});
   else if (S2W) { const d = new Date(S2W.date).toLocaleDateString("el-GR", { day: "numeric", month: "long", year: "numeric" }); ov("s2").src = `Copernicus Sentinel-2 · ${d}`; ov("s2water").src = `Sentinel-2 · ${d}`; }
   if (WX) {
     WXI = new Int16Array(N); WXB = new Float32Array(WX.rain_cum_mm.length).fill(-1);

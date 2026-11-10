@@ -137,6 +137,7 @@ pre { font: 11px/1.5 var(--mono); color: var(--muted); white-space: pre-wrap; wo
 .tlrow input { width: 100%; accent-color: var(--water); }
 .big { color: var(--sun); font: 600 20px var(--mono); }
 
+.goto { pointer-events: auto; font: 600 12px var(--body); color: var(--ink); background: color-mix(in srgb, var(--panel) 88%, transparent); border: 1px solid color-mix(in srgb, var(--ink) 35%, transparent); border-radius: 999px; padding: 5px 10px; max-width: 190px; }
 .tourbtn.home { background: transparent; color: var(--ink); border: 1px solid color-mix(in srgb, var(--ink) 35%, transparent); }
 .brand { cursor: pointer; pointer-events: auto; }
 .tourbtn { pointer-events: auto; font: 600 12px var(--body); color: var(--bg); background: var(--ink); border: 0; border-radius: 999px; padding: 6px 12px; cursor: pointer; }
@@ -258,6 +259,7 @@ pre { font: 11px/1.5 var(--mono); color: var(--muted); white-space: pre-wrap; wo
       <div class="brand">Θεσσαλία <span>·</span> Layers Agent</div>
       <button class="tourbtn home" id="homeBtn" title="Επιστροφή στην αρχική" aria-label="Αρχική">⌂ Αρχική</button>
       <button class="tourbtn" id="tourBtn">▶ Ξενάγηση</button>
+      <select class="goto" id="goto" aria-label="Μετάβαση σε οικισμό με κτίρια"><option value="">Μετάβαση σε οικισμό…</option></select>
       <div class="stats" id="stats">H3 res 8 · 17.504 κελιά · 14.053 km² · 40+ layers</div>
     </div>
     <div class="swipe-ui" id="swipeUI" hidden>
@@ -493,6 +495,8 @@ function evaluate() {
 // ---------- rendering ----------
 const BOUNDS = [20.9, 38.8, 24.4, 40.3];
 const CITY = { larisa: ["Λάρισα", 22.355, 39.595, 22.475, 39.675], volos: ["Βόλος", 22.895, 39.335, 22.995, 39.405], trikala: ["Τρίκαλα", 21.725, 39.525, 21.805, 39.585], karditsa: ["Καρδίτσα", 21.885, 39.34, 21.955, 39.39] };
+const PLACES = {"p00":["Τύρναβος",22.2682,39.7239,22.3082,39.7539],"p01":["Φαρκαδόνα",22.0489,39.5773,22.0889,39.6073],"p02":["Σοφάδες",22.0772,39.3225,22.1172,39.3525],"p03":["Αμπελώνας",22.3427,39.7322,22.3827,39.7622],"p04":["Μεγάλα Καλύβια",21.7677,39.4834,21.8077,39.5134],"p05":["Νέα Μεσάγγαλα",22.6938,39.9406,22.7218,39.9616],"p06":["Βλοχός",22.077,39.5105,22.105,39.5315],"p07":["Μαραθέα",21.9815,39.521,22.0095,39.542],"p08":["Μεταμόρφωση",22.0399,39.4967,22.0679,39.5177],"p09":["Κρανιά",21.8216,39.4361,21.8496,39.4571],"p10":["Καλογριανά",21.8585,39.4549,21.8865,39.4759],"p11":["Κοσκινάς",21.9983,39.4827,22.0263,39.5037],"p12":["Κουλούρι",22.4256,39.6935,22.4536,39.7145],"p13":["Κλοκοτός",21.996,39.5537,22.024,39.5747],"p14":["Βαλομάνδρι",21.6852,39.5375,21.7132,39.5585],"p15":["Διαλεκτό",21.6379,39.5839,21.6659,39.6049],"p16":["Φύλλο",22.1699,39.4211,22.1979,39.4421],"p17":["Σαρακήνα",21.6237,39.6519,21.6517,39.6729],"p18":["Παλαμάς",22.063,39.452,22.103,39.482],"p19":["Κεραμίδι",22.071,39.5495,22.099,39.5705]};   // extra settlements with building-level data (filled by pipeline/s23_places_inline.py)
+Object.assign(CITY, PLACES);
 const BLD = {}; let CITYNOW = null;   // per-city building footprints, fetched the first time the camera zooms into that city
 const BCOL = f => (f & 4) ? ((f & 2) ? [79, 163, 224] : [240, 96, 80]) : (f & 1) ? [150, 100, 235] : (f & 2) ? [190, 170, 235] : [216, 210, 200];
 let DEMH = null;                  // decoded heightmap (same file the terrain mesh uses), so buildings sit on the ground
@@ -502,7 +506,10 @@ function demZ(lon, lat) { if (!DEMH) return null; const { H, w, h } = DEMH, fx =
   const x = Math.max(0, Math.min(w - 2, Math.floor(fx))), y = Math.max(0, Math.min(h - 2, Math.floor(fy))), tx = fx - x, ty = fy - y, i = y * w + x;
   return (H[i] * (1 - tx) + H[i + 1] * tx) * (1 - ty) + (H[i + w] * (1 - tx) + H[i + w + 1] * tx) * ty; }
 const BLAB = f => (f & 4) ? ((f & 2) ? "Πλημμύρισε στον Daniel (ήταν μέσα σε επίσημη ζώνη)" : "Πλημμύρισε στον Daniel ενώ ήταν ΕΚΤΟΣ επίσημης ζώνης 1000 ετών") : (f & 1) ? "Σε επίσημη ζώνη πλημμύρας 100 ετών" : (f & 2) ? "Σε επίσημη ζώνη πλημμύρας 1000 ετών" : "Εκτός επίσημων ζωνών· δεν πλημμύρισε στον Daniel";
-function cityAt(vs) { if (vs.zoom < 11.4) return null; for (const k in CITY) { const c = CITY[k]; if (vs.longitude > c[1] - .02 && vs.longitude < c[3] + .02 && vs.latitude > c[2] - .02 && vs.latitude < c[4] + .02) return k; } return null; }
+function cityAt(vs) { if (vs.zoom < 11.4) return null; let best = null, bd = 1e9;   // nearest centre among the places whose (padded) box contains the camera target
+  for (const k in CITY) { const c = CITY[k]; if (vs.longitude > c[1] - .012 && vs.longitude < c[3] + .012 && vs.latitude > c[2] - .012 && vs.latitude < c[4] + .012) {
+    const d = Math.hypot((vs.longitude - (c[1] + c[3]) / 2) * .77, vs.latitude - (c[2] + c[4]) / 2); if (d < bd) { bd = d; best = k; } } }
+  return best; }
 function loadCity(k) {
   if (BLD[k]) return; BLD[k] = { loading: true };
   Promise.all([fetch(`assets/bld_${k}.json`).then(r => r.json()), DEMP]).then(([j]) => {
@@ -514,7 +521,7 @@ function loadCity(k) {
   }).catch(() => { delete BLD[k]; });
 }
 // ---- aerial orthophotos (local demo only): relayed by serve_local.py from the Hellenic Cadastre viewing service; the hosted page cannot load them ----
-let ORTHO = false, OPK = "", OKEYS = null;   // ORTHO: false | "live" (local relay) | "static" (tiles shipped with a private copy of the page)
+let ORTHO = false, OPK = "", OKEYS = null, LOKEYS = null;   // ORTHO: false | "live" (local relay) | "static" (tiles shipped with a private copy of the page)
 const OLIFT = 45, ODX = 0.02, ODY = 0.015, OPATCH = {};
 const orthoOn = () => ORTHO && ov("ortho") && ov("ortho").on && CITYNOW && DEMH;
 function orthoKey(vs) { return ORTHO && cityAt(vs) && vs.zoom >= 12.2 ? Math.floor(vs.longitude / ODX) + "_" + Math.floor(vs.latitude / ODY) : ""; }
@@ -529,9 +536,9 @@ function orthoLayers(id) {       // photo quads per ~1.7 km patch; corners sit o
     const k = i + "_" + j; let P = OPATCH[k];
     if (st && !OKEYS.has(k)) continue;
     if (!P) { P = OPATCH[k] = { img: null, lo: null, hiReq: false, x0, y0, city: CITYNOW };
-      if (st) loadImg(`assets/ortho/lo/${k}.jpg`).then(im => { P.lo = im; redraw(); }).catch(() => {}); }
+      if (st && LOKEYS.has(k)) loadImg(`assets/ortho/lo/${k}.jpg`).then(im => { P.lo = im; redraw(); }).catch(() => {}); }
     const near = Math.abs(i - cx) <= 1 && Math.abs(j - cy) <= 1;
-    if (!P.hiReq && (!st || near)) { P.hiReq = true; loadImg(st ? `assets/ortho/${k}.jpg` : `/ortho?bbox=${x0},${y0},${x1},${y1}&w=1536&h=1490`).then(im => { P.img = im; redraw(); }).catch(() => { P.hiReq = false; }); }
+    if (!P.hiReq && (!st || near || !LOKEYS.has(k))) { P.hiReq = true; loadImg(st ? `assets/ortho/${k}.jpg` : `/ortho?bbox=${x0},${y0},${x1},${y1}&w=1536&h=1490`).then(im => { P.img = im; redraw(); }).catch(() => { P.hiReq = false; }); }
     const im = P.img || P.lo; if (!im) continue;
     if (!P.roof && BLD[CITYNOW] && BLD[CITYNOW].items) P.roof = roofMesh(BLD[CITYNOW].items, x0, y0, x1, y1);
     L.push(new deck.BitmapLayer({ id: id + "or" + k, image: im, bounds: [[x0, y0, zc(x0, y0)], [x0, y1, zc(x0, y1)], [x1, y1, zc(x1, y1)], [x1, y0, zc(x1, y0)]], pickable: false }));
@@ -1254,7 +1261,7 @@ function tourGo(k) {
   if (!IMG.s2) { $("mode-today").hidden = true; OV.splice(OV.findIndex(o => o.id === "s2"), 2); }
   else if (S2W) { const d = new Date(S2W.date).toLocaleDateString("el-GR", { day: "numeric", month: "long", year: "numeric" }); ov("s2").src = `Copernicus Sentinel-2 · ${d}`; ov("s2water").src = `Sentinel-2 · ${d}`; }
   { const addOrtho = (kind, src) => { if (ORTHO) return; ORTHO = kind; OV.splice(OV.findIndex(o => o.id === "bld") + 1, 0, { id: "ortho", l: "Αεροφωτογραφίες Κτηματολογίου (στις 4 πόλεις, με ζουμ)", src, kind: "vec", on: true }); renderLayersPanel(); };
-    fetch("assets/ortho/manifest.json").then(r => r.ok ? r.json() : null).then(j => { if (j && j.keys) { OKEYS = new Set(j.keys); addOrtho("static", "© Ελληνικό Κτηματολόγιο"); } }).catch(() => {});
+    fetch("assets/ortho/manifest.json").then(r => r.ok ? r.json() : null).then(j => { if (j && j.keys) { OKEYS = new Set(j.keys); LOKEYS = new Set(j.lokeys || (j.lo ? j.keys : [])); addOrtho("static", "© Ελληνικό Κτηματολόγιο"); } }).catch(() => {});
     if (location.hostname === "localhost" || location.hostname === "127.0.0.1") fetch("/ortho?ping=1").then(r => r.ok ? r.json() : null).then(j => { if (j && j.ok) addOrtho("live", "Ελληνικό Κτηματολόγιο · ζωντανά, μόνο τοπικά"); }).catch(() => {}); }
   if (WX) {
     WXI = new Int16Array(N); WXB = new Float32Array(WX.rain_cum_mm.length).fill(-1);
@@ -1270,6 +1277,10 @@ function tourGo(k) {
     const first = WX.steps.findIndex(t => new Date(t) >= Date.now() - 3 * 36e5); if (first > 0) wxK = Math.max(wxK, first);
   } else $("mode-wx").hidden = true;
   $("simRange").max = HAND.levels.length - 1; $("simRange").oninput = () => setSim(+$("simRange").value);
+  { const G = $("goto"), ks = Object.keys(CITY), big = ks.filter(k => !/^p\d/.test(k)), rest = ks.filter(k => /^p\d/.test(k)).sort((a, b) => CITY[a][0].localeCompare(CITY[b][0], "el"));
+    const grp = (label, list) => { const og = document.createElement("optgroup"); og.label = label; list.forEach(k => { const o = document.createElement("option"); o.value = k; o.textContent = CITY[k][0]; og.append(o); }); G.append(og); };
+    grp("Πόλεις", big); if (rest.length) grp("Κωμοπόλεις και χωριά με κτίρια σε κίνδυνο", rest);
+    G.onchange = () => { const c = CITY[G.value]; if (!c) return; if (tourK >= 0) tourGo(-1); flyView({ longitude: (c[1] + c[3]) / 2, latitude: (c[2] + c[4]) / 2, zoom: /^p\d/.test(G.value) ? 14.4 : 13.6, pitch: 55, bearing: 15 }); G.value = ""; }; }
   $("homeBtn").onclick = goHome; document.querySelector(".brand").onclick = goHome;
   $("tourBtn").onclick = () => tourGo(0); $("tourNext").onclick = () => tourGo(tourK + 1); $("tourExit").onclick = () => tourGo(-1);
   window.claude?.use?.("downloads")?.then(d => downloads = d).catch(() => {});

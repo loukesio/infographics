@@ -1247,10 +1247,10 @@ function tourGo(k) {
   if (innerWidth >= 820 && innerHeight < 720) document.querySelector(".layers").open = false;
   ["query", "time", "swipe", "sim", "wx", "today"].forEach(k => $("mode-" + k).onclick = () => setMode(k));
   if (!IMG.s2) { $("mode-today").hidden = true; OV.splice(OV.findIndex(o => o.id === "s2"), 2); }
+  else if (S2W) { const d = new Date(S2W.date).toLocaleDateString("el-GR", { day: "numeric", month: "long", year: "numeric" }); ov("s2").src = `Copernicus Sentinel-2 · ${d}`; ov("s2water").src = `Sentinel-2 · ${d}`; }
   { const addOrtho = (kind, src) => { if (ORTHO) return; ORTHO = kind; OV.splice(OV.findIndex(o => o.id === "bld") + 1, 0, { id: "ortho", l: "Αεροφωτογραφίες Κτηματολογίου (στις 4 πόλεις, με ζουμ)", src, kind: "vec", on: true }); renderLayersPanel(); };
     fetch("assets/ortho/manifest.json").then(r => r.ok ? r.json() : null).then(j => { if (j && j.keys) { OKEYS = new Set(j.keys); addOrtho("static", "© Ελληνικό Κτηματολόγιο · ιδιωτικό αντίγραφο, όχι για κοινοποίηση"); } }).catch(() => {});
     if (location.hostname === "localhost" || location.hostname === "127.0.0.1") fetch("/ortho?ping=1").then(r => r.ok ? r.json() : null).then(j => { if (j && j.ok) addOrtho("live", "Ελληνικό Κτηματολόγιο · ζωντανά, μόνο τοπικά"); }).catch(() => {}); }
-  else if (S2W) { const d = new Date(S2W.date).toLocaleDateString("el-GR", { day: "numeric", month: "long", year: "numeric" }); ov("s2").src = `Copernicus Sentinel-2 · ${d}`; ov("s2water").src = `Sentinel-2 · ${d}`; }
   if (WX) {
     WXI = new Int16Array(N); WXB = new Float32Array(WX.rain_cum_mm.length).fill(-1);
     for (let i = 0; i < N; i++) { WXI[i] = wxIdx(i); WXB[WXI[i]] = Math.max(WXB[WXI[i]], D.elev[i]); }

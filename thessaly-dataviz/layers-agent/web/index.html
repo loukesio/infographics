@@ -514,7 +514,7 @@ function loadCity(k) {
   }).catch(() => { delete BLD[k]; });
 }
 // ---- aerial orthophotos (local demo only): relayed by serve_local.py from the Hellenic Cadastre viewing service; the hosted page cannot load them ----
-let ORTHO = false, OPK = "";
+let ORTHO = false, OPK = "", OKEYS = null;   // ORTHO: false | "live" (local relay) | "static" (tiles shipped with a private copy of the page)
 const OLIFT = 45, ODX = 0.02, ODY = 0.015, OPATCH = {};
 const orthoOn = () => ORTHO && ov("ortho") && ov("ortho").on && CITYNOW && DEMH;
 function orthoKey(vs) { return ORTHO && cityAt(vs) && vs.zoom >= 12.2 ? Math.floor(vs.longitude / ODX) + "_" + Math.floor(vs.latitude / ODY) : ""; }
@@ -526,7 +526,8 @@ function orthoLayers(id) {       // one photo quad per ~1.7 km patch around the 
     const x0 = +(i * ODX).toFixed(4), y0 = +(j * ODY).toFixed(4), x1 = +(x0 + ODX).toFixed(4), y1 = +(y0 + ODY).toFixed(4);
     if (x1 < c[1] - .01 || x0 > c[3] + .01 || y1 < c[2] - .01 || y0 > c[4] + .01) continue;
     const k = i + "_" + j; let P = OPATCH[k];
-    if (!P) { P = OPATCH[k] = { img: null, x0, y0, city: CITYNOW }; loadImg(`/ortho?bbox=${x0},${y0},${x1},${y1}&w=1536&h=1490`).then(im => { P.img = im; redraw(); }).catch(() => { delete OPATCH[k]; }); }
+    if (ORTHO === "static" && !OKEYS.has(k)) continue;
+    if (!P) { P = OPATCH[k] = { img: null, x0, y0, city: CITYNOW }; loadImg(ORTHO === "static" ? `assets/ortho/${k}.jpg` : `/ortho?bbox=${x0},${y0},${x1},${y1}&w=1536&h=1490`).then(im => { P.img = im; redraw(); }).catch(() => { delete OPATCH[k]; }); }
     if (P.img && !P.roof && BLD[CITYNOW] && BLD[CITYNOW].items) P.roof = roofMesh(BLD[CITYNOW].items, x0, y0, x1, y1);
     if (P.img) L.push(new deck.BitmapLayer({ id: id + "or" + k, image: P.img, bounds: [[x0, y0, zc(x0, y0)], [x0, y1, zc(x0, y1)], [x1, y1, zc(x1, y1)], [x1, y0, zc(x1, y0)]], pickable: false }));
   }
@@ -877,7 +878,7 @@ function renderLegend() {
       L.append(t, row(BCOL(4), `Πλημμύρισε στον Daniel εκτός ζώνης 1000 ετών: ${fmt(c(f => (f & 4) && !(f & 2)))}`), row(BCOL(6), `Πλημμύρισε στον Daniel, εντός ζώνης: ${fmt(c(f => (f & 4) && (f & 2)))}`),
         row(BCOL(1), `Επίσημη ζώνη 100 ετών: ${fmt(c(f => !(f & 4) && (f & 1)))}`), row(BCOL(2), `Επίσημη ζώνη 1000 ετών: ${fmt(c(f => !(f & 4) && !(f & 1) && (f & 2)))}`), row(BCOL(0), "Εκτός ζωνών"));
       if (CITYNOW === "volos") L.append(el("div", "lab", "Ο Daniel δεν χαρτογραφήθηκε στην πόλη του Βόλου (EMSR692): εδώ φαίνονται μόνο οι επίσημες ζώνες."));
-      if (orthoOn()) L.append(el("div", "lab", "Έδαφος: ορθοφωτογραφίες © Ελληνικό Κτηματολόγιο (υπηρεσία θέασης, ζωντανά· μόνο στην τοπική έκδοση)."));
+      if (orthoOn()) L.append(el("div", "lab", ORTHO === "static" ? "Έδαφος και στέγες: ορθοφωτογραφίες © Ελληνικό Κτηματολόγιο. Ιδιωτικό αντίγραφο: μην κοινοποιείς αυτόν τον σύνδεσμο." : "Έδαφος και στέγες: ορθοφωτογραφίες © Ελληνικό Κτηματολόγιο (υπηρεσία θέασης, ζωντανά· μόνο στην τοπική έκδοση)."));
       L.append(el("div", "lab", "Κτίριο = κάθε κατασκευή (Overture/OSM), όχι κατοικία. Ύψη: OSM όπου υπάρχουν, αλλιώς μέσο ύψος δόμησης της γειτονιάς (JRC GHSL 2018).")); }
     return;
   }
@@ -1246,8 +1247,9 @@ function tourGo(k) {
   if (innerWidth >= 820 && innerHeight < 720) document.querySelector(".layers").open = false;
   ["query", "time", "swipe", "sim", "wx", "today"].forEach(k => $("mode-" + k).onclick = () => setMode(k));
   if (!IMG.s2) { $("mode-today").hidden = true; OV.splice(OV.findIndex(o => o.id === "s2"), 2); }
-  if (location.hostname === "localhost" || location.hostname === "127.0.0.1") fetch("/ortho?ping=1").then(r => r.ok ? r.json() : null).then(j => { if (j && j.ok) { ORTHO = true;
-    OV.splice(OV.findIndex(o => o.id === "bld") + 1, 0, { id: "ortho", l: "Αεροφωτογραφίες Κτηματολογίου (στις 4 πόλεις, με ζουμ)", src: "Ελληνικό Κτηματολόγιο · ζωντανά, μόνο τοπικά", kind: "vec", on: true }); renderLayersPanel(); } }).catch(() => {});
+  { const addOrtho = (kind, src) => { if (ORTHO) return; ORTHO = kind; OV.splice(OV.findIndex(o => o.id === "bld") + 1, 0, { id: "ortho", l: "Αεροφωτογραφίες Κτηματολογίου (στις 4 πόλεις, με ζουμ)", src, kind: "vec", on: true }); renderLayersPanel(); };
+    fetch("assets/ortho/manifest.json").then(r => r.ok ? r.json() : null).then(j => { if (j && j.keys) { OKEYS = new Set(j.keys); addOrtho("static", "© Ελληνικό Κτηματολόγιο · ιδιωτικό αντίγραφο, όχι για κοινοποίηση"); } }).catch(() => {});
+    if (location.hostname === "localhost" || location.hostname === "127.0.0.1") fetch("/ortho?ping=1").then(r => r.ok ? r.json() : null).then(j => { if (j && j.ok) addOrtho("live", "Ελληνικό Κτηματολόγιο · ζωντανά, μόνο τοπικά"); }).catch(() => {}); }
   else if (S2W) { const d = new Date(S2W.date).toLocaleDateString("el-GR", { day: "numeric", month: "long", year: "numeric" }); ov("s2").src = `Copernicus Sentinel-2 · ${d}`; ov("s2water").src = `Sentinel-2 · ${d}`; }
   if (WX) {
     WXI = new Int16Array(N); WXB = new Float32Array(WX.rain_cum_mm.length).fill(-1);

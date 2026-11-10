@@ -348,6 +348,17 @@ const CAT = {
   track:  {l:"Χωματόδρομοι", u:"km", src:"OSM", d:"μήκος track στο κελί"},
   ru:     {l:"Περιφερειακή ενότητα", u:"0/1/2", src:"Eurostat NUTS-3", d:"0=Λάρισα, 1=Καρδίτσα+Τρίκαλα, 2=Μαγνησία+Σποράδες"},
   hand3:  {l:"Χαμηλή γη δίπλα σε ποτάμι", u:"0-1", src:"μοντέλο HAND (DEM)", d:"μερίδιο κάτω από +3 m πάνω από την κοίτη ποταμού (βαθμονομημένο στον Daniel: πιάνει 83%, ~1 στους 2 ψευδείς συναγερμούς)"},
+  q100:   {l:"Επίσημη ζώνη πλημμύρας 100 ετών", u:"0-1", src:"ΥΠΕΝ ΣΔΚΠ EL08, 2ος κύκλος", d:"μερίδιο στην πλημμυρική έκταση Q100 των επίσημων χαρτών επικινδυνότητας (βροχές έως 2022, πριν τον Daniel)"},
+  q1000:  {l:"Επίσημη ζώνη πλημμύρας 1000 ετών", u:"0-1", src:"ΥΠΕΝ ΣΔΚΠ EL08, 2ος κύκλος", d:"μερίδιο στην έκταση Q1000 (ακραίο σενάριο)"},
+  q50:    {l:"Επίσημη ζώνη πλημμύρας 50 ετών", u:"0-1", src:"ΥΠΕΝ ΣΔΚΠ EL08, 2ος κύκλος", d:"μερίδιο στην έκταση Q50"},
+  histfl: {l:"Ιστορικά πλημμυρικά συμβάντα", u:"πλήθος", src:"ΥΠΕΝ ΣΔΚΠ EL08", d:"καταγεγραμμένα συμβάντα (σημεία) στο κελί"},
+  archA:  {l:"Αρχαιολογική ζώνη Α", u:"0-1", src:"ΥΠΠΟ Αρχαιολογικό Κτηματολόγιο (2020)", d:"μερίδιο σε οριοθετημένη ζώνη απόλυτης προστασίας Α· αποκλείεται για ΦΒ (ΕΧΠ ΑΠΕ). Μόνο 28 οριοθετημένες ζώνες στη Θεσσαλία: ελλιπές"},
+  darch:  {l:"Απόσταση από αρχαιολογική ζώνη Α", u:"km", src:"ΥΠΠΟ", d:"<1 km → μελέτη θέασης για ΦΒ (ΕΧΠ ΑΠΕ)"},
+  roadless:{l:"Περιοχή χωρίς δρόμους", u:"0-1", src:"Πανεπ. Ιωαννίνων 2022 (CC BY)", d:"μερίδιο σε περιοχή χωρίς δρόμους· το ΕΧΠ αποκλείει όσες ορίσει ο ΥΠΕΝ (ο επίσημος κατάλογος μπορεί να διαφέρει)"},
+  forest: {l:"Δάσος/θαμνώνες (προσέγγιση)", u:"0-1", src:"WorldCover 2021", d:"δέντρα+θάμνοι· ΠΡΟΣΕΓΓΙΣΗ του δασικού χάρτη, που είναι ο νόμιμος αποκλεισμός"},
+  wetl:   {l:"Υγρότοπος", u:"0-1", src:"WorldCover 2021", d:"ποώδης υγρότοπος"},
+  pe:     {l:"Περιφερειακή Ενότητα (επίσημη)", u:"κωδ.", src:"ΥΠΕΝ/ΥΠΕΣ όρια", d:"0=Λάρισα, 1=Μαγνησία, 2=Σποράδες, 3=Καρδίτσα, 4=Τρίκαλα"},
+  dimos:  {l:"Δήμος", u:"κωδ.", src:"OSM", d:"δείκτης στη λίστα δήμων"},
   lat:    {l:"Γεωγραφικό πλάτος", u:"°", src:"H3", d:"κέντρο κελιού"},
   lon:    {l:"Γεωγραφικό μήκος", u:"°", src:"H3", d:"κέντρο κελιού"},
 };
@@ -376,6 +387,24 @@ const PRESETS = [
       filters: [{col:"solar", op:">", value:0, label:"Έχει φωτοβολταϊκό"}, {col:"natura", op:">", value:0.5, label:"Κυρίως σε Natura 2000"}],
       score: [{col:"solar", dir:"high", cap:0.3, w:1, label:"Κάλυψη με πάνελ"}],
       caveats: ["Natura ≠ απαγόρευση: πολλές ζώνες SPA επιτρέπουν ΑΠΕ με περιβαλλοντική αδειοδότηση.", "Τα πάρκα είναι από OSM· επαλήθευση με ΡΑΑΕΥ πριν από οποιοδήποτε συμπέρασμα."] } },
+  { s: "Daniel έξω από τους επίσημους χάρτες", q: "Πού πλημμύρισε ο Daniel ενώ οι επίσημοι χάρτες δεν έδειχναν κίνδυνο ούτε για 1000 χρόνια;",
+    spec: { title: "Daniel: πλημμύρισε έξω από τους επίσημους χάρτες", answer: "Περιοχές που πλημμύρισαν στον Daniel αλλά βρίσκονταν εκτός ακόμη και της ζώνης 1000 ετών των επίσημων χαρτών επικινδυνότητας (ΣΔΚΠ, 2ος κύκλος). Δείχνει πού χρειάζεται αναθεώρηση των χαρτών.",
+      filters: [{col:"mapped", op:">", value:0.5, label:"Χαρτογραφήθηκε στον Daniel"}, {col:"flood", op:">", value:0.2, label:"Πλημμύρισε στον Daniel (>20%)"}, {col:"q1000", op:"<", value:0.05, label:"Εκτός επίσημης ζώνης 1000 ετών"}],
+      score: [{col:"pop", dir:"high", cap:300, w:0.5, label:"Κάτοικοι"}, {col:"flood", dir:"high", cap:1, w:0.5, label:"Μερίδιο πλημμύρας"}],
+      caveats: ["Οι επίσημοι χάρτες καλύπτουν μόνο τα ποτάμια που μελετήθηκαν (Ζώνες Δυνητικά Υψηλού Κινδύνου)· εκτός ζώνης δεν σημαίνει «χωρίς κίνδυνο» αλλά «δεν μελετήθηκε» ή «δεν προβλέφθηκε».", "Οι χάρτες χρησιμοποιούν βροχές έως το 2022 και ο Daniel ήταν γεγονός πολύ πάνω από αυτές· ο 3ος κύκλος (μετά τον Daniel) δεν έχει δημοσιευθεί ακόμη ως GIS."] } },
+  { s: "Νέο ΦΒ: εκτός αποκλεισμών ΕΧΠ", q: "Πού μπορεί να μπει νέο φωτοβολταϊκό σύμφωνα με το νέο Ειδικό Χωροταξικό ΑΠΕ;",
+    spec: { title: "Νέο φωτοβολταϊκό: εκτός ζωνών αποκλεισμού (ΕΧΠ ΑΠΕ 2026)", answer: "Επίπεδη, μη δομημένη γη εκτός Natura 2000, δάσους/θαμνώνων, αρχαιολογικής ζώνης Α, περιοχών χωρίς δρόμους και υγροτόπων, βαθμολογημένη για σύνδεση. Πρώτο φίλτρο, όχι γνωμοδότηση.",
+      filters: [{col:"natura", op:"<", value:0.05, label:"Εκτός Natura 2000"}, {col:"forest", op:"<", value:0.2, label:"Χωρίς δάσος/θαμνώνες (προσέγγιση)"}, {col:"archA", op:"==", value:0, label:"Εκτός αρχαιολογικής ζώνης Α"},
+        {col:"roadless", op:"<", value:0.05, label:"Εκτός περιοχής χωρίς δρόμους"}, {col:"wetl", op:"<", value:0.05, label:"Εκτός υγροτόπου"}, {col:"flat", op:">=", value:0.7, label:"Επίπεδο (≥70% κάτω από 5°)"}, {col:"built", op:"<", value:0.1, label:"Όχι δομημένο"}],
+      score: [{col:"dsub", dir:"low", cap:8, w:0.5, label:"Κοντά σε υποσταθμό"}, {col:"q100", dir:"low", cap:1, w:0.3, label:"Εκτός επίσημης ζώνης πλημμύρας"}, {col:"droad", dir:"low", cap:2, w:0.2, label:"Κοντά σε άσφαλτο"}],
+      caveats: ["Ο νόμιμος αποκλεισμός είναι ο κυρωμένος δασικός χάρτης· εδώ χρησιμοποιείται κάλυψη γης ως προσέγγιση.", "Λείπουν: αποστάσεις από οικισμούς, μνημεία χωρίς οριοθετημένη ζώνη, αναβαθμίδες, γη υψηλής παραγωγικότητας, περιθώριο δικτύου ΔΕΔΔΗΕ.", "Το όριο 1,5% ανά ΠΕ αφορά νέους σταθμούς χωρίς περιβαλλοντική άδεια (σημείωμα ΥΠΕΝ, διαβούλευση Μαΐου 2026)· το τελικό ΦΕΚ δεν διαβάστηκε."] } },
+  { s: "Μπαταρίες (BESS)", q: "Πού να μπει σταθμός αποθήκευσης: δίπλα σε υποσταθμό, εκτός πλημμύρας και αποκλεισμών;",
+    spec: { title: "Σταθμοί αποθήκευσης (BESS): πρώτο φίλτρο", answer: "Επίπεδη γη έως 3 km από υποσταθμό και 1 km από άσφαλτο, εκτός επίσημης ζώνης πλημμύρας 1000 ετών, εκτός πλημμύρας Daniel και χαμηλής γης δίπλα σε ποτάμι, εκτός ζωνών αποκλεισμού.",
+      filters: [{col:"dsub", op:"<=", value:3, label:"Έως 3 km από υποσταθμό"}, {col:"droad", op:"<=", value:1, label:"Έως 1 km από άσφαλτο"}, {col:"flat", op:">=", value:0.7, label:"Επίπεδο"},
+        {col:"q1000", op:"<", value:0.05, label:"Εκτός επίσημης ζώνης πλημμύρας 1000 ετών"}, {col:"flood", op:"<", value:0.05, label:"Δεν πλημμύρισε στον Daniel"}, {col:"hand3", op:"<", value:0.1, label:"Όχι χαμηλή γη δίπλα σε ποτάμι"},
+        {col:"natura", op:"<", value:0.05, label:"Εκτός Natura 2000"}, {col:"forest", op:"<", value:0.2, label:"Χωρίς δάσος (προσέγγιση)"}, {col:"pop", op:"<", value:50, label:"Λίγοι κάτοικοι (<50)"}],
+      score: [{col:"dsub", dir:"low", cap:3, w:0.6, label:"Κοντά σε υποσταθμό"}, {col:"dmajor", dir:"low", cap:5, w:0.2, label:"Κοντά σε κύριο δρόμο"}, {col:"crop", dir:"high", cap:1, w:0.2, label:"Αγροτική γη (εύκολη πρόσβαση)"}],
+      caveats: ["Το κρίσιμο κριτήριο, το περιθώριο ισχύος κάθε υποσταθμού (ΔΕΔΔΗΕ «Περιθώρια ΑΠΕ»), δεν έχει ενσωματωθεί ακόμη.", "Υποσταθμοί από OSM (71), πιθανώς ελλιπείς· «Δεν πλημμύρισε» ισχύει μόνο όπου ο Daniel χαρτογραφήθηκε."] } },
   { s: "Agrivoltaics", q: "Επίπεδη αγροτική γη εκτός Natura, που δεν πλημμύρισε, κοντά σε υποσταθμό (agrivoltaics)",
     spec: { title: "Πρώτο φίλτρο για agrivoltaics", answer: "Επίπεδα χωράφια εκτός Natura 2000, εκτός της πλημμύρας του Daniel και έως 5 km από υποσταθμό, βαθμολογημένα για σύνδεση και πρόσβαση.",
       filters: [
@@ -445,6 +474,8 @@ const OV = [ // overlays: draped texture layers + vector layers
   { id: "natura", l: "Natura 2000", src: "EEA", kind: "tex", on: false, op: 0.9 },
   { id: "flood", l: "Πλημμύρα Daniel (σύνολο)", src: "EMSR692", kind: "tex", on: false, op: 0.9 },
   { id: "lake", l: "Λίμνη Τεμπών (σενάριο)", src: "DEM", kind: "tex", on: false, op: 0.85 },
+  { id: "official", l: "Επίσημες ζώνες πλημμύρας Q100/Q1000", src: "ΥΠΕΝ ΣΔΚΠ", kind: "tex", on: false, op: 0.85 },
+  { id: "excl", l: "Αποκλεισμοί ΕΧΠ: αρχαιολ. ζώνη Α, χωρίς δρόμους", src: "ΥΠΠΟ, Παν. Ιωαννίνων", kind: "tex", on: false, op: 0.9 },
   { id: "rivers", l: "Ποτάμια", src: "OSM", kind: "vec", on: true },
   { id: "grid", l: "Γραμμές ΥΤ & υποσταθμοί", src: "OSM", kind: "vec", on: false },
   { id: "solar", l: "Φωτοβολταϊκά πάρκα", src: "OSM", kind: "vec", on: false },
@@ -836,12 +867,13 @@ function apply(s, src, fly, q, followup) {
   evaluate(); renderResult(src); renderLegend(); $("card").hidden = true; animateReveal(); if (fly && deck1) flyTo(RES);
   if (fly && innerWidth < 820) try { $("stage").scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" }); } catch {}
 }
+function placeName(i) { const d = D.dimoi && D.dimos[i] >= 0 ? "Δ. " + D.dimoi[D.dimos[i]] : null, p = D.pe_names && D.pe[i] >= 0 ? "ΠΕ " + D.pe_names[D.pe[i]] : RU[D.ru[i]]; return d ? `${d}, ${p}` : p; }
 function showCard(i) {
   const C = $("card"); C.replaceChildren(); C.hidden = false;
   const x = el("button", "x", "×"); x.setAttribute("aria-label", "Κλείσιμο"); x.onclick = () => C.hidden = true;
-  C.append(x, el("h3", null, `${RU[D.ru[i]]} · κελί ${D.h3[i].slice(-6)}`));
+  C.append(x, el("h3", null, `${placeName(i)} · κελί ${D.h3[i].slice(-6)}`));
   const dl = el("dl");
-  const rows = [["elev", 0], ["slope", 1], ["crop", 2], ["tree", 2], ["built", 2], ["pop", 0], ["flood", 2], ["lake", 2], ["natura", 2], ["dsub", 1], ["droad", 1], ["solar", 3], ["thr", 0]];
+  const rows = [["elev", 0], ["slope", 1], ["crop", 2], ["tree", 2], ["built", 2], ["pop", 0], ["flood", 2], ["q100", 2], ["q1000", 2], ["lake", 2], ["natura", 2], ["archA", 2], ["roadless", 2], ["dsub", 1], ["droad", 1], ["solar", 3], ["thr", 0]].filter(([c]) => D[c]);
   rows.forEach(([c, d]) => { const v = D[c][i]; dl.append(el("dt", null, CAT[c].l), el("dd", null, v < 0 ? "—" : (CAT[c].u === "0-1" ? fmt(v * 100) + "%" : fmt(v, d) + " " + CAT[c].u))); });
   C.append(dl);
   if (D.mapped[i] < 0.5) C.append(el("div", "lab", "Εκτός χαρτογράφησης EMSR692: η πλημμύρα εδώ είναι άγνωστη."));
@@ -857,14 +889,14 @@ let downloads = null;
 function dossier(i, btn) {
   const esc = t => String(t).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   const val = c => { const v = D[c][i]; return v < 0 ? "—" : (CAT[c].u === "0-1" ? fmt(v * 100) + "%" : fmt(v, 2) + " " + CAT[c].u); };
-  const rows = Object.keys(CAT).filter(c => D[c] && c !== "ru").map(c => `<tr><td>${esc(CAT[c].l)}</td><td class=n>${esc(val(c))}</td><td class=s>${esc(CAT[c].src)}</td></tr>`).join("");
+  const rows = Object.keys(CAT).filter(c => D[c] && !["ru", "pe", "dimos", "lat", "lon"].includes(c)).map(c => `<tr><td>${esc(CAT[c].l)}</td><td class=n>${esc(val(c))}</td><td class=s>${esc(CAT[c].src)}</td></tr>`).join("");
   const crit = spec && !spec.refuse ? spec.filters.map((f, k) => `<li>${OPS[f.op](D[f.col][i], f.value) ? "✓" : "✕"} ${esc(f.label)}${enabled[k] ? "" : " (ανενεργό)"}</li>`).join("") : "";
   const today = new Date().toISOString().slice(0, 10);
   const html = `<!doctype html><html lang="el"><meta charset="utf-8"><title>Φάκελος τοποθεσίας ${D.h3[i]}</title><style>body{font:14px/1.5 system-ui,sans-serif;max-width:760px;margin:40px auto;padding:0 16px;color:#1b2230}h1{font-size:22px;margin:0 0 4px}small,.s{color:#667}table{border-collapse:collapse;width:100%;margin:12px 0}td{border-bottom:1px solid #e3e6ea;padding:5px 6px}.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}.c{background:#fff6e6;border:1px solid #f0cf8f;padding:10px 12px;border-radius:6px}</style>
-<h1>Φάκελος τοποθεσίας</h1><small>Κελί H3 ${D.h3[i]} · ${esc(RU[D.ru[i]])} · κέντρο ${LAT[i].toFixed(4)}, ${LON[i].toFixed(4)} · έκταση ${fmt(D.area[i], 2)} km² · εξαγωγή ${today}</small>
+<h1>Φάκελος τοποθεσίας</h1><small>Κελί H3 ${D.h3[i]} · ${esc(placeName(i))} · κέντρο ${LAT[i].toFixed(4)}, ${LON[i].toFixed(4)} · έκταση ${fmt(D.area[i], 2)} km² · εξαγωγή ${today}</small>
 ${crit ? `<h2>Ερώτημα: ${esc(spec.title)}</h2><ul>${crit}</ul>` : ""}<h2>Τιμές layers</h2><table>${rows}</table>
-<div class="c"><b>Περιορισμοί.</b> Το κελί H3 res 8 (~0,74 km²) είναι μονάδα screening, όχι αγροτεμάχιο. Η πλημμύρα Daniel είναι ένα γεγονός (EMSR692, Σεπ 2023), όχι χάρτης κινδύνου. Η «λίμνη Τεμπών» είναι υποθετικό σενάριο. OSM (υποσταθμοί, γραμμές, φωτοβολταϊκά) πιθανώς ελλιπές. Λείπουν: κτηματολόγιο, χωρητικότητα δικτύου, επίσημοι χάρτες κινδύνου πλημμύρας.</div>
-<p><small>Πηγές: Copernicus GLO-90 DEM · ESA WorldCover 2021 · Kontur Population 2023 · Copernicus EMS EMSR692 · EEA Natura 2000 · OpenStreetMap μέσω Overture Maps 2026-10 (ODbL) · GBIF · Eurostat GISCO NUTS 2021.</small></p></html>`;
+<div class="c"><b>Περιορισμοί.</b> Το κελί H3 res 8 (~0,74 km²) είναι μονάδα screening, όχι αγροτεμάχιο. Η πλημμύρα Daniel είναι ένα γεγονός (EMSR692, Σεπ 2023), όχι χάρτης κινδύνου. Η «λίμνη Τεμπών» είναι υποθετικό σενάριο. OSM (υποσταθμοί, γραμμές, φωτοβολταϊκά) πιθανώς ελλιπές. Λείπουν: κτηματολόγιο, χωρητικότητα δικτύου, κυρωμένοι δασικοί χάρτες. Οι επίσημοι χάρτες πλημμύρας (ΣΔΚΠ, 2ος κύκλος) είναι πριν τον Daniel.</div>
+<p><small>Πηγές: Copernicus GLO-90 DEM · ESA WorldCover 2021 · Kontur Population 2023 · Copernicus EMS EMSR692 · EEA Natura 2000 · OpenStreetMap μέσω Overture Maps 2026-10 (ODbL) · GBIF · Eurostat GISCO NUTS 2021 · ΥΠΕΝ Χάρτες Επικινδυνότητας Πλημμύρας EL08 (2ος κύκλος) · ΥΠΠΟ Αρχαιολογικό Κτηματολόγιο · Χάρτης Περιοχών Χωρίς Δρόμους (Παν. Ιωαννίνων, CC BY 4.0).</small></p></html>`;
   if (!downloads) { btn.textContent = "Η λήψη δεν είναι διαθέσιμη εδώ"; return; }
   downloads.save({ filename: `fakelos_${D.h3[i]}.html`, data: html }).then(() => { btn.textContent = "Αποθηκεύτηκε"; }).catch(e => { btn.textContent = e && e.code === "cancelled" || e && e.code === "declined" ? "Ακυρώθηκε" : "Η λήψη δεν ολοκληρώθηκε"; });
 }
@@ -1050,7 +1082,7 @@ function tourGo(k) {
   try {
     [D, V, TL, HAND] = await Promise.all(["data.json", "assets/vectors.json", "assets/daniel_timeline.json", "assets/hand.json"].map(u => fetch(u).then(r => r.json())));
     try { WX = await (await fetch("assets/forecast.json", { cache: "no-store" })).json(); } catch { WX = null; }
-    const names = ["base", "landcover", "natura", "flood", "lake"], files = ["assets/base.jpg", "assets/ov_landcover.png", "assets/ov_natura.png", "assets/ov_flood.png", "assets/ov_lake.png"];
+    const names = ["base", "landcover", "natura", "flood", "lake", "official", "excl"], files = ["assets/base.jpg", "assets/ov_landcover.png", "assets/ov_natura.png", "assets/ov_flood.png", "assets/ov_lake.png", "assets/ov_official.png", "assets/ov_excl.png"];
     try { [IMG.s2, IMG.s2water] = await Promise.all([loadImg("assets/s2_today.jpg"), loadImg("assets/s2_water.png")]); S2W = await (await fetch("assets/s2_water.json")).json(); } catch { IMG.s2 = null; }
     (await Promise.all(files.map(loadImg))).forEach((im, k) => IMG[names[k]] = im);
   } catch (e) { $("loading").textContent = "Τα δεδομένα δεν φορτώθηκαν."; return; }

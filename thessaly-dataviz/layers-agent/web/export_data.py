@@ -12,7 +12,16 @@ cols = {  # web name: (column, decimals)
  "dline": ("dist_hv_line_km", 1), "droad": ("dist_paved_road_km", 1), "dmajor": ("dist_major_road_km", 1),
  "solar": ("solar_share", 3), "dsolar": ("dist_solar_km", 1), "thr": ("threatened_records", 0), "thrsp": ("threatened_species", 0),
  "track": ("road_km_track", 1)}
-out = {"h3": d.h3.tolist(), "ru": d.regional_unit.map(ru).fillna(0).astype(int).tolist()}
+off = pd.read_parquet(R / "data/official_h3.parquet"); d = d.merge(off, on="h3", how="left")
+d["forest_proxy"] = (d.lc_tree_share.fillna(0) + d.lc_shrub_share.fillna(0)).clip(0, 1)
+cols.update({"q50": ("official_flood_q50_share", 2), "q100": ("official_flood_q100_share", 2), "q1000": ("official_flood_q1000_share", 2),
+ "archA": ("arch_zone_share", 2), "darch": ("dist_arch_zone_km", 1), "roadless": ("roadless_share", 2), "histfl": ("hist_flood_events", 0),
+ "forest": ("forest_proxy", 2), "wetl": ("lc_wetland_share", 2)})
+PE = ["Λάρισα", "Μαγνησία", "Σποράδες", "Καρδίτσα", "Τρίκαλα"]
+DM = sorted(d.municipality.dropna().unique().tolist())
+out = {"h3": d.h3.tolist(), "ru": d.regional_unit.map(ru).fillna(0).astype(int).tolist(),
+       "pe": d.regional_unit_pe.map({k: i for i, k in enumerate(PE)}).fillna(-1).astype(int).tolist(), "pe_names": PE,
+       "dimos": d.municipality.map({k: i for i, k in enumerate(DM)}).fillna(-1).astype(int).tolist(), "dimoi": DM}
 for k, (c, dec) in cols.items():
     v = d[c].astype(float).round(dec).fillna(-1)
     out[k] = (v.astype(int) if dec == 0 else v).tolist()

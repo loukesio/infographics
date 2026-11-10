@@ -167,6 +167,7 @@ pre { font: 11px/1.5 var(--mono); color: var(--muted); white-space: pre-wrap; wo
 .bignum span { font: 500 15px var(--mono); color: var(--sun); }
 .hero .sub { font: 12px var(--mono); color: var(--muted); }
 .hero .answer { margin: 4px 0 0; }
+.hero .answer.empty { color: #b45309; font-weight: 600; }
 .how { font-size: 12px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 6px; }
 .sec { margin: 4px 0 -6px; font: 650 14px var(--display); }
 .hint { margin: 0; font-size: 12px; color: var(--muted); }
@@ -761,7 +762,8 @@ function renderResult(src) {
   const big = el("div", "bignum"); big.append(el("b", null, fmt(last.area)), el("span", null, " km²"));
   H.append(big, el("div", "sub", `${fmt(last.area / AREA_TOT * 100, 1)}% της Θεσσαλίας · ${fmt(last.cells)} εξάγωνα · ${fmt(last.pop)} κάτοικοι`));
   if (spec.filters.some(f => f.col === "solar")) { let pv = 0; RES.forEach(i => pv += Math.max(0, D.solar[i]) * D.area[i]); H.append(el("div", "sub", `Τα km² είναι τα εξάγωνα που περιέχουν πάρκα· η επιφάνεια των ίδιων των πάρκων είναι ${fmt(pv, 1)} km²`)); }
-  if (spec.answer) H.append(el("p", "answer", spec.answer));
+  if (!last.cells) H.append(el("p", "answer empty", "Κανένα εξάγωνο δεν περνά όλα τα κριτήρια μαζί. Δες στη χοάνη πιο κάτω σε ποιο βήμα μηδενίζει και απενεργοποίησέ το, ή ζήτα «χαλάρωσε …»."));
+  else if (spec.answer) H.append(el("p", "answer", spec.answer));
   H.append(el("div", "how", spec.score && spec.score.length ? "Στον χάρτη: οι χρωματισμένες περιοχές πληρούν όλα τα κριτήρια· όσο πιο φωτεινό, τόσο καλύτερη η βαθμολογία." : "Στον χάρτη: οι χρωματισμένες περιοχές πληρούν όλα τα κριτήρια."));
   R.append(H);
   if (PIN) {
@@ -820,8 +822,15 @@ function renderResult(src) {
 }
 function apply(s, src, fly, q, followup) {
   if (q) history = followup ? [...history, q] : [q];
-  spec = s; spec.filters = (spec.filters || []).filter(f => D[f.col] && OPS[f.op] && typeof f.value === "number");
-  spec.score = (spec.score || []).filter(t => D[t.col]);
+  spec = s; const raw = Array.isArray(spec.filters) ? spec.filters : [];
+  spec.filters = raw.filter(f => f && D[f.col] && OPS[f.op] && typeof f.value === "number" && isFinite(f.value));
+  spec.filters.forEach(f => { if (!f.label) f.label = `${CAT[f.col] ? CAT[f.col].l : f.col} ${f.op} ${f.value}`; });
+  spec.dropped = raw.length - spec.filters.length;
+  spec.score = (Array.isArray(spec.score) ? spec.score : []).filter(t => t && D[t.col]);
+  spec.caveats = Array.isArray(spec.caveats) ? spec.caveats.filter(c => typeof c === "string") : [];
+  if (spec.dropped) spec.caveats.unshift(`${spec.dropped} κριτήριο/α του agent αγνοήθηκαν γιατί αναφέρονταν σε στήλη ή τιμή που δεν υπάρχει.`);
+  if (!spec.refuse && !spec.filters.length) spec.refuse = "Δεν μπόρεσα να μετατρέψω την ερώτηση σε κριτήρια πάνω στα layers. Δοκίμασε να την πεις πιο συγκεκριμένα (π.χ. «χαμηλή γη δίπλα σε ποτάμι με κατοίκους»).";
+  if (typeof spec.refuse !== "string") spec.refuse = spec.refuse ? "Δεν απαντιέται με αυτά τα δεδομένα." : "";
   enabled = spec.filters.map(() => true); weights = spec.score.map(t => +t.w || 0.25);
   if (spec.refuse) { pass = new Uint8Array(N); RES = []; score = new Float32Array(N); renderResult(src); renderLegend(); redraw(); return; }
   evaluate(); renderResult(src); renderLegend(); $("card").hidden = true; animateReveal(); if (fly && deck1) flyTo(RES);
@@ -864,7 +873,7 @@ ${crit ? `<h2>Ερώτημα: ${esc(spec.title)}</h2><ul>${crit}</ul>` : ""}<h2>
 let sample = null, ctl = null;
 function catalogText() { return Object.entries(CAT).map(([k, c]) => `${k}: ${c.l} [${c.u}] — ${c.d} (πηγή: ${c.src})`).join("\n"); }
 function promptFor(q) {
-  return `Είσαι ο agent ενός εργαλείου που απαντά ερωτήσεις για τη Θεσσαλία συνδυάζοντας χωρικά layers. Τα δεδομένα είναι ένας πίνακας με 17.504 εξάγωνα H3 (~0,74 km² το καθένα), με αυτές τις στήλες:\n\n${catalogText()}\n\nΜετέτρεψε την ερώτηση του χρήστη σε προδιαγραφή φίλτρων. ΔΕΝ υπολογίζεις αποτελέσματα· η σελίδα εφαρμόζει τα φίλτρα.\nΚανόνες:\n- Χρησιμοποίησε ΜΟΝΟ τις παραπάνω στήλες. Μερίδια είναι 0-1.\n- Αν η ερώτηση χρειάζεται δεδομένα που δεν υπάρχουν (π.χ. τιμές γης, κτηματολόγιο, χωρητικότητα δικτύου, μελλοντικός κίνδυνος, ονόματα χωριών), απάντησε {"refuse": "<εξήγηση στα ελληνικά τι λείπει>"}.\n- Το 'lake' είναι υποθετικό σενάριο και το 'flood' ένα ιστορικό γεγονός: ανέφερέ το στα caveats όταν τα χρησιμοποιείς.\n- 2 έως 7 φίλτρα, με σύντομες ελληνικές ετικέτες.\n\nΑπάντησε ΜΟΝΟ με JSON αυτής της μορφής:\n{"title": "...", "answer": "1-2 προτάσεις τι δείχνει ο χάρτης", "filters": [{"col": "slope", "op": "<", "value": 5, "label": "Κλίση κάτω από 5°"}], "score": [{"col": "dsub", "dir": "low", "cap": 5, "w": 0.5, "label": "Κοντά σε υποσταθμό"}], "caveats": ["..."]}\nop ∈ <, <=, >, >=, ==, !=. dir ∈ low, high. cap = τιμή όπου ο όρος κορεστεί.\n\nΕρώτηση: ${q}`;
+  return `Είσαι ο agent ενός εργαλείου που απαντά ερωτήσεις για τη Θεσσαλία συνδυάζοντας χωρικά layers. Τα δεδομένα είναι ένας πίνακας με 17.504 εξάγωνα H3 (~0,74 km² το καθένα), με αυτές τις στήλες:\n\n${catalogText()}\n\nΜετέτρεψε την ερώτηση του χρήστη σε προδιαγραφή φίλτρων. ΔΕΝ υπολογίζεις αποτελέσματα· η σελίδα εφαρμόζει τα φίλτρα.\nΚανόνες:\n- Χρησιμοποίησε ΜΟΝΟ τις παραπάνω στήλες. Μερίδια είναι 0-1.\n- Αν η ερώτηση χρειάζεται δεδομένα που δεν υπάρχουν (π.χ. τιμές γης, κτηματολόγιο, χωρητικότητα δικτύου, μελλοντικός κίνδυνος, ονόματα χωριών), απάντησε {"refuse": "<εξήγηση στα ελληνικά τι λείπει>"}.\n- Το 'lake' είναι υποθετικό σενάριο και το 'flood' ένα ιστορικό γεγονός: ανέφερέ το στα caveats όταν τα χρησιμοποιείς.\n- Κάθε κριτήριο της ερώτησης γίνεται φίλτρο (όχι μόνο score). 2 έως 7 φίλτρα, με σύντομες ελληνικές ετικέτες που λένε το όριο.\n- Αόριστες λέξεις → λογικό όριο που φαίνεται στην ετικέτα: «κοντά» ≤ 3–5 km, «μακριά από δρόμο» ≥ 2 km, «μακριά» από υποσταθμό/γραμμή ≥ 10 km, «πυκνοκατοικημένο» pop ≥ 500 ανά εξάγωνο, «κατοικημένο» pop ≥ 20, «πολλές/κυρίως» μερίδιο ≥ 0,5, «επίπεδο» flat ≥ 0,7.\n- Περιφερειακές ενότητες: η ru=1 ενώνει Καρδίτσα ΚΑΙ Τρίκαλα (NUTS-3)· αν ο χρήστης ζητά μόνο τη μία, χρησιμοποίησε ru==1 και γράψε στα caveats ότι περιλαμβάνεται και η άλλη.\n- «Πόσο κράτησε / έμεινε το νερό» → floodn (π.χ. ≥ 3 προϊόντα) μαζί με flood > 0.2.\n- Ονομασμένο ποτάμι (π.χ. Πηνειός, Ενιπέας): ΜΗΝ αρνηθείς· χρησιμοποίησε hand3 (χαμηλή γη δίπλα σε οποιοδήποτε ποτάμι) και γράψε στα caveats ότι δεν ξεχωρίζει το συγκεκριμένο ποτάμι.\n- Για «που πλημμύρισε» ή «όχι πλημμυρισμένο» βάλε και mapped > 0, αλλιώς οι μη χαρτογραφημένες περιοχές μετρούν ως «δεν πλημμύρισαν».\n\nΑπάντησε ΜΟΝΟ με JSON αυτής της μορφής:\n{"title": "...", "answer": "1-2 προτάσεις τι δείχνει ο χάρτης", "filters": [{"col": "slope", "op": "<", "value": 5, "label": "Κλίση κάτω από 5°"}], "score": [{"col": "dsub", "dir": "low", "cap": 5, "w": 0.5, "label": "Κοντά σε υποσταθμό"}], "caveats": ["..."]}\nop ∈ <, <=, >, >=, ==, !=. dir ∈ low, high. cap = τιμή όπου ο όρος κορεστεί.\n\nΕρώτηση: ${q}`;
 }
 async function ask() {
   const q = $("q").value.trim(); if (!q) return;

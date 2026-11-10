@@ -473,21 +473,36 @@ function watchCells() {          // low-lying (HAND share at +3 m > 30%) and hea
   HAND.cells.idx.forEach((i, j) => { if (HAND.cells.share[j][k3] > 30 && WX.rain_cum_mm[WXI[i]][wxK] >= wxThr) out.push(i); });
   return out;
 }
+const ISO = [10, 25, 50, 100];
+function rainCanvas(k) {          // bilinear rain field from the 0.25° forecast points, with isohyets; same bounds as the terrain texture
+  const W = 700, H = 300, c = document.createElement("canvas"); c.width = W; c.height = H;
+  const g = c.getContext("2d"), im = g.createImageData(W, H), nr = WX.lats.length, nc = WX.lons.length, R = WX.rain_cum_mm;
+  const v = new Float32Array(W * H), bin = new Int8Array(W * H);
+  for (let y = 0; y < H; y++) { const lat = BOUNDS[3] - (y + .5) / H * (BOUNDS[3] - BOUNDS[1]); const fi = Math.max(0, Math.min(nr - 1.001, (lat - WX.lats[0]) / 0.25)); const i0 = Math.floor(fi), ti = fi - i0;
+    for (let x = 0; x < W; x++) { const lon = BOUNDS[0] + (x + .5) / W * (BOUNDS[2] - BOUNDS[0]); const fj = Math.max(0, Math.min(nc - 1.001, (lon - WX.lons[0]) / 0.25)); const j0 = Math.floor(fj), tj = fj - j0;
+      const r = (a, b) => R[a * nc + b][k];
+      const m = (r(i0, j0) * (1 - tj) + r(i0, j0 + 1) * tj) * (1 - ti) + (r(i0 + 1, j0) * (1 - tj) + r(i0 + 1, j0 + 1) * tj) * ti;
+      v[y * W + x] = m; let q = 0; while (q < ISO.length && m >= ISO[q]) q++; bin[y * W + x] = q; } }
+  for (let p = 0; p < W * H; p++) {
+    const m = v[p], o = p * 4;
+    if (m >= 0.5) { const col = lerpC(RAINC, Math.min(1, m / 80)); im.data[o] = col[0]; im.data[o + 1] = col[1]; im.data[o + 2] = col[2]; im.data[o + 3] = Math.round(255 * (0.22 + 0.58 * Math.min(1, m / 40))); }
+    const x = p % W; if ((x < W - 1 && bin[p] !== bin[p + 1]) || (p + W < W * H && bin[p] !== bin[p + W])) { im.data[o] = 236; im.data[o + 1] = 241; im.data[o + 2] = 247; im.data[o + 3] = 210; }
+  }
+  g.putImageData(im, 0, 0); return c;
+}
+let TEXWX = null, wxTexK = -1;
 function wxLayers() {
+  if (wxTexK !== wxK) { const rc = rainCanvas(wxK), base = composite(); const g = base.getContext("2d"); g.imageSmoothingEnabled = true; g.drawImage(rc, 0, 0, base.width, base.height); TEXWX = base; wxTexK = wxK; }
   const pts = WX.rain_cum_mm.map((r, p) => ({ p, lat: WX.lats[Math.floor(p / WX.lons.length)], lon: WX.lons[p % WX.lons.length], mm: r[wxK], base: WXB[p] })).filter(d => d.base >= 0);
-  const rainL = new deck.ColumnLayer({ id: "rain", data: pts, diskResolution: 4, radius: 9500, angle: 45, extruded: true, opacity: 0.55,
-    getPosition: d => [d.lon, d.lat, zOf(d.base, 300)], getElevation: d => 150 + d.mm * 110 * Math.max(1, EX / 2), getFillColor: d => [...lerpC(RAINC, Math.min(1, d.mm / 80)), 200],
-    material: { ambient: .7, diffuse: .4 }, pickable: true, updateTriggers: { getElevation: [wxK, EX], getFillColor: wxK, getPosition: EX },
-    transitions: matchMedia("(prefers-reduced-motion: reduce)").matches ? {} : { getElevation: 350 } });
   const w = watchCells();
   const watchL = new deck.ColumnLayer({ id: "watch", data: w, diskResolution: 6, radius: RAD, angle: 0, extruded: true,
     getPosition: i => [LON[i], LAT[i], zOf(D.elev[i], 10)], getElevation: 900 * Math.max(1, EX / 2), getFillColor: [242, 163, 58, 240],
     material: { ambient: .6, diffuse: .6 }, pickable: true, updateTriggers: { getPosition: EX } });
-  const lbl = new deck.TextLayer({ id: "rainlbl", data: pts.filter(d => d.mm >= 1), getPosition: d => [d.lon, d.lat, zOf(d.base, 300) + 150 + d.mm * 110 * Math.max(1, EX / 2)],
+  const lbl = new deck.TextLayer({ id: "rainlbl", data: pts.filter(d => d.mm >= 5), getPosition: d => [d.lon, d.lat, zOf(d.base, 500)],
     getText: d => fmt(d.mm) + " mm", getSize: 12, characterSet: "auto", fontFamily: "JetBrains Mono, monospace", fontWeight: 600, getColor: [236, 241, 247],
-    outlineWidth: 3, outlineColor: [13, 21, 34, 255], fontSettings: { sdf: true, fontSize: 64, buffer: 6 }, getAlignmentBaseline: "bottom", parameters: { depthTest: false },
-    updateTriggers: { getPosition: [wxK, EX], getText: wxK } });
-  return [terrain("t1", TEX1), watchL, rainL, ...vectorLayers("a"), lbl];
+    outlineWidth: 3, outlineColor: [13, 21, 34, 255], fontSettings: { sdf: true, fontSize: 64, buffer: 6 }, parameters: { depthTest: false }, pickable: true,
+    updateTriggers: { getPosition: EX, getText: wxK } });
+  return [terrain("t1", TEXWX), watchL, ...vectorLayers("a"), lbl];
 }
 function setWx(k) {
   wxK = k; $("wxRange").value = k;
@@ -570,7 +585,8 @@ function renderLegend() {
   if (mode === "query") {
     L.append(el("div", "t", spec && spec.score && spec.score.length ? "Ύψος και χρώμα στήλης: score" : "Κελιά που περνούν τα κριτήρια"), ramp(AMBER), lab("0", "100"));
   } else if (mode === "wx") {
-    L.append(el("div", "t", "Αθροιστική βροχή (mm) · στήλες ~19 km"), ramp(RAINC), lab("0", "80+"));
+    L.append(el("div", "t", "Αθροιστική βροχή (mm) · λευκές γραμμές: 10, 25, 50, 100 mm"), ramp(RAINC), lab("0", "80+"));
+    L.append(el("div", "lab", "Η πρόγνωση έχει σημεία ανά ~25 km· τα ενδιάμεσα χρώματα είναι εκτίμηση."));
     const r = el("div", "t"); r.innerHTML = '<span class="sw" style="background:var(--sun)"></span>Χαμηλή γη με βροχή πάνω από το όριο'; L.append(r);
   } else if (mode === "sim") {
     L.append(el("div", "t", "Μερίδιο εξαγώνου κάτω από τη στάθμη"), ramp([[30, 70, 110], [40, 140, 190], [110, 215, 230], [215, 250, 255]]), lab("2%", "100%"));
@@ -724,7 +740,7 @@ async function ask() {
 let mode = "query";
 const GR_MONTH = d => { const [y, m, dd] = d.split("-"); return `${+dd} Σεπ ${y}`; };
 function setMode(m) {
-  stopWx(); $("wxUI").hidden = m !== "wx"; if (m === "wx") setTimeout(() => { setWx(WX.steps.length - 1); flyView({ longitude: 21.85, latitude: 39.12, zoom: 7.75, pitch: 42, bearing: 0 }); }, 0);
+  stopWx(); $("wxUI").hidden = m !== "wx"; if (m === "wx") setTimeout(() => { setWx(WX.steps.length - 1); flyView({ longitude: 21.62, latitude: 39.12, zoom: 7.85, pitch: 42, bearing: 0 }); }, 0);
   mode = m; ["query", "time", "swipe", "sim", "wx"].forEach(k => $("mode-" + k).setAttribute("aria-pressed", m === k));
   $("simUI").hidden = m !== "sim"; renderModeInfo(); if (m !== "query") document.querySelector(".layers").open = false; if (m === "sim") { HANDTEX = HANDTEX || composite([{ id: "flood", op: 0.35 }]); setSim(simK); }
   $("swipeUI").hidden = m !== "swipe"; document.querySelector(".layers").hidden = m === "swipe"; $("map2").hidden = m !== "swipe"; $("card").hidden = true; $("tlUI").hidden = m !== "time";
@@ -740,7 +756,7 @@ function setMode(m) {
 const MODEINFO = {
   time: ["Ο Daniel μέρα με τη μέρα", "Πώς απλώθηκε και υποχώρησε το νερό από 6 έως 22 Σεπτεμβρίου 2023, από 12 δορυφορικές λήψεις του Copernicus EMS. Πάτα αναπαραγωγή κάτω αριστερά."],
   swipe: ["Daniel ↔ λίμνη των Τεμπών", "Αριστερά η πραγματική πλημμύρα του 2023, δεξιά ο κάμπος αν έκλειναν τα Τέμπη. Σύρε τη γραμμή: σχεδόν όλη η πλημμύρα έπεσε μέσα στην αρχαία λεκάνη."],
-  wx: ["Πρόγνωση βροχής 72 ωρών", "Αθροιστική βροχή από την πρόγνωση του MET Norway (μοντέλο ECMWF), σε πλέγμα ~25 km. Τα πορτοκαλί εξάγωνα είναι χαμηλή γη δίπλα σε ποτάμια (από το σενάριο στάθμης) όπου η πρόγνωση ξεπερνά το όριο που ορίζεις: πού αξίζει να κοιτάξει κανείς πρώτα. Δεν είναι πρόγνωση πλημμύρας."],
+  wx: ["Πρόγνωση βροχής 72 ωρών", "Αθροιστική βροχή από την πρόγνωση του MET Norway (μοντέλο ECMWF). Τα σημεία πρόγνωσης απέχουν ~25 km· ανάμεσά τους το χρώμα είναι εκτίμηση. Τα πορτοκαλί εξάγωνα είναι χαμηλή γη δίπλα σε ποτάμια (από το σενάριο στάθμης) όπου η πρόγνωση ξεπερνά το όριο που ορίζεις: πού αξίζει να κοιτάξει κανείς πρώτα. Δεν είναι πρόγνωση πλημμύρας."],
   sim: ["Σενάριο στάθμης νερού", "Τι πλημμυρίζει αν το νερό ανέβει Χ μέτρα πάνω από την κοίτη των ποταμών. Κάθε στάθμη ελέγχεται απέναντι στην πραγματική πλημμύρα του Daniel, ώστε να ξέρεις πόσο να εμπιστευτείς την προσομοίωση."],
 };
 function renderModeInfo() {
@@ -785,7 +801,7 @@ function renderLayersPanel() {
   const P = $("layersList"); P.replaceChildren();
   OV.forEach(o => {
     const r = el("label", "lyr"); const cb = el("input"); cb.type = "checkbox"; cb.checked = o.on; cb.id = "ov-" + o.id;
-    cb.onchange = () => { o.on = cb.checked; if (o.kind === "tex") { TEX1 = composite(); renderLayersPanel(); } redraw(); };
+    cb.onchange = () => { o.on = cb.checked; if (o.kind === "tex") { TEX1 = composite(); wxTexK = -1; renderLayersPanel(); } redraw(); };
     const t = el("span"); t.append(el("span", null, o.l), el("small", null, o.src)); r.append(cb, t);
     if (o.kind === "tex" && o.on) { const s = el("input"); s.type = "range"; s.min = 0.1; s.max = 1; s.step = 0.05; s.value = o.op; s.id = "op-" + o.id; s.setAttribute("aria-label", "Διαφάνεια " + o.l);
       s.oninput = () => { o.op = +s.value; if (o.on) { TEX1 = composite(); redraw(); } }; r.append(s); }

@@ -337,12 +337,12 @@ const PRESETS = [
               {col:"south", dir:"high", cap:1, w:0.1, label:"Νότια έκθεση"}, {col:"crop", dir:"high", cap:1, w:0.2, label:"Μερίδιο καλλιεργειών"}],
       caveats: ["Λείπουν: χωρητικότητα δικτύου (κορεσμός), κτηματολόγιο, τιμές γης, επίσημοι χάρτες κινδύνου πλημμύρας.", "Οι υποσταθμοί είναι από OSM (71 στη Θεσσαλία) και πιθανώς ελλιπείς."] } },
   { s: "Κάτοικοι στην πλημμύρα", q: "Κατοικημένες περιοχές που πλημμύρισαν από τον Daniel",
-    spec: { title: "Ποιοι ζουν μέσα στην πλημμύρα του Daniel", answer: "Κελιά με κατοίκους όπου πάνω από το 20% πλημμύρισε τον Σεπτέμβριο 2023. Το ύψος δείχνει πόσο επέμεινε το νερό.",
+    spec: { title: "Ποιοι ζουν μέσα στην πλημμύρα του Daniel", answer: "Κελιά με κατοίκους όπου πάνω από το 20% πλημμύρισε τον Σεπτέμβριο 2023. Όσο πιο φωτεινό, τόσο περισσότερες μέρες έμεινε το νερό και τόσο περισσότεροι κάτοικοι.",
       filters: [{col:"pop", op:">", value:0, label:"Έχει κατοίκους"}, {col:"flood", op:">", value:0.2, label:"Πάνω από 20% πλημμυρισμένο"}],
       score: [{col:"floodn", dir:"high", cap:6, w:0.6, label:"Ημέρες/προϊόντα με νερό"}, {col:"pop", dir:"high", cap:500, w:0.4, label:"Πληθυσμός"}],
       caveats: ["Ο πληθυσμός είναι μοντέλο Kontur 2023 σε εξάγωνα, όχι απογραφή.", "Εκτός των 7 περιοχών χαρτογράφησης του EMSR692 η πλημμύρα είναι άγνωστη, όχι μηδενική."] } },
   { s: "Χωράφια στη «λίμνη»", q: "Πόση γη κάτω από τη «λίμνη των Τεμπών» είναι σήμερα χωράφια;",
-    spec: { title: "Η αρχαία λίμνη κάτω από τα χωράφια", answer: "Κελιά που θα ήταν κάτω από τη στάθμη αν έκλεινε η κοιλάδα των Τεμπών και σήμερα καλλιεργούνται κυρίως. Το ύψος δείχνει το υποθετικό βάθος.",
+    spec: { title: "Η αρχαία λίμνη κάτω από τα χωράφια", answer: "Κελιά που θα ήταν κάτω από τη στάθμη αν έκλεινε η κοιλάδα των Τεμπών και σήμερα καλλιεργούνται κυρίως. Όσο πιο φωτεινό, τόσο βαθύτερη θα ήταν η λίμνη.",
       filters: [{col:"lake", op:">", value:0.5, label:"Μέσα στη «λίμνη» (σενάριο)"}, {col:"crop", op:">", value:0.5, label:"Κυρίως καλλιέργειες"}],
       score: [{col:"lakedepth", dir:"high", cap:60, w:1, label:"Βάθος σεναρίου"}],
       caveats: ["Νοητικό πείραμα σε σημερινό ανάγλυφο, όχι ανακατασκευή αρχαίας λίμνης ούτε χάρτης κινδύνου."] } },
@@ -381,7 +381,7 @@ function evaluate() {
     let a = 0, p = 0, c = 0; for (let i = 0; i < n; i++) if (m[i]) { a += D.area[i]; p += D.pop[i]; c++; }
     steps.push({label: f.label || `${f.col} ${f.op} ${f.value}`, col: f.col, area: a, pop: p, cells: c, on: enabled[k]});
   });
-  pass = m; RES = IDX.filter(i => m[i]); EXC = IDX.filter(i => !m[i]);
+  pass = m; RES = IDX.filter(i => m[i]); EXC = IDX.filter(i => !m[i]); scoreVer++;
   score = new Float32Array(n);
   const terms = spec.score || [];
   const wsum = terms.reduce((s, t, k) => s + weights[k], 0) || 1;
@@ -421,7 +421,7 @@ function composite(extra) {          // base hillshade + enabled draped overlays
 let TEX1 = null, TEX_L = null, TEX_R = null;
 function terrain(id, tex) {
   return new deck.TerrainLayer({ id: id + "-" + EX, elevationData: "assets/dem.png", texture: tex, bounds: BOUNDS, meshMaxError: 12,
-    elevationDecoder: { rScaler: 256 * EX, gScaler: EX, bScaler: EX / 256, offset: -32768 * EX }, material: { ambient: .62, diffuse: .55, shininess: 8, specularColor: [40, 40, 40] } });
+    elevationDecoder: { rScaler: 256 * EX, gScaler: EX, bScaler: EX / 256, offset: -32768 * EX }, pickable: true, material: { ambient: .62, diffuse: .55, shininess: 8, specularColor: [40, 40, 40] } });
 }
 const zOf = (z, lift = 0) => Math.max(0, z) * EX + lift;
 function vectorLayers(id) {
@@ -445,31 +445,37 @@ function vectorLayers(id) {
 const RAD = 440;   // ~ H3 res-8 circumradius (461 m), slightly smaller to leave gaps
 const EXCL = ["#E2675A", "#C77DDB", "#5CC2C8", "#8FB85C", "#E3A0C8", "#7D8FE8", "#D9C25B"].map(c => hexA(c, 215));
 const NEWC = [92, 194, 142], GONEC = [226, 103, 90];
-function queryLayers() {
-  const L = [terrain("t1", TEX1)];
-  if (!spec) return [...L, ...vectorLayers("a")];
-  if (showExcl && EXC.length) L.push(new deck.ColumnLayer({ id: "excl", data: EXC.filter(i => failAt[i] > 0), diskResolution: 6, radius: RAD, angle: 0, extruded: true,
-    getPosition: i => [LON[i], LAT[i], zOf(D.elev[i], 10)], getElevation: 90 * Math.max(1, EX / 2), getFillColor: i => EXCL[(failAt[i] - 1) % EXCL.length],
-    material: { ambient: .7, diffuse: .4 }, pickable: true, updateTriggers: { getFillColor: failAt, getPosition: EX } }));
-  const inPin = i => PIN && PIN.set.has(i);
-  L.push(new deck.ColumnLayer({ id: "result", data: RES, diskResolution: 6, radius: RAD, angle: 0, extruded: true,
-    getPosition: i => [LON[i], LAT[i], zOf(D.elev[i], 10)], getElevation: i => (250 + score[i] * 4200) * reveal * Math.max(1, EX / 2),
-    getFillColor: i => PIN && !inPin(i) ? [...NEWC, 245] : [...lerpC(AMBER, score[i]), 245], material: { ambient: .6, diffuse: .6, shininess: 20 }, pickable: true,
-    updateTriggers: { getElevation: [score, reveal, EX], getFillColor: [score, PIN], getPosition: EX } }));
-  if (PIN) { const gone = PIN.ids.filter(i => !pass[i]);
-    L.push(new deck.ColumnLayer({ id: "gone", data: gone, diskResolution: 6, radius: RAD, angle: 0, extruded: true,
-      getPosition: i => [LON[i], LAT[i], zOf(D.elev[i], 10)], getElevation: 600 * Math.max(1, EX / 2), getFillColor: [...GONEC, 200],
-      material: { ambient: .7, diffuse: .4 }, pickable: true, updateTriggers: { getPosition: EX } })); }
-  return [...L, ...vectorLayers("a")];
+const BND = [];
+function bnd(i) { return BND[i] || (BND[i] = h3.cellToBoundary(D.h3[i], true)); }
+function paintHexes(canvas, items) {   // items: [cellIndex, [r,g,b,a]] painted straight into the terrain texture, so results lie on the ground
+  const g = canvas.getContext("2d"), W = canvas.width, H = canvas.height;
+  const px = lon => (lon - BOUNDS[0]) / (BOUNDS[2] - BOUNDS[0]) * W, py = lat => (BOUNDS[3] - lat) / (BOUNDS[3] - BOUNDS[1]) * H;
+  g.lineWidth = 0.8; g.lineJoin = "round";
+  items.forEach(([i, c]) => { const b = bnd(i), col = `rgba(${c[0]},${c[1]},${c[2]},${(c[3] ?? 230) / 255})`; g.fillStyle = col; g.strokeStyle = col; g.beginPath();
+    b.forEach(([lo, la], k) => k ? g.lineTo(px(lo), py(la)) : g.moveTo(px(lo), py(la))); g.closePath(); g.fill(); g.stroke(); });
+  return canvas;
 }
+const memo = {};
+function cachedTex(name, key, make) { if (memo[name] && memo[name].key === key) return memo[name].tex; const tex = make(); memo[name] = { key, tex }; return tex; }
+let texVer = 0;                  // bumped whenever the draped overlays (TEX1) change
+function queryLayers() {
+  if (!spec) return [terrain("t1", TEX1), ...vectorLayers("a")];
+  const key = [texVer, showExcl, PIN ? PIN.ids.length : 0, RES.length, score && score.length ? Array.from(weights).join() : "", steps.map(x => x.on).join()].join("|") + "|" + scoreVer;
+  const tex = cachedTex("q", key, () => {
+    const items = [];
+    if (showExcl) EXC.forEach(i => { if (failAt[i] > 0) items.push([i, [...EXCL[(failAt[i] - 1) % EXCL.length].slice(0, 3), 150]]); });
+    if (PIN) PIN.ids.forEach(i => { if (!pass[i]) items.push([i, [...GONEC, 225]]); });
+    RES.forEach(i => items.push([i, PIN && !PIN.set.has(i) ? [...NEWC, 235] : [...lerpC(AMBER, score[i]), 235]]));
+    return paintHexes(composite(), items);
+  });
+  return [terrain("t1", tex), ...vectorLayers("a")];
+}
+const SIMC = [[30, 70, 110], [40, 140, 190], [110, 215, 230], [215, 250, 255]];
 function simLayers() {
   const c = HAND.cells, k = simK;
-  const data = c.idx.map((i, j) => [i, c.share[j][k]]).filter(d => d[1] > 2);
-  const cols = new deck.ColumnLayer({ id: "sim", data, diskResolution: 6, radius: RAD, angle: 0, extruded: true,
-    getPosition: d => [LON[d[0]], LAT[d[0]], zOf(D.elev[d[0]], 10)], getElevation: d => (100 + d[1] * 14) * Math.max(1, EX / 2),
-    getFillColor: d => [...lerpC([[30, 70, 110], [40, 140, 190], [110, 215, 230], [215, 250, 255]], d[1] / 100), 235], material: { ambient: .6, diffuse: .6 },
-    pickable: true, transitions: matchMedia("(prefers-reduced-motion: reduce)").matches ? {} : { getElevation: 400 }, updateTriggers: { getPosition: EX, getElevation: [EX, k] } });
-  return [terrain("t1", HANDTEX), cols, ...vectorLayers("a")];
+  const tex = cachedTex("sim", texVer + "|" + k, () => paintHexes(composite([{ id: "flood", op: 0.35 }]),
+    c.idx.map((i, j) => [i, c.share[j][k]]).filter(d => d[1] > 2).map(([i, sh]) => [i, [...lerpC(SIMC, sh / 100), 90 + Math.round(sh * 1.5)]])));
+  return [terrain("t1", tex), ...vectorLayers("a")];
 }
 const RAINC = [[30, 40, 70], [60, 90, 170], [110, 150, 235], [190, 160, 255], [255, 235, 255]];
 function wxIdx(i) { const r = Math.round((LAT[i] - WX.lats[0]) / 0.25), c = Math.round((LON[i] - WX.lons[0]) / 0.25);
@@ -496,7 +502,7 @@ function rainCanvas(k) {          // bilinear rain field from the 0.25° forecas
   }
   g.putImageData(im, 0, 0); return c;
 }
-let TEXWX = null, wxTexK = -1, WXATLAS = null;
+let TEXWX = null, wxTexK = -1, WXATLAS = null, scoreVer = 0;
 const WCAT = [ // priority order: the first matching category wins and is kept first when decluttering
   ["thunder", /thunder/, "Καταιγίδα"], ["snow", /snow|sleet/, "Χιόνι/χιονόνερο"], ["heavy", /heavyrain/, "Ισχυρή βροχή"],
   ["rain", /^rain/, "Βροχή"], ["light", /lightrain|drizzle/, "Ασθενής βροχή"], ["fog", /fog/, "Ομίχλη"],
@@ -547,17 +553,14 @@ function wxIcons() {
   return kept;
 }
 function wxLayers() {
-  if (wxTexK !== wxK) { const rc = rainCanvas(wxK), base = composite(); const g = base.getContext("2d"); g.imageSmoothingEnabled = true; g.drawImage(rc, 0, 0, base.width, base.height); TEXWX = base; wxTexK = wxK; }
+  if (wxTexK !== wxK + "|" + wxThr + "|" + texVer) { const rc = rainCanvas(wxK), base = composite(); const g = base.getContext("2d"); g.imageSmoothingEnabled = true; g.drawImage(rc, 0, 0, base.width, base.height);
+    TEXWX = paintHexes(base, watchCells().map(i => [i, [242, 163, 58, 245]])); wxTexK = wxK + "|" + wxThr + "|" + texVer; }
   const pts = WX.rain_cum_mm.map((r, p) => ({ p, lat: WX.lats[Math.floor(p / WX.lons.length)], lon: WX.lons[p % WX.lons.length], mm: r[wxK], base: WXB[p] })).filter(d => d.base >= 0);
-  const w = watchCells();
-  const watchL = new deck.ColumnLayer({ id: "watch", data: w, diskResolution: 6, radius: RAD, angle: 0, extruded: true,
-    getPosition: i => [LON[i], LAT[i], zOf(D.elev[i], 10)], getElevation: 900 * Math.max(1, EX / 2), getFillColor: [242, 163, 58, 240],
-    material: { ambient: .6, diffuse: .6 }, pickable: true, updateTriggers: { getPosition: EX } });
   const lbl = new deck.TextLayer({ id: "rainlbl", data: pts.filter(d => d.mm >= 5), getPosition: d => [d.lon, d.lat, zOf(d.base, 500)],
     getText: d => fmt(d.mm) + " mm", getSize: 12, characterSet: "auto", fontFamily: "JetBrains Mono, monospace", fontWeight: 600, getColor: [236, 241, 247],
     outlineWidth: 3, outlineColor: [13, 21, 34, 255], fontSettings: { sdf: true, fontSize: 64, buffer: 6 }, parameters: { depthTest: false }, pickable: true, getAlignmentBaseline: "top", getPixelOffset: [0, -10],
     updateTriggers: { getPosition: EX, getText: wxK } });
-  const L = [terrain("t1", TEXWX), watchL, ...vectorLayers("a"), lbl];
+  const L = [terrain("t1", TEXWX), ...vectorLayers("a"), lbl];
   if (WX.symbol) {
     WXATLAS = WXATLAS || weatherAtlas();
     const blk = Math.floor(wxK / 2);
@@ -592,23 +595,31 @@ function wxChart(k) {            // max and median cumulative rain across the gr
 }
 function stopWx() { if (wxPlayT) { clearInterval(wxPlayT); wxPlayT = null; $("wxPlay").textContent = "▶"; } }
 function timelineLayers() {
-  const fr = TL.frames[tlIdx];
-  const cols = new deck.ColumnLayer({ id: "tl", data: fr, diskResolution: 6, radius: RAD, angle: 0, extruded: true,
-    getPosition: f => [LON[f[0]], LAT[f[0]], zOf(D.elev[f[0]], 10)], getElevation: f => (120 + f[1] * 18) * Math.max(1, EX / 2),
-    getFillColor: f => [...lerpC(BLUE, 0.25 + 0.75 * f[1] / 100), 235], material: { ambient: .6, diffuse: .6 },
-    transitions: matchMedia("(prefers-reduced-motion: reduce)").matches ? {} : { getElevation: 500 }, updateTriggers: { getPosition: EX, getElevation: EX } });
-  return [terrain("t1", TEX1), cols, ...vectorLayers("a")];
+  const tex = cachedTex("tl", texVer + "|" + tlIdx, () => paintHexes(composite(), TL.frames[tlIdx].map(f => [f[0], [...lerpC(BLUE, 0.3 + 0.7 * f[1] / 100), 110 + Math.round(f[1] * 1.4)]])));
+  return [terrain("t1", tex), ...vectorLayers("a")];
+}
+let IDXMAP = null;
+function cellAt(info) {
+  if (!info.coordinate || !IDXMAP) return -1;
+  const [lon, lat] = info.coordinate; const h = h3.latLngToCell(lat, lon, 8); return IDXMAP.has(h) ? IDXMAP.get(h) : -1;
 }
 function tooltip(info) {
-  if (info.object == null) return null;
-  const i = Array.isArray(info.object) ? info.object[0] : info.object;
-  if (typeof i !== "number") { const o = info.object; if (o.mm != null) { const p = o.p; if (o.gr) return { text: `${o.n}: ${o.gr} (6ωρο από +${Math.floor(wxK / 2) * 6} ώρες) · ${fmt(WX.temp_c[p][wxK], 0)} °C · άνεμος ${fmt(WX.wind_ms[p][wxK], 0)} m/s · βροχή ως τότε ${fmt(o.mm, 1)} mm` }; return { text: `Πρόγνωση: ${fmt(o.mm, 1)} mm έως +${wxK * 3} ώρες · ${fmt(WX.temp_c[p][wxK], 0)} °C · άνεμος ${fmt(WX.wind_ms[p][wxK], 0)} m/s` }; } return o.n ? { text: o.n } : null; }
-  return { html: `<b>${RU[D.ru[i]]}</b><br>${fmt(D.elev[i])} m · ${fmt(D.pop[i])} κάτοικοι` + (mode === "query" && pass && pass[i] ? `<br>score ${fmt(score[i] * 100)}` : "") + (Array.isArray(info.object) ? `<br>πλημμυρισμένο ${info.object[1]}%` : ""),
+  const o = info.object;
+  if (o && typeof o === "object" && !Array.isArray(o)) {
+    if (o.mm != null) { const p = o.p; if (o.gr) return { text: `${o.n}: ${o.gr} (6ωρο από +${Math.floor(wxK / 2) * 6} ώρες) · ${fmt(WX.temp_c[p][wxK], 0)} °C · άνεμος ${fmt(WX.wind_ms[p][wxK], 0)} m/s · βροχή ως τότε ${fmt(o.mm, 1)} mm` }; return { text: `${fmt(o.mm, 1)} mm έως +${wxK * 3} ώρες · ${fmt(WX.temp_c[p][wxK], 0)} °C · άνεμος ${fmt(WX.wind_ms[p][wxK], 0)} m/s` }; }
+    return o.n ? { text: o.n } : null;
+  }
+  const i = cellAt(info); if (i < 0) return null;
+  let extra = "";
+  if (mode === "query" && spec && pass) extra = pass[i] ? `<br><b style="color:#F2A33A">Πληροί τα κριτήρια</b> · βαθμολογία ${fmt(score[i] * 100)}` : (failAt && failAt[i] > 0 ? `<br>Αποκλείστηκε: ${spec.filters[failAt[i] - 1].label}` : "");
+  if (mode === "sim") { const j = HAND.cells.idx.indexOf(i); extra = `<br>Κάτω από τη στάθμη: ${j >= 0 ? HAND.cells.share[j][simK] : 0}%`; }
+  if (mode === "time") { const f = TL.frames[tlIdx].find(x => x[0] === i); extra = `<br>Πλημμυρισμένο: ${f ? f[1] : 0}%`; }
+  return { html: `<b>${RU[D.ru[i]]}</b><br>${fmt(D.elev[i])} m · ${fmt(D.pop[i])} κάτοικοι${extra}`,
     style: { background: "#121D2E", color: "#E7ECF3", font: "12px 'Fira Sans', sans-serif", border: "1px solid #233149", borderRadius: "6px", padding: "6px 8px" } };
 }
 function makeDeck(container, layers) {
   return new deck.Deck({ parent: container, initialViewState: viewState, controller: { inertia: true }, layers,
-    getTooltip: tooltip, onClick: info => { const o = info.object; if (typeof o === "number") showCard(o); else if (Array.isArray(o)) showCard(o[0]); },
+    getTooltip: tooltip, onClick: info => { const i = cellAt(info); if (i >= 0 && (!info.object || typeof info.object !== "object" || Array.isArray(info.object))) showCard(i); },
     onViewStateChange: ({ viewState: vs }) => { viewState = vs; stopOrbit(); if (deck1) deck1.setProps({ viewState: vs }); if (deck2) deck2.setProps({ viewState: vs }); return vs; },
     viewState, style: { position: "absolute", inset: 0 }, parameters: { clearColor: [13 / 255, 21 / 255, 34 / 255, 1] },
     effects: [new deck.LightingEffect({ amb: new deck.AmbientLight({ color: [255, 255, 255], intensity: 1.1 }),
@@ -646,9 +657,9 @@ function renderLegend() {
   const ramp = (stops) => { const r = el("div", "ramp"); r.style.background = `linear-gradient(90deg, ${stops.map(c => `rgb(${c})`).join(",")})`; return r; };
   const lab = (a, b) => { const x = el("div", "lab"); x.append(el("span", null, a), el("span", null, b)); return x; };
   if (mode === "query" && !spec) {
-    L.append(el("div", "t", "Ανάγλυφο από Copernicus DEM · οι στήλες εμφανίζονται όταν κάνεις ερώτηση"));
+    L.append(el("div", "t", "Ανάγλυφο από Copernicus DEM · το αποτέλεσμα χρωματίζεται πάνω στον χάρτη όταν κάνεις ερώτηση"));
   } else if (mode === "query") {
-    L.append(el("div", "t", spec && spec.score && spec.score.length ? "Ύψος και χρώμα στήλης: score" : "Κελιά που περνούν τα κριτήρια"), ramp(AMBER), lab("0", "100"));
+    L.append(el("div", "t", spec && spec.score && spec.score.length ? "Χρώμα: βαθμολογία των περιοχών που πληρούν τα κριτήρια" : "Περιοχές που πληρούν τα κριτήρια"), ramp(AMBER), lab("0", "100"));
   } else if (mode === "wx") {
     L.append(el("div", "t", "Αθροιστική βροχή (mm) · λευκές γραμμές: 10, 25, 50, 100 mm"), ramp(RAINC), lab("0", "80+"));
     L.append(el("div", "lab", "Η πρόγνωση έχει σημεία ανά ~25 km· τα ενδιάμεσα χρώματα είναι εκτίμηση."));
@@ -680,7 +691,7 @@ function renderResult(src) {
   const big = el("div", "bignum"); big.append(el("b", null, fmt(last.area)), el("span", null, " km²"));
   H.append(big, el("div", "sub", `${fmt(last.area / AREA_TOT * 100, 1)}% της Θεσσαλίας · ${fmt(last.cells)} εξάγωνα · ${fmt(last.pop)} κάτοικοι`));
   if (spec.answer) H.append(el("p", "answer", spec.answer));
-  H.append(el("div", "how", spec.score && spec.score.length ? "Στον χάρτη: κάθε στήλη είναι ένα εξάγωνο που πληροί όλα τα κριτήρια· όσο ψηλότερη, τόσο καλύτερη η βαθμολογία." : "Στον χάρτη: κάθε στήλη είναι ένα εξάγωνο που πληροί όλα τα κριτήρια."));
+  H.append(el("div", "how", spec.score && spec.score.length ? "Στον χάρτη: οι χρωματισμένες περιοχές πληρούν όλα τα κριτήρια· όσο πιο φωτεινό, τόσο καλύτερη η βαθμολογία." : "Στον χάρτη: οι χρωματισμένες περιοχές πληρούν όλα τα κριτήρια."));
   R.append(H);
   if (PIN) {
     let both = 0, onlyB = 0, onlyA = 0; RES.forEach(i => PIN.set.has(i) ? both += D.area[i] : onlyB += D.area[i]); PIN.ids.forEach(i => { if (!pass[i]) onlyA += D.area[i]; });
@@ -878,10 +889,10 @@ function renderLayersPanel() {
   const P = $("layersList"); P.replaceChildren();
   OV.forEach(o => {
     const r = el("label", "lyr"); const cb = el("input"); cb.type = "checkbox"; cb.checked = o.on; cb.id = "ov-" + o.id;
-    cb.onchange = () => { o.on = cb.checked; if (o.kind === "tex") { TEX1 = composite(); wxTexK = -1; renderLayersPanel(); } redraw(); };
+    cb.onchange = () => { o.on = cb.checked; if (o.kind === "tex") { TEX1 = composite(); texVer++; wxTexK = -1; renderLayersPanel(); } redraw(); };
     const t = el("span"); t.append(el("span", null, o.l), el("small", null, o.src)); r.append(cb, t);
     if (o.kind === "tex" && o.on) { const s = el("input"); s.type = "range"; s.min = 0.1; s.max = 1; s.step = 0.05; s.value = o.op; s.id = "op-" + o.id; s.setAttribute("aria-label", "Διαφάνεια " + o.l);
-      s.oninput = () => { o.op = +s.value; if (o.on) { TEX1 = composite(); redraw(); } }; r.append(s); }
+      s.oninput = () => { o.op = +s.value; if (o.on) { TEX1 = composite(); texVer++; wxTexK = -1; redraw(); } }; r.append(s); }
     P.append(r);
   });
 }
@@ -894,7 +905,7 @@ const TOUR = [
   { cap: "Αν έκλειναν τα Τέμπη, ο κάμπος θα γινόταν λίμνη. Το 95% της πλημμύρας του Daniel έπεσε ακριβώς εκεί.", run: () => { setMode("swipe"); flyView({ longitude: 22.3, latitude: 39.5, zoom: 8.5, pitch: 50, bearing: -10 }); } },
   { cap: "Προσομοίωση: αν το νερό ανέβει 3 m πάνω από τα ποτάμια, πιάνουμε το 83% της πραγματικής πλημμύρας του Daniel.", run: () => { setMode("sim"); setSim(HAND.levels.indexOf(HAND.best.level)); flyView({ longitude: 22.2, latitude: 39.5, zoom: 8.5, pitch: 52, bearing: -15 }); }, wait: 9000 },
   { cap: "Ρωτάς στα ελληνικά. Ο agent γράφει μόνο κριτήρια· ο υπολογισμός γίνεται στα δεδομένα, με πηγή για κάθε βήμα.", run: () => { setMode("query"); $("q").value = PRESETS[0].q; apply(structuredClone(PRESETS[0].spec), "preset", true, PRESETS[0].q, false); } },
-  { cap: "Γιατί αποκλείστηκε κάθε περιοχή: χρώμα ανά κριτήριο. Ό,τι μένει είναι υποψήφιο, με βαθμολογία στο ύψος.", run: () => { showExcl = true; renderResult("preset"); redraw(); flyView({ longitude: 22.25, latitude: 39.35, zoom: 8.3, pitch: 50, bearing: 8 }); } },
+  { cap: "Γιατί αποκλείστηκε κάθε περιοχή: χρώμα ανά κριτήριο. Ό,τι μένει είναι υποψήφιο, με τη βαθμολογία στο χρώμα.", run: () => { showExcl = true; renderResult("preset"); redraw(); flyView({ longitude: 22.25, latitude: 39.35, zoom: 8.3, pitch: 50, bearing: 8 }); } },
 ];
 function flyView(v) { if (!deck1) return; const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
   viewState = { ...viewState, ...v, transitionDuration: reduce ? 0 : 2200, transitionInterpolator: new deck.FlyToInterpolator(), transitionEasing: t => 1 - Math.pow(1 - t, 3) };
@@ -915,7 +926,7 @@ function tourGo(k) {
     const names = ["base", "landcover", "natura", "flood", "lake"], files = ["assets/base.jpg", "assets/ov_landcover.png", "assets/ov_natura.png", "assets/ov_flood.png", "assets/ov_lake.png"];
     (await Promise.all(files.map(loadImg))).forEach((im, k) => IMG[names[k]] = im);
   } catch (e) { $("loading").textContent = "Τα δεδομένα δεν φορτώθηκαν."; return; }
-  N = D.h3.length; IDX = [...Array(N).keys()];
+  N = D.h3.length; IDX = [...Array(N).keys()]; IDXMAP = new Map(D.h3.map((h, i) => [h, i]));
   LON = new Float64Array(N); LAT = new Float64Array(N); D.h3.forEach((h, i) => { const [la, lo] = h3.cellToLatLng(h); LAT[i] = la; LON[i] = lo; });
   AREA_TOT = D.area.reduce((a, b) => a + b, 0); POP_TOT = D.pop.reduce((a, b) => a + b, 0);
   $("stats").textContent = `H3 res 8 · ${fmt(N)} κελιά · ${fmt(AREA_TOT)} km² · ${fmt(POP_TOT)} κάτοικοι · 40+ layers`;

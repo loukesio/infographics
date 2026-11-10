@@ -201,6 +201,11 @@ pre { font: 11px/1.5 var(--mono); color: var(--muted); white-space: pre-wrap; wo
 
 .spark { width: 100%; height: auto; display: block; }
 .stale { color: var(--warn); }
+
+.welcome { display: grid; gap: 10px; }
+.welcome h2 { margin: 0; font: 650 17px var(--display); }
+.welcome ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
+.welcome li b { color: var(--sun); font-weight: 600; }
 @media (max-width: 820px) { .layers { width: 200px; top: auto; bottom: 16px; left: auto; right: 16px; } .layers:not([open]) { width: auto; } }
 @media (max-width: 820px) {
   body { overflow: auto; }
@@ -442,6 +447,7 @@ const EXCL = ["#E2675A", "#C77DDB", "#5CC2C8", "#8FB85C", "#E3A0C8", "#7D8FE8", 
 const NEWC = [92, 194, 142], GONEC = [226, 103, 90];
 function queryLayers() {
   const L = [terrain("t1", TEX1)];
+  if (!spec) return [...L, ...vectorLayers("a")];
   if (showExcl && EXC.length) L.push(new deck.ColumnLayer({ id: "excl", data: EXC.filter(i => failAt[i] > 0), diskResolution: 6, radius: RAD, angle: 0, extruded: true,
     getPosition: i => [LON[i], LAT[i], zOf(D.elev[i], 10)], getElevation: 90 * Math.max(1, EX / 2), getFillColor: i => EXCL[(failAt[i] - 1) % EXCL.length],
     material: { ambient: .7, diffuse: .4 }, pickable: true, updateTriggers: { getFillColor: failAt, getPosition: EX } }));
@@ -639,7 +645,9 @@ function renderLegend() {
   const L = $("legend"); L.replaceChildren();
   const ramp = (stops) => { const r = el("div", "ramp"); r.style.background = `linear-gradient(90deg, ${stops.map(c => `rgb(${c})`).join(",")})`; return r; };
   const lab = (a, b) => { const x = el("div", "lab"); x.append(el("span", null, a), el("span", null, b)); return x; };
-  if (mode === "query") {
+  if (mode === "query" && !spec) {
+    L.append(el("div", "t", "Ανάγλυφο από Copernicus DEM · οι στήλες εμφανίζονται όταν κάνεις ερώτηση"));
+  } else if (mode === "query") {
     L.append(el("div", "t", spec && spec.score && spec.score.length ? "Ύψος και χρώμα στήλης: score" : "Κελιά που περνούν τα κριτήρια"), ramp(AMBER), lab("0", "100"));
   } else if (mode === "wx") {
     L.append(el("div", "t", "Αθροιστική βροχή (mm) · λευκές γραμμές: 10, 25, 50, 100 mm"), ramp(RAINC), lab("0", "80+"));
@@ -817,8 +825,19 @@ const MODEINFO = {
   wx: ["Πρόγνωση βροχής 72 ωρών", "Αθροιστική βροχή από την πρόγνωση του MET Norway (μοντέλο ECMWF). Τα σημεία πρόγνωσης απέχουν ~25 km· ανάμεσά τους το χρώμα είναι εκτίμηση. Τα πορτοκαλί εξάγωνα είναι χαμηλή γη δίπλα σε ποτάμια (από το σενάριο στάθμης) όπου η πρόγνωση ξεπερνά το όριο που ορίζεις: πού αξίζει να κοιτάξει κανείς πρώτα. Δεν είναι πρόγνωση πλημμύρας."],
   sim: ["Σενάριο στάθμης νερού", "Τι πλημμυρίζει αν το νερό ανέβει Χ μέτρα πάνω από την κοίτη των ποταμών. Κάθε στάθμη ελέγχεται απέναντι στην πραγματική πλημμύρα του Daniel, ώστε να ξέρεις πόσο να εμπιστευτείς την προσομοίωση."],
 };
+function renderWelcome() {        // first view: nothing computed yet, explain what the tool does and how to start
+  const R = $("result"); R.replaceChildren();
+  const W = el("div", "welcome");
+  W.append(el("h2", null, "Τι μπορείς να κάνεις εδώ"));
+  const ul = el("ul");
+  [["Ρώτα", "μια ερώτηση για τη γη της Θεσσαλίας. Ο χάρτης δείχνει πού ισχύει και πόσα km² είναι."],
+   ["Δες", "πώς βρέθηκε το αποτέλεσμα, κριτήριο προς κριτήριο, με την πηγή κάθε δεδομένου."],
+   ["Εξερεύνησε", "τον Daniel μέρα-μέρα, σενάρια στάθμης νερού και την πρόγνωση βροχής από τις καρτέλες κάτω αριστερά."]].forEach(([b, t]) => { const li = el("li"); li.append(el("b", null, b + " "), document.createTextNode(t)); ul.append(li); });
+  W.append(ul, el("p", "hint", "Ξεκίνα με ένα από τα παραδείγματα πάνω, ή πάτα «Ξενάγηση» για μια περιήγηση 1 λεπτού."));
+  R.append(W);
+}
 function renderModeInfo() {
-  const I = $("modeInfo"), q = mode === "query"; I.hidden = q; $("result").hidden = !q; if (q) return;
+  const I = $("modeInfo"), q = mode === "query"; I.hidden = q; $("result").hidden = !q; if (q) { if (!spec) renderWelcome(); return; }
   I.replaceChildren(); const [t, d] = MODEINFO[mode];
   const b = el("button", "btn ghost", "← Πίσω στο ερώτημα"); b.onclick = () => setMode("query");
   I.append(el("div", "eyebrow", "Τρέχουσα προβολή"), el("h2", null, t), el("p", "answer", d), b);
@@ -906,7 +925,7 @@ function tourGo(k) {
   TEX1 = composite();
   const P = $("presets"); PRESETS.forEach(p => { const b = el("button", "chip", p.s); b.title = p.q; b.onclick = () => { $("q").value = p.q; if (mode !== "query") setMode("query"); apply(structuredClone(p.spec), "preset", true, p.q, false); }; P.append(b); });
   $("tlRange").max = TL.dates.length - 1;
-  apply(structuredClone(PRESETS[0].spec), "preset", false, PRESETS[0].q, false);
+  renderWelcome();
   deck1 = makeDeck($("map"), queryLayers());
   $("loading").remove(); renderLegend(); renderLayersPanel(); initSwipe();
   if (innerWidth < 820) document.querySelector(".layers").open = false;

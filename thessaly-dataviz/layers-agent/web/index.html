@@ -274,7 +274,7 @@ pre { font: 11px/1.5 var(--mono); color: var(--muted); white-space: pre-wrap; wo
   <aside>
     <div class="scroll">
       <div class="ask">
-        <p class="pitch">Κάνε μια ερώτηση για τη Θεσσαλία. Ο agent τη μετατρέπει σε κριτήρια και ο χάρτης δείχνει πού ισχύουν. <b>Οι αριθμοί υπολογίζονται από τα δεδομένα, όχι από το AI.</b></p>
+        <p class="pitch"><b>Επιστημονική τεκμηρίωση για αντιπλημμυρικά, νερό και πολιτική προστασία</b>, από ανοιχτά δεδομένα. Κάνε μια ερώτηση: ένα σύστημα AI τη μετατρέπει σε κριτήρια και ο χάρτης δείχνει πού ισχύουν. Οι αριθμοί υπολογίζονται από τα δεδομένα, με πηγή για καθένα.</p>
         <label class="sr" for="q">Ερώτηση</label>
         <textarea id="q" rows="2" placeholder="π.χ. Πού ζουν άνθρωποι κάτω από 100 m που πλημμύρισαν το 2023;"></textarea>
         <div class="row">
@@ -319,11 +319,35 @@ const CAT = {
   thrsp:  {l:"Απειλούμενα είδη", u:"πλήθος", src:"GBIF", d:"διαφορετικά είδη"},
   track:  {l:"Χωματόδρομοι", u:"km", src:"OSM", d:"μήκος track στο κελί"},
   ru:     {l:"Περιφερειακή ενότητα", u:"0/1/2", src:"Eurostat NUTS-3", d:"0=Λάρισα, 1=Καρδίτσα+Τρίκαλα, 2=Μαγνησία+Σποράδες"},
+  hand3:  {l:"Χαμηλή γη δίπλα σε ποτάμι", u:"0-1", src:"μοντέλο HAND (DEM)", d:"μερίδιο κάτω από +3 m πάνω από την κοίτη ποταμού (βαθμονομημένο στον Daniel: πιάνει 83%, ~1 στους 2 ψευδείς συναγερμούς)"},
+  lat:    {l:"Γεωγραφικό πλάτος", u:"°", src:"H3", d:"κέντρο κελιού"},
+  lon:    {l:"Γεωγραφικό μήκος", u:"°", src:"H3", d:"κέντρο κελιού"},
 };
 const RU = ["Λάρισα", "Καρδίτσα & Τρίκαλα", "Μαγνησία & Σποράδες"];
 const OPS = { "<": (a,b)=>a<b, "<=": (a,b)=>a<=b, ">": (a,b)=>a>b, ">=": (a,b)=>a>=b, "==": (a,b)=>a==b, "!=": (a,b)=>a!=b };
 
 const PRESETS = [
+  { s: "Πού πρώτα αντιπλημμυρικά", q: "Πού ζουν οι περισσότεροι άνθρωποι σε χαμηλή γη δίπλα σε ποτάμι;",
+    spec: { title: "Πού κινδυνεύουν οι περισσότεροι από πλημμύρα ποταμού", answer: "Κατοικημένες περιοχές σε χαμηλή γη δίπλα σε ποτάμια, βαθμολογημένες με κατοίκους και με το αν πλημμύρισαν στον Daniel. Βοηθά στην ιεράρχηση αντιπλημμυρικών έργων και καθαρισμών.",
+      filters: [{col:"hand3", op:">", value:0.3, label:"Χαμηλή γη δίπλα σε ποτάμι (+3 m)"}, {col:"pop", op:">", value:20, label:"Πάνω από 20 κάτοικοι"}],
+      score: [{col:"pop", dir:"high", cap:500, w:0.5, label:"Κάτοικοι"}, {col:"flood", dir:"high", cap:1, w:0.3, label:"Πλημμύρισε στον Daniel"}, {col:"floodn", dir:"high", cap:8, w:0.2, label:"Μέρες με νερό"}],
+      caveats: ["Το μοντέλο στάθμης δεν γνωρίζει αναχώματα και έργα που έχουν ήδη γίνει· είναι πρώτο φίλτρο, όχι χάρτης κινδύνου ΣΔΚΠ.", "Ο πληθυσμός είναι μοντέλο Kontur 2023, όχι απογραφή."] } },
+  { s: "Κάρλα: πού έμεινε το νερό", q: "Γύρω από την Κάρλα, πού έμεινε το νερό του Daniel τις περισσότερες μέρες;",
+    spec: { title: "Κάρλα: πού έμεινε το νερό του Daniel", answer: "Περιοχές γύρω από την Κάρλα που πλημμύρισαν και έμειναν κάτω από νερό σε πολλές δορυφορικές λήψεις. Όσο πιο φωτεινό, τόσο περισσότερες λήψεις με νερό.",
+      filters: [{col:"lon", op:">", value:22.65, label:"Περιοχή Κάρλας (ανατολικά του 22,65°)"}, {col:"lat", op:">", value:39.35, label:"Περιοχή Κάρλας (βόρεια του 39,35°)"}, {col:"lat", op:"<", value:39.7, label:"Περιοχή Κάρλας (νότια του 39,7°)"},
+        {col:"flood", op:">", value:0.2, label:"Πλημμύρισε (πάνω από 20%)"}, {col:"floodn", op:">=", value:3, label:"Νερό σε 3+ λήψεις"}],
+      score: [{col:"floodn", dir:"high", cap:10, w:0.7, label:"Λήψεις με νερό"}, {col:"crop", dir:"high", cap:1, w:0.3, label:"Καλλιέργειες"}],
+      caveats: ["Οι λήψεις σταματούν στις 22/9/2023: η κατάσταση μετά δεν είναι γνωστή.", "Χωρίς κτηματολόγιο/ΟΣΔΕ δεν υπάρχει αντιστοίχιση σε αγροτεμάχια ή δικαιούχους."] } },
+  { s: "ΦΒ σε γη που πλημμύρισε", q: "Ποια φωτοβολταϊκά πάρκα βρίσκονται σε γη που πλημμύρισε το 2023;",
+    spec: { title: "Φωτοβολταϊκά σε γη που πλημμύρισε το 2023", answer: "Περιοχές με φωτοβολταϊκό πάρκο (OSM) που πλημμύρισαν στον Daniel. Τέτοια διασταύρωση είναι το είδος τεκμηρίωσης που χρειάζεται μια γνωμοδότηση χωροθέτησης.",
+      filters: [{col:"solar", op:">", value:0, label:"Έχει φωτοβολταϊκό"}, {col:"flood", op:">", value:0.05, label:"Πλημμύρισε στον Daniel"}],
+      score: [{col:"flood", dir:"high", cap:1, w:0.6, label:"Μερίδιο πλημμύρας"}, {col:"solar", dir:"high", cap:0.3, w:0.4, label:"Κάλυψη με πάνελ"}],
+      caveats: ["Τα πάρκα είναι από OSM· διασταύρωση με το μητρώο της ΡΑΑΕΥ πριν από κάθε συμπέρασμα.", "Ένα γεγονός πλημμύρας δεν είναι χάρτης επικινδυνότητας."] } },
+  { s: "ΦΒ σε Natura", q: "Φωτοβολταϊκά πάρκα μέσα σε Natura 2000",
+    spec: { title: "Φωτοβολταϊκά μέσα σε Natura 2000", answer: "Κελιά με φωτοβολταϊκό πάρκο (OSM) που είναι κυρίως μέσα σε περιοχή Natura 2000.",
+      filters: [{col:"solar", op:">", value:0, label:"Έχει φωτοβολταϊκό"}, {col:"natura", op:">", value:0.5, label:"Κυρίως σε Natura 2000"}],
+      score: [{col:"solar", dir:"high", cap:0.3, w:1, label:"Κάλυψη με πάνελ"}],
+      caveats: ["Natura ≠ απαγόρευση: πολλές ζώνες SPA επιτρέπουν ΑΠΕ με περιβαλλοντική αδειοδότηση.", "Τα πάρκα είναι από OSM· επαλήθευση με ΡΑΑΕΥ πριν από οποιοδήποτε συμπέρασμα."] } },
   { s: "Agrivoltaics", q: "Επίπεδη αγροτική γη εκτός Natura, που δεν πλημμύρισε, κοντά σε υποσταθμό (agrivoltaics)",
     spec: { title: "Πρώτο φίλτρο για agrivoltaics", answer: "Επίπεδα χωράφια εκτός Natura 2000, εκτός της πλημμύρας του Daniel και έως 5 km από υποσταθμό, βαθμολογημένα για σύνδεση και πρόσβαση.",
       filters: [
@@ -336,21 +360,6 @@ const PRESETS = [
       score: [{col:"dsub", dir:"low", cap:5, w:0.5, label:"Κοντά σε υποσταθμό"}, {col:"droad", dir:"low", cap:2, w:0.2, label:"Κοντά σε άσφαλτο"},
               {col:"south", dir:"high", cap:1, w:0.1, label:"Νότια έκθεση"}, {col:"crop", dir:"high", cap:1, w:0.2, label:"Μερίδιο καλλιεργειών"}],
       caveats: ["Λείπουν: χωρητικότητα δικτύου (κορεσμός), κτηματολόγιο, τιμές γης, επίσημοι χάρτες κινδύνου πλημμύρας.", "Οι υποσταθμοί είναι από OSM (71 στη Θεσσαλία) και πιθανώς ελλιπείς."] } },
-  { s: "Κάτοικοι στην πλημμύρα", q: "Κατοικημένες περιοχές που πλημμύρισαν από τον Daniel",
-    spec: { title: "Ποιοι ζουν μέσα στην πλημμύρα του Daniel", answer: "Κελιά με κατοίκους όπου πάνω από το 20% πλημμύρισε τον Σεπτέμβριο 2023. Όσο πιο φωτεινό, τόσο περισσότερες μέρες έμεινε το νερό και τόσο περισσότεροι κάτοικοι.",
-      filters: [{col:"pop", op:">", value:0, label:"Έχει κατοίκους"}, {col:"flood", op:">", value:0.2, label:"Πάνω από 20% πλημμυρισμένο"}],
-      score: [{col:"floodn", dir:"high", cap:6, w:0.6, label:"Ημέρες/προϊόντα με νερό"}, {col:"pop", dir:"high", cap:500, w:0.4, label:"Πληθυσμός"}],
-      caveats: ["Ο πληθυσμός είναι μοντέλο Kontur 2023 σε εξάγωνα, όχι απογραφή.", "Εκτός των 7 περιοχών χαρτογράφησης του EMSR692 η πλημμύρα είναι άγνωστη, όχι μηδενική."] } },
-  { s: "Χωράφια στη «λίμνη»", q: "Πόση γη κάτω από τη «λίμνη των Τεμπών» είναι σήμερα χωράφια;",
-    spec: { title: "Η αρχαία λίμνη κάτω από τα χωράφια", answer: "Κελιά που θα ήταν κάτω από τη στάθμη αν έκλεινε η κοιλάδα των Τεμπών και σήμερα καλλιεργούνται κυρίως. Όσο πιο φωτεινό, τόσο βαθύτερη θα ήταν η λίμνη.",
-      filters: [{col:"lake", op:">", value:0.5, label:"Μέσα στη «λίμνη» (σενάριο)"}, {col:"crop", op:">", value:0.5, label:"Κυρίως καλλιέργειες"}],
-      score: [{col:"lakedepth", dir:"high", cap:60, w:1, label:"Βάθος σεναρίου"}],
-      caveats: ["Νοητικό πείραμα σε σημερινό ανάγλυφο, όχι ανακατασκευή αρχαίας λίμνης ούτε χάρτης κινδύνου."] } },
-  { s: "Φωτοβολταϊκά σε Natura", q: "Φωτοβολταϊκά πάρκα μέσα σε Natura 2000",
-    spec: { title: "Φωτοβολταϊκά μέσα σε Natura 2000", answer: "Κελιά με φωτοβολταϊκό πάρκο (OSM) που είναι κυρίως μέσα σε περιοχή Natura 2000.",
-      filters: [{col:"solar", op:">", value:0, label:"Έχει φωτοβολταϊκό"}, {col:"natura", op:">", value:0.5, label:"Κυρίως σε Natura 2000"}],
-      score: [{col:"solar", dir:"high", cap:0.3, w:1, label:"Κάλυψη με πάνελ"}],
-      caveats: ["Natura ≠ απαγόρευση: πολλές ζώνες SPA επιτρέπουν ΑΠΕ με περιβαλλοντική αδειοδότηση.", "Τα πάρκα είναι από OSM· επαλήθευση με ΡΑΑΕΥ πριν από οποιοδήποτε συμπέρασμα."] } },
 ];
 
 // ---------- data ----------
@@ -583,6 +592,8 @@ function setWx(k) {
   const W = $("wxWatch"); W.replaceChildren();
   W.append(wxChart(k));
   W.append(el("div", null, w.length ? `Χαμηλή γη κοντά σε ποτάμια με πρόγνωση ≥ ${wxThr} mm: ${fmt(a)} km² · ${fmt(p)} κάτοικοι` : `Καμία χαμηλή περιοχή με πρόγνωση ≥ ${wxThr} mm σε αυτό το διάστημα.`));
+  if (w.length) { const ex = exposure(); W.append(el("div", "lab", ex.byRU.map((r, k) => r.cells ? `${RU[k]}: ${fmt(r.km2)} km² · ${fmt(r.pop)} κάτ.` : "").filter(Boolean).join(" · ") + (ex.towns.length ? ` · κοντά σε: ${ex.towns.slice(0, 6).join(", ")}` : ""))); }
+  const br = el("button", "btn ghost", "Σημείωμα για το ΚΕΣΥΠΠ"); br.onclick = () => kesypBrief(br); W.append(br);
   redraw();
 }
 function wxChart(k) {            // max and median cumulative rain across the grid, with the current step marked
@@ -597,6 +608,26 @@ function wxChart(k) {            // max and median cumulative rain across the gr
     <text x="${Wd - 4}" y="12" fill="var(--water)" font-size="9" text-anchor="end" font-family="JetBrains Mono, monospace">μέγιστο ${fmt(mx[n - 1])} mm</text>
     <text x="${Wd - 4}" y="24" fill="var(--muted)" font-size="9" text-anchor="end" font-family="JetBrains Mono, monospace">διάμεσος ${fmt(md[n - 1], 1)} mm</text>`;
   return svg;
+}
+function exposure() {             // forecast "watch" cells summarised for civil protection: by regional unit and nearby settlements
+  const w = new Set(watchCells()), byRU = [0, 1, 2].map(() => ({ km2: 0, pop: 0, cells: 0 }));
+  w.forEach(i => { const r = byRU[D.ru[i]]; r.km2 += D.area[i]; r.pop += D.pop[i]; r.cells++; });
+  const towns = V.towns.filter(t => { const h = h3.latLngToCell(t.y, t.x, 8); return h3.gridDisk(h, 2).some(c => IDXMAP.has(c) && w.has(IDXMAP.get(c))); }).map(t => t.n);
+  return { byRU, towns, n: w.size };
+}
+function kesypBrief(btn) {
+  const e = exposure(), esc = t => String(t).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const t0 = new Date(WX.fetched), tk = new Date(WX.steps[wxK]), mx = Math.max(...WX.rain_cum_mm.map(r => r[wxK]));
+  const f = d => d.toLocaleString("el-GR", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+  const rows = e.byRU.map((r, k) => `<tr><td>${RU[k]}</td><td class=n>${fmt(r.km2)}</td><td class=n>${fmt(r.pop)}</td></tr>`).join("");
+  const html = `<!doctype html><html lang="el"><meta charset="utf-8"><title>Σημείωμα έκθεσης σε βροχή</title><style>body{font:14px/1.5 system-ui,sans-serif;max-width:720px;margin:36px auto;padding:0 16px;color:#1b2230}h1{font-size:21px;margin:0 0 4px}table{border-collapse:collapse;width:100%;margin:10px 0}td,th{border-bottom:1px solid #e3e6ea;padding:5px 6px;text-align:left}.n{text-align:right;font-variant-numeric:tabular-nums}.w{background:#fff6e6;border:1px solid #f0cf8f;padding:10px 12px;border-radius:6px}small{color:#667}</style>
+<h1>Σημείωμα έκθεσης σε βροχή</h1><small>Πρόγνωση MET Norway (ECMWF) · ενημέρωση ${esc(f(t0))} · ορίζοντας έως ${esc(f(tk))} · όριο ${wxThr} mm</small>
+<p>Μέγιστη αθροιστική βροχή στο πλέγμα: <b>${fmt(mx)} mm</b>. Χαμηλή γη δίπλα σε ποτάμια με πρόγνωση πάνω από το όριο: <b>${e.n}</b> εξάγωνα.</p>
+<table><tr><th>Περιφερειακή ενότητα</th><th class=n>km²</th><th class=n>κάτοικοι</th></tr>${rows}</table>
+<p><b>Οικισμοί κοντά (έως ~1,5 km):</b> ${e.towns.length ? esc(e.towns.join(", ")) : "κανένας από τους κύριους οικισμούς"}</p>
+<div class="w"><b>Όχι επίσημη προειδοποίηση.</b> Εργαλείο προτεραιοποίησης για την ενημέρωση του επιχειρησιακού κέντρου. Επίσημες προειδοποιήσεις: ΕΜΥ και 112. Χαμηλή γη = μοντέλο HAND από DEM (πιάνει 83% της πλημμύρας του Daniel, ~1 στις 2 επισημάνσεις ψευδής). Πρόγνωση σε σημεία ανά ~25 km.</div></html>`;
+  if (!downloads) { btn.textContent = "Η λήψη δεν είναι διαθέσιμη εδώ"; return; }
+  downloads.save({ filename: `simeioma_vroxis_${WX.steps[wxK].slice(0, 13)}.html`, data: html }).then(() => btn.textContent = "Αποθηκεύτηκε").catch(() => btn.textContent = "Η λήψη δεν ολοκληρώθηκε");
 }
 function stopWx() { if (wxPlayT) { clearInterval(wxPlayT); wxPlayT = null; $("wxPlay").textContent = "▶"; } }
 function timelineLayers() {
@@ -839,7 +870,7 @@ function setMode(m) {
 const MODEINFO = {
   time: ["Ο Daniel μέρα με τη μέρα", "Πώς απλώθηκε και υποχώρησε το νερό από 6 έως 22 Σεπτεμβρίου 2023, από 12 δορυφορικές λήψεις του Copernicus EMS. Πάτα αναπαραγωγή κάτω αριστερά."],
   swipe: ["Daniel ↔ λίμνη των Τεμπών", "Αριστερά η πραγματική πλημμύρα του 2023, δεξιά ο κάμπος αν έκλειναν τα Τέμπη. Σύρε τη γραμμή: σχεδόν όλη η πλημμύρα έπεσε μέσα στην αρχαία λεκάνη."],
-  wx: ["Πρόγνωση βροχής 72 ωρών", "Αθροιστική βροχή από την πρόγνωση του MET Norway (μοντέλο ECMWF). Τα σημεία πρόγνωσης απέχουν ~25 km· ανάμεσά τους το χρώμα είναι εκτίμηση. Τα πορτοκαλί εξάγωνα είναι χαμηλή γη δίπλα σε ποτάμια (από το σενάριο στάθμης) όπου η πρόγνωση ξεπερνά το όριο που ορίζεις: πού αξίζει να κοιτάξει κανείς πρώτα. Δεν είναι πρόγνωση πλημμύρας."],
+  wx: ["Πρόγνωση βροχής 72 ωρών", "Αθροιστική βροχή από την πρόγνωση του MET Norway (μοντέλο ECMWF). Τα σημεία πρόγνωσης απέχουν ~25 km· ανάμεσά τους το χρώμα είναι εκτίμηση. Τα πορτοκαλί εξάγωνα είναι χαμηλή γη δίπλα σε ποτάμια (από το σενάριο στάθμης) όπου η πρόγνωση ξεπερνά το όριο που ορίζεις: πού αξίζει να κοιτάξει κανείς πρώτα. Με ένα κλικ βγαίνει σημείωμα για το ΚΕΣΥΠΠ με έκθεση ανά ενότητα και οικισμό. Δεν είναι πρόγνωση πλημμύρας."],
   sim: ["Σενάριο στάθμης νερού", "Τι πλημμυρίζει αν το νερό ανέβει Χ μέτρα πάνω από την κοίτη των ποταμών. Κάθε στάθμη ελέγχεται απέναντι στην πραγματική πλημμύρα του Daniel, ώστε να ξέρεις πόσο να εμπιστευτείς την προσομοίωση."],
 };
 function renderWelcome() {        // first view: nothing computed yet, explain what the tool does and how to start
@@ -906,12 +937,13 @@ function renderLayersPanel() {
 // ---------- guided tour ----------
 let tourK = -1, tourT = null;
 const TOUR = [
-  { cap: "Θεσσαλία σε 17.504 εξάγωνα: ανάγλυφο από το Copernicus DEM, 40+ ανοιχτά layers σε ένα πλέγμα.", run: () => { setMode("query"); flyView(homeView()); } },
-  { cap: "Σεπτέμβριος 2023: ο Daniel μέρα με τη μέρα, από 12 δορυφορικές λήψεις.", run: () => { setMode("time"); setTL(0); flyView({ longitude: 22.2, latitude: 39.5, zoom: 8.6, pitch: 55, bearing: -20 }); setTimeout(() => { if (tourK === 1) playTL(); }, 600); }, wait: 14500 },
-  { cap: "Αν έκλειναν τα Τέμπη, ο κάμπος θα γινόταν λίμνη. Το 95% της πλημμύρας του Daniel έπεσε ακριβώς εκεί.", run: () => { setMode("swipe"); flyView({ longitude: 22.3, latitude: 39.5, zoom: 8.5, pitch: 50, bearing: -10 }); } },
-  { cap: "Προσομοίωση: αν το νερό ανέβει 3 m πάνω από τα ποτάμια, πιάνουμε το 83% της πραγματικής πλημμύρας του Daniel.", run: () => { setMode("sim"); setSim(HAND.levels.indexOf(HAND.best.level)); flyView({ longitude: 22.2, latitude: 39.5, zoom: 8.5, pitch: 52, bearing: -15 }); }, wait: 9000 },
-  { cap: "Ρωτάς στα ελληνικά. Ο agent γράφει μόνο κριτήρια· ο υπολογισμός γίνεται στα δεδομένα, με πηγή για κάθε βήμα.", run: () => { setMode("query"); $("q").value = PRESETS[0].q; apply(structuredClone(PRESETS[0].spec), "preset", true, PRESETS[0].q, false); } },
-  { cap: "Γιατί αποκλείστηκε κάθε περιοχή: χρώμα ανά κριτήριο. Ό,τι μένει είναι υποψήφιο, με τη βαθμολογία στο χρώμα.", run: () => { showExcl = true; renderResult("preset"); redraw(); flyView({ longitude: 22.25, latitude: 39.35, zoom: 8.3, pitch: 50, bearing: 8 }); } },
+  { cap: "Ανθεκτική Θεσσαλία: 14.053 km² σε 17.504 εξάγωνα, με ανάγλυφο και 40+ ανοιχτά δεδομένα σε ένα κοινό πλέγμα.", run: () => { setMode("query"); spec = null; renderWelcome(); renderLegend(); redraw(); flyView(homeView()); } },
+  { cap: "Σεπτέμβριος 2023: ο Daniel μέρα με τη μέρα, από 12 δορυφορικές λήψεις του Copernicus.", run: () => { setMode("time"); setTL(0); flyView({ longitude: 22.2, latitude: 39.5, zoom: 8.6, pitch: 55, bearing: -20 }); setTimeout(() => { if (tourK === 1) playTL(); }, 600); }, wait: 14500 },
+  { cap: "Κάρλα: πού έμεινε το νερό τις περισσότερες μέρες, η βάση για τεκμηριωμένες αποφάσεις παραχώρησης.", run: () => { const p = PRESETS[1]; setMode("query"); $("q").value = p.q; apply(structuredClone(p.spec), "preset", true, p.q, false); }, wait: 8500 },
+  { cap: "Αντιπλημμυρικά: πού ζουν οι περισσότεροι σε χαμηλή γη δίπλα σε ποτάμι, για ιεράρχηση έργων και καθαρισμών.", run: () => { const p = PRESETS[0]; $("q").value = p.q; apply(structuredClone(p.spec), "preset", true, p.q, false); }, wait: 8500 },
+  { cap: "Σενάριο στάθμης +3 m: πιάνει το 83% της πραγματικής πλημμύρας. Περίπου μία στις δύο επισημάνσεις είναι ψευδής: πρώτο φίλτρο, όχι χάρτης κινδύνου.", run: () => { setMode("sim"); setSim(HAND.levels.indexOf(HAND.best.level)); flyView({ longitude: 22.2, latitude: 39.5, zoom: 8.5, pitch: 52, bearing: -15 }); }, wait: 9000 },
+  { cap: "Πριν από τη βροχή: η πρόγνωση γίνεται έκθεση ανά ενότητα και οικισμό, σε σημείωμα για το ΚΕΣΥΠΠ με ένα κλικ.", run: () => { if (WX) setMode("wx"); }, wait: 9000 },
+  { cap: "Χωροθέτηση: φωτοβολταϊκά σε γη που πλημμύρισε. Διασταύρωση που χρειάζεται κάθε γνωμοδότηση.", run: () => { const p = PRESETS[2]; setMode("query"); $("q").value = p.q; apply(structuredClone(p.spec), "preset", true, p.q, false); }, wait: 8500 },
 ];
 function flyView(v) { if (!deck1) return; const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
   viewState = { ...viewState, ...v, transitionDuration: reduce ? 0 : 2200, transitionInterpolator: new deck.FlyToInterpolator(), transitionEasing: t => 1 - Math.pow(1 - t, 3) };
@@ -933,7 +965,8 @@ function tourGo(k) {
     (await Promise.all(files.map(loadImg))).forEach((im, k) => IMG[names[k]] = im);
   } catch (e) { $("loading").textContent = "Τα δεδομένα δεν φορτώθηκαν."; return; }
   N = D.h3.length; IDX = [...Array(N).keys()]; IDXMAP = new Map(D.h3.map((h, i) => [h, i]));
-  LON = new Float64Array(N); LAT = new Float64Array(N); D.h3.forEach((h, i) => { const [la, lo] = h3.cellToLatLng(h); LAT[i] = la; LON[i] = lo; });
+  D.hand3 = new Float32Array(N); { const k3 = HAND.levels.indexOf(3); HAND.cells.idx.forEach((i, j) => D.hand3[i] = HAND.cells.share[j][k3] / 100); }
+  LON = new Float64Array(N); LAT = new Float64Array(N); D.h3.forEach((h, i) => { const [la, lo] = h3.cellToLatLng(h); LAT[i] = la; LON[i] = lo; }); D.lat = LAT; D.lon = LON;
   AREA_TOT = D.area.reduce((a, b) => a + b, 0); POP_TOT = D.pop.reduce((a, b) => a + b, 0);
   $("stats").textContent = `H3 res 8 · ${fmt(N)} κελιά · ${fmt(AREA_TOT)} km² · ${fmt(POP_TOT)} κάτοικοι · 40+ layers`;
   // towns: keep the larger of any two within ~7 km (drops suburbs that collide with their city)

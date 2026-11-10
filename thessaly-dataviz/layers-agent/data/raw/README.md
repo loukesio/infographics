@@ -12,3 +12,8 @@ Not used (checked):
 - Ratified forest maps (κυρωμένοι δασικοί χάρτες): `gis.ktimanet.gr/gis/forestfinal` allows shapefile download only per small area (scale ≥1:20,000). No bulk service found → WorldCover tree+shrub used as a flagged proxy.
 - ΔΕΔΔΗΕ "Περιθώρια ΑΠΕ" (`apps.deddie.gr/WebAPE`): public viewer, per-substation margins; no open bulk download → needs a manual export or ΔΕΔΔΗΕ permission.
 - Official 3rd-cycle (post-Daniel) flood maps: not yet published as GIS.
+
+
+## Ορθοφωτογραφίες Κτηματολογίου (web/assets/ortho/, εκτός git)
+130 κομμάτια για Λάρισα, Βόλο, Τρίκαλα, Καρδίτσα από την υπηρεσία θέασης gis.ktimanet.gr (WMS BASEMAP), 2026-11-10. © Ελληνικό Κτηματολόγιο.
+Άδεια: ο Σ. Μουστακίδης δήλωσε στις 2026-11-10 ότι έλαβε άδεια από το Κτηματολόγιο για δημόσια φιλοξενία αντιγράφων με αναφορά «© Ελληνικό Κτηματολόγιο». Το κείμενο της άδειας δεν έχει κατατεθεί εδώ· να προστεθεί.

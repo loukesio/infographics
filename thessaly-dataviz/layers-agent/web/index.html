@@ -878,7 +878,7 @@ function renderLegend() {
       L.append(t, row(BCOL(4), `Πλημμύρισε στον Daniel εκτός ζώνης 1000 ετών: ${fmt(c(f => (f & 4) && !(f & 2)))}`), row(BCOL(6), `Πλημμύρισε στον Daniel, εντός ζώνης: ${fmt(c(f => (f & 4) && (f & 2)))}`),
         row(BCOL(1), `Επίσημη ζώνη 100 ετών: ${fmt(c(f => !(f & 4) && (f & 1)))}`), row(BCOL(2), `Επίσημη ζώνη 1000 ετών: ${fmt(c(f => !(f & 4) && !(f & 1) && (f & 2)))}`), row(BCOL(0), "Εκτός ζωνών"));
       if (CITYNOW === "volos") L.append(el("div", "lab", "Ο Daniel δεν χαρτογραφήθηκε στην πόλη του Βόλου (EMSR692): εδώ φαίνονται μόνο οι επίσημες ζώνες."));
-      if (orthoOn()) L.append(el("div", "lab", ORTHO === "static" ? "Έδαφος και στέγες: ορθοφωτογραφίες © Ελληνικό Κτηματολόγιο. Ιδιωτικό αντίγραφο: μην κοινοποιείς αυτόν τον σύνδεσμο." : "Έδαφος και στέγες: ορθοφωτογραφίες © Ελληνικό Κτηματολόγιο (υπηρεσία θέασης, ζωντανά· μόνο στην τοπική έκδοση)."));
+      if (orthoOn()) L.append(el("div", "lab", ORTHO === "static" ? "Έδαφος και στέγες: ορθοφωτογραφίες © Ελληνικό Κτηματολόγιο." : "Έδαφος και στέγες: ορθοφωτογραφίες © Ελληνικό Κτηματολόγιο (υπηρεσία θέασης, ζωντανά· μόνο στην τοπική έκδοση)."));
       L.append(el("div", "lab", "Κτίριο = κάθε κατασκευή (Overture/OSM), όχι κατοικία. Ύψη: OSM όπου υπάρχουν, αλλιώς μέσο ύψος δόμησης της γειτονιάς (JRC GHSL 2018).")); }
     return;
   }
@@ -1249,7 +1249,7 @@ function tourGo(k) {
   if (!IMG.s2) { $("mode-today").hidden = true; OV.splice(OV.findIndex(o => o.id === "s2"), 2); }
   else if (S2W) { const d = new Date(S2W.date).toLocaleDateString("el-GR", { day: "numeric", month: "long", year: "numeric" }); ov("s2").src = `Copernicus Sentinel-2 · ${d}`; ov("s2water").src = `Sentinel-2 · ${d}`; }
   { const addOrtho = (kind, src) => { if (ORTHO) return; ORTHO = kind; OV.splice(OV.findIndex(o => o.id === "bld") + 1, 0, { id: "ortho", l: "Αεροφωτογραφίες Κτηματολογίου (στις 4 πόλεις, με ζουμ)", src, kind: "vec", on: true }); renderLayersPanel(); };
-    fetch("assets/ortho/manifest.json").then(r => r.ok ? r.json() : null).then(j => { if (j && j.keys) { OKEYS = new Set(j.keys); addOrtho("static", "© Ελληνικό Κτηματολόγιο · ιδιωτικό αντίγραφο, όχι για κοινοποίηση"); } }).catch(() => {});
+    fetch("assets/ortho/manifest.json").then(r => r.ok ? r.json() : null).then(j => { if (j && j.keys) { OKEYS = new Set(j.keys); addOrtho("static", "© Ελληνικό Κτηματολόγιο"); } }).catch(() => {});
     if (location.hostname === "localhost" || location.hostname === "127.0.0.1") fetch("/ortho?ping=1").then(r => r.ok ? r.json() : null).then(j => { if (j && j.ok) addOrtho("live", "Ελληνικό Κτηματολόγιο · ζωντανά, μόνο τοπικά"); }).catch(() => {}); }
   if (WX) {
     WXI = new Int16Array(N); WXB = new Float32Array(WX.rain_cum_mm.length).fill(-1);

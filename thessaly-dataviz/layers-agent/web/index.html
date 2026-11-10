@@ -493,15 +493,21 @@ function evaluate() {
 const BOUNDS = [20.9, 38.8, 24.4, 40.3];
 const CITY = { larisa: ["Λάρισα", 22.355, 39.595, 22.475, 39.675], volos: ["Βόλος", 22.895, 39.335, 22.995, 39.405], trikala: ["Τρίκαλα", 21.725, 39.525, 21.805, 39.585], karditsa: ["Καρδίτσα", 21.885, 39.34, 21.955, 39.39] };
 const BLD = {}; let CITYNOW = null;   // per-city building footprints, fetched the first time the camera zooms into that city
-const BCOL = f => (f & 4) ? ((f & 2) ? [79, 163, 224, 235] : [240, 96, 80, 245]) : (f & 1) ? [150, 100, 235, 235] : (f & 2) ? [186, 166, 232, 215] : [158, 168, 184, 150];
+const BCOL = f => (f & 4) ? ((f & 2) ? [79, 163, 224] : [240, 96, 80]) : (f & 1) ? [150, 100, 235] : (f & 2) ? [190, 170, 235] : [216, 210, 200];
+let DEMH = null;                  // decoded heightmap (same file the terrain mesh uses), so buildings sit on the ground
+const DEMP = loadImg("assets/dem.png").then(im => { const c = document.createElement("canvas"); c.width = im.width; c.height = im.height; const g = c.getContext("2d", { willReadFrequently: true }); g.drawImage(im, 0, 0);
+  const d = g.getImageData(0, 0, c.width, c.height).data, H = new Float32Array(c.width * c.height); for (let i = 0; i < H.length; i++) H[i] = d[4 * i] * 256 + d[4 * i + 1] + d[4 * i + 2] / 256 - 32768; DEMH = { H, w: c.width, h: c.height }; }).catch(() => {});
+function demZ(lon, lat) { if (!DEMH) return null; const { H, w, h } = DEMH, fx = (lon - BOUNDS[0]) / (BOUNDS[2] - BOUNDS[0]) * (w - 1), fy = (BOUNDS[3] - lat) / (BOUNDS[3] - BOUNDS[1]) * (h - 1);
+  const x = Math.max(0, Math.min(w - 2, Math.floor(fx))), y = Math.max(0, Math.min(h - 2, Math.floor(fy))), tx = fx - x, ty = fy - y, i = y * w + x;
+  return (H[i] * (1 - tx) + H[i + 1] * tx) * (1 - ty) + (H[i + w] * (1 - tx) + H[i + w + 1] * tx) * ty; }
 const BLAB = f => (f & 4) ? ((f & 2) ? "Πλημμύρισε στον Daniel (ήταν μέσα σε επίσημη ζώνη)" : "Πλημμύρισε στον Daniel ενώ ήταν ΕΚΤΟΣ επίσημης ζώνης 1000 ετών") : (f & 1) ? "Σε επίσημη ζώνη πλημμύρας 100 ετών" : (f & 2) ? "Σε επίσημη ζώνη πλημμύρας 1000 ετών" : "Εκτός επίσημων ζωνών· δεν πλημμύρισε στον Daniel";
 function cityAt(vs) { if (vs.zoom < 11.4) return null; for (const k in CITY) { const c = CITY[k]; if (vs.longitude > c[1] - .02 && vs.longitude < c[3] + .02 && vs.latitude > c[2] - .02 && vs.latitude < c[4] + .02) return k; } return null; }
 function loadCity(k) {
   if (BLD[k]) return; BLD[k] = { loading: true };
-  fetch(`assets/bld_${k}.json`).then(r => r.json()).then(j => {
+  Promise.all([fetch(`assets/bld_${k}.json`).then(r => r.json()), DEMP]).then(([j]) => {
     const [ox, oy] = j.o; const items = j.b.map(a => { const n = (a.length - 3) / 2, poly = new Array(n); const cx = ox + a[3] / 1e5, cy = oy + a[4] / 1e5;
-      const ci = IDXMAP.get(h3.latLngToCell(cy, cx, 8)); const z = ci === undefined ? 0 : Math.max(0, D.elev[ci]);
-      for (let q = 0; q < n; q++) poly[q] = [ox + a[3 + 2 * q] / 1e5, oy + a[4 + 2 * q] / 1e5, z];
+      let z = demZ(cx, cy); if (z === null) { const ci = IDXMAP.get(h3.latLngToCell(cy, cx, 8)); z = ci === undefined ? 0 : D.elev[ci]; } z = Math.max(0, z);
+      for (let q = 0; q < n; q++) poly[q] = [ox + a[3 + 2 * q] / 1e5, oy + a[4 + 2 * q] / 1e5];
       return { f: a[0], h: a[1], a: a[2], z, poly }; });
     BLD[k] = { items }; if (CITYNOW === k) { redraw(); renderLegend(); }
   }).catch(() => { delete BLD[k]; });
@@ -564,8 +570,9 @@ function vectorLayers(id) {
       getTextAnchor: "start", getAlignmentBaseline: "center", getPixelOffset: [9, 0], billboard: true, parameters: { depthTest: false }, updateTriggers: { getPosition: EX } }));
   }
   if (ov("bld") && ov("bld").on && CITYNOW && BLD[CITYNOW] && BLD[CITYNOW].items) {
-    L.push(new deck.SolidPolygonLayer({ id: id + "bld" + CITYNOW, data: BLD[CITYNOW].items, pickable: true, getPolygon: d => d.poly.map(p => [p[0], p[1], zOf(p[2], 12)]), getFillColor: d => BCOL(d.f),
-      extruded: false, _full3d: true, parameters: { depthTest: false }, updateTriggers: { getPolygon: EX } }));
+    // extruded from sea level up to ground + building height: the part below the terrain mesh is hidden by the depth test, so each volume stands on the ground
+    L.push(new deck.SolidPolygonLayer({ id: id + "bld" + CITYNOW, data: BLD[CITYNOW].items, pickable: true, getPolygon: d => d.poly, getFillColor: d => BCOL(d.f),
+      extruded: true, getElevation: d => zOf(d.z, 1) + d.h, material: { ambient: .5, diffuse: .65, shininess: 18, specularColor: [50, 50, 55] }, updateTriggers: { getElevation: EX } }));
   }
   if (ov("solar").on) L.push(new deck.ScatterplotLayer({ id: id + "sol", data: V.solar, getPosition: p => [p[0], p[1], zOf(p[2], 60)], getRadius: 2.2, radiusUnits: "pixels", getFillColor: [255, 214, 120, 230], updateTriggers: { getPosition: EX } }));
   if (ov("towns").on) {
@@ -773,7 +780,7 @@ function cellAt(info) {
 }
 function tooltip(info) {
   const o = info.object, lid = info.layer && info.layer.id || "";
-  if (o && o.poly && lid.includes("bld")) return { html: `<b>Κτίριο</b> · ${fmt(o.a)} m² αποτύπωμα${o.h ? " · ύψος " + o.h + " m" : ""}<br>${BLAB(o.f)}`, style: { background: "#121D2E", color: "#E7ECF3", font: "12px 'Fira Sans', sans-serif", border: "1px solid #233149", borderRadius: "6px", padding: "6px 8px", maxWidth: "260px" } };
+  if (o && o.poly && lid.includes("bld")) return { html: `<b>Κτίριο</b> · ${fmt(o.a)} m² αποτύπωμα · ύψος ${(o.f & 8) ? o.h + " m (OSM)" : "~" + o.h + " m (εκτίμηση)"}<br>${BLAB(o.f)}`, style: { background: "#121D2E", color: "#E7ECF3", font: "12px 'Fira Sans', sans-serif", border: "1px solid #233149", borderRadius: "6px", padding: "6px 8px", maxWidth: "260px" } };
   if (Array.isArray(o) && lid.endsWith("dd")) return { html: `<b>Υ/Σ ${o[0]}</b><br>Ελεύθερο περιθώριο ΑΠΕ: ${fmt(o[3], 1)} MVA (μεγαλύτερο σε μετασχηματιστή: ${fmt(o[4], 1)})<br>${fmt(o[5])} σταθμοί ΑΠΕ · ΔΕΔΔΗΕ 10/11/2026` };
   if (o && typeof o === "object" && !Array.isArray(o)) {
     if (o.mm != null) { const p = o.p; if (o.gr) return { text: `${o.n}: ${o.gr} (6ωρο από +${Math.floor(wxK / 2) * 6} ώρες) · ${fmt(WX.temp_c[p][wxK], 0)} °C · άνεμος ${fmt(WX.wind_ms[p][wxK], 0)} m/s · βροχή ως τότε ${fmt(o.mm, 1)} mm` }; return { text: `${fmt(o.mm, 1)} mm έως +${wxK * 3} ώρες · ${fmt(WX.temp_c[p][wxK], 0)} °C · άνεμος ${fmt(WX.wind_ms[p][wxK], 0)} m/s` }; }
@@ -833,7 +840,7 @@ function renderLegend() {
       L.append(t, row(BCOL(4), `Πλημμύρισε στον Daniel εκτός ζώνης 1000 ετών: ${fmt(c(f => (f & 4) && !(f & 2)))}`), row(BCOL(6), `Πλημμύρισε στον Daniel, εντός ζώνης: ${fmt(c(f => (f & 4) && (f & 2)))}`),
         row(BCOL(1), `Επίσημη ζώνη 100 ετών: ${fmt(c(f => !(f & 4) && (f & 1)))}`), row(BCOL(2), `Επίσημη ζώνη 1000 ετών: ${fmt(c(f => !(f & 4) && !(f & 1) && (f & 2)))}`), row(BCOL(0), "Εκτός ζωνών"));
       if (CITYNOW === "volos") L.append(el("div", "lab", "Ο Daniel δεν χαρτογραφήθηκε στην πόλη του Βόλου (EMSR692): εδώ φαίνονται μόνο οι επίσημες ζώνες."));
-      L.append(el("div", "lab", "Κτίριο = κάθε κατασκευή (Overture/OSM), όχι κατοικία· πέρνα τον δείκτη για λεπτομέρειες.")); }
+      L.append(el("div", "lab", "Κτίριο = κάθε κατασκευή (Overture/OSM), όχι κατοικία. Ύψη: OSM όπου υπάρχουν, αλλιώς μέσο ύψος δόμησης της γειτονιάς (JRC GHSL 2018).")); }
     return;
   }
   const ramp = (stops) => { const r = el("div", "ramp"); r.style.background = `linear-gradient(90deg, ${stops.map(c => `rgb(${c})`).join(",")})`; return r; };

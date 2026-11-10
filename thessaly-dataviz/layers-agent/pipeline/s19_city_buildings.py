@@ -30,4 +30,5 @@ for name, (x0, y0, x1, y1) in CITIES.items():
     (R / f"web/assets/bld_{name}.json").write_text(json.dumps({"o": [x0, y0], "bbox": [x0, y0, x1, y1], "b": out}, separators=(",", ":")))
     fl = np.array([o[0] for o in out]); summary[name] = {"n": len(out), "q100": int((fl & 1 > 0).sum()), "q1000": int((fl & 2 > 0).sum()), "daniel": int((fl & 4 > 0).sum()),
         "daniel_out_q1000": int(((fl & 4 > 0) & (fl & 2 == 0)).sum()), "mb": round(os.path.getsize(R / f"web/assets/bld_{name}.json") / 1e6, 2)}
+# heights: Overture/OSM where present (flag bit 8), else GHS-BUILT-H ANBH 2018 sampled at the first vertex (see pipeline/s20_building_heights.py)
 print(json.dumps(summary, indent=1)); (R / "data/city_buildings_summary.json").write_text(json.dumps(summary, ensure_ascii=False, indent=1))

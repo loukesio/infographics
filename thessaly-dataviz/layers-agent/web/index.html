@@ -395,7 +395,12 @@ function evaluate() {
 
 // ---------- rendering ----------
 const BOUNDS = [20.9, 38.8, 24.4, 40.3];
-let deck1, deck2, viewState = { longitude: 22.15, latitude: 39.36, zoom: 8.1, pitch: 52, bearing: -12, maxPitch: 75 };
+let deck1, deck2, viewState = { longitude: 22.3, latitude: 39.4, zoom: 8.4, pitch: 55, bearing: -6, maxPitch: 75 };
+function homeView() {            // default camera: the Thessaly plain (Kalambaka to Volos, Elassona to Almyros) fitted to the map area at any screen size
+  const st = document.getElementById("stage"), w = Math.max(320, st.clientWidth), h = Math.max(300, st.clientHeight);
+  const v = new deck.WebMercatorViewport({ width: w, height: h }).fitBounds([[21.5, 39.12], [23.02, 39.92]], { padding: Math.round(Math.min(w, h) * 0.03) });
+  return { longitude: v.longitude + 0.02, latitude: v.latitude - 0.1, zoom: v.zoom + 0.05, pitch: 55, bearing: -6, maxPitch: 75 };
+}
 let WXB = null, WX = null, wxK = 8, wxThr = 40, wxPlayT = null, WXI = null, HAND = null, simK = 2, HANDTEX = null, openMore = false, failAt = null, EXC = [], showExcl = false, PIN = null, history = [], TOWNS = [], reveal = 1, revealT = null, EX = 2.5, LON, LAT, V = null, TL = null, tlIdx = 3, tlPlay = null;
 const IMG = {};
 const OV = [ // overlays: draped texture layers + vector layers
@@ -690,6 +695,7 @@ function renderResult(src) {
   const H = el("div", "hero");
   const big = el("div", "bignum"); big.append(el("b", null, fmt(last.area)), el("span", null, " km²"));
   H.append(big, el("div", "sub", `${fmt(last.area / AREA_TOT * 100, 1)}% της Θεσσαλίας · ${fmt(last.cells)} εξάγωνα · ${fmt(last.pop)} κάτοικοι`));
+  if (spec.filters.some(f => f.col === "solar")) { let pv = 0; RES.forEach(i => pv += Math.max(0, D.solar[i]) * D.area[i]); H.append(el("div", "sub", `Τα km² είναι τα εξάγωνα που περιέχουν πάρκα· η επιφάνεια των ίδιων των πάρκων είναι ${fmt(pv, 1)} km²`)); }
   if (spec.answer) H.append(el("p", "answer", spec.answer));
   H.append(el("div", "how", spec.score && spec.score.length ? "Στον χάρτη: οι χρωματισμένες περιοχές πληρούν όλα τα κριτήρια· όσο πιο φωτεινό, τόσο καλύτερη η βαθμολογία." : "Στον χάρτη: οι χρωματισμένες περιοχές πληρούν όλα τα κριτήρια."));
   R.append(H);
@@ -900,7 +906,7 @@ function renderLayersPanel() {
 // ---------- guided tour ----------
 let tourK = -1, tourT = null;
 const TOUR = [
-  { cap: "Θεσσαλία σε 17.504 εξάγωνα: ανάγλυφο από το Copernicus DEM, 40+ ανοιχτά layers σε ένα πλέγμα.", run: () => { setMode("query"); flyView({ longitude: 22.15, latitude: 39.36, zoom: 8.1, pitch: 52, bearing: -12 }); } },
+  { cap: "Θεσσαλία σε 17.504 εξάγωνα: ανάγλυφο από το Copernicus DEM, 40+ ανοιχτά layers σε ένα πλέγμα.", run: () => { setMode("query"); flyView(homeView()); } },
   { cap: "Σεπτέμβριος 2023: ο Daniel μέρα με τη μέρα, από 12 δορυφορικές λήψεις.", run: () => { setMode("time"); setTL(0); flyView({ longitude: 22.2, latitude: 39.5, zoom: 8.6, pitch: 55, bearing: -20 }); setTimeout(() => { if (tourK === 1) playTL(); }, 600); }, wait: 14500 },
   { cap: "Αν έκλειναν τα Τέμπη, ο κάμπος θα γινόταν λίμνη. Το 95% της πλημμύρας του Daniel έπεσε ακριβώς εκεί.", run: () => { setMode("swipe"); flyView({ longitude: 22.3, latitude: 39.5, zoom: 8.5, pitch: 50, bearing: -10 }); } },
   { cap: "Προσομοίωση: αν το νερό ανέβει 3 m πάνω από τα ποτάμια, πιάνουμε το 83% της πραγματικής πλημμύρας του Daniel.", run: () => { setMode("sim"); setSim(HAND.levels.indexOf(HAND.best.level)); flyView({ longitude: 22.2, latitude: 39.5, zoom: 8.5, pitch: 52, bearing: -15 }); }, wait: 9000 },
@@ -937,9 +943,10 @@ function tourGo(k) {
   const P = $("presets"); PRESETS.forEach(p => { const b = el("button", "chip", p.s); b.title = p.q; b.onclick = () => { $("q").value = p.q; if (mode !== "query") setMode("query"); apply(structuredClone(p.spec), "preset", true, p.q, false); }; P.append(b); });
   $("tlRange").max = TL.dates.length - 1;
   renderWelcome();
+  try { viewState = homeView(); } catch {}
   deck1 = makeDeck($("map"), queryLayers());
   $("loading").remove(); renderLegend(); renderLayersPanel(); initSwipe();
-  if (innerWidth < 820) document.querySelector(".layers").open = false;
+  if (innerWidth < 820 || innerHeight < 720) document.querySelector(".layers").open = false;
   ["query", "time", "swipe", "sim", "wx"].forEach(k => $("mode-" + k).onclick = () => setMode(k));
   if (WX) {
     WXI = new Int16Array(N); WXB = new Float32Array(WX.rain_cum_mm.length).fill(-1);

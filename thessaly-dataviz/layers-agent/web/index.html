@@ -37,6 +37,8 @@ body { background: var(--bg); color: var(--ink); font-family: var(--body); font-
 .seg button:focus-visible, button:focus-visible, textarea:focus-visible, input:focus-visible { outline: 2px solid var(--sun); outline-offset: 2px; }
 .legend { background: color-mix(in srgb, var(--panel) 92%, transparent); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; display: grid; gap: 6px; }
 .legend .ramp { height: 8px; border-radius: 4px; }
+.legend .bl { display: flex; align-items: center; gap: 7px; justify-content: flex-start; }
+.legend .bl i { width: 11px; height: 11px; border-radius: 2px; flex: none; }
 .lab { display: flex; justify-content: space-between; font: 11px var(--mono); color: var(--muted); }
 .legend .t { font-size: 12px; color: var(--ink); }
 
@@ -267,7 +269,6 @@ pre { font: 11px/1.5 var(--mono); color: var(--muted); white-space: pre-wrap; wo
     <details class="layers" open>
       <summary>Layers · τι δείχνει ο χάρτης</summary>
       <div id="layersList"></div>
-      <label class="lyr ex" for="exag"><span><span>Υπερβολή ύψους</span><small>Copernicus DEM</small></span><input type="range" id="exag" min="1" max="5" step="0.5" value="2.5"><output id="exagOut">×2,5</output></label>
     </details>
     <div class="dock">
       <div class="seg" role="group" aria-label="Λειτουργία">
@@ -490,6 +491,21 @@ function evaluate() {
 
 // ---------- rendering ----------
 const BOUNDS = [20.9, 38.8, 24.4, 40.3];
+const CITY = { larisa: ["Λάρισα", 22.355, 39.595, 22.475, 39.675], volos: ["Βόλος", 22.895, 39.335, 22.995, 39.405], trikala: ["Τρίκαλα", 21.725, 39.525, 21.805, 39.585], karditsa: ["Καρδίτσα", 21.885, 39.34, 21.955, 39.39] };
+const BLD = {}; let CITYNOW = null;   // per-city building footprints, fetched the first time the camera zooms into that city
+const BCOL = f => (f & 4) ? ((f & 2) ? [79, 163, 224, 235] : [240, 96, 80, 245]) : (f & 1) ? [150, 100, 235, 235] : (f & 2) ? [186, 166, 232, 215] : [158, 168, 184, 150];
+const BLAB = f => (f & 4) ? ((f & 2) ? "Πλημμύρισε στον Daniel (ήταν μέσα σε επίσημη ζώνη)" : "Πλημμύρισε στον Daniel ενώ ήταν ΕΚΤΟΣ επίσημης ζώνης 1000 ετών") : (f & 1) ? "Σε επίσημη ζώνη πλημμύρας 100 ετών" : (f & 2) ? "Σε επίσημη ζώνη πλημμύρας 1000 ετών" : "Εκτός επίσημων ζωνών· δεν πλημμύρισε στον Daniel";
+function cityAt(vs) { if (vs.zoom < 11.4) return null; for (const k in CITY) { const c = CITY[k]; if (vs.longitude > c[1] - .02 && vs.longitude < c[3] + .02 && vs.latitude > c[2] - .02 && vs.latitude < c[4] + .02) return k; } return null; }
+function loadCity(k) {
+  if (BLD[k]) return; BLD[k] = { loading: true };
+  fetch(`assets/bld_${k}.json`).then(r => r.json()).then(j => {
+    const [ox, oy] = j.o; const items = j.b.map(a => { const n = (a.length - 3) / 2, poly = new Array(n); const cx = ox + a[3] / 1e5, cy = oy + a[4] / 1e5;
+      const ci = IDXMAP.get(h3.latLngToCell(cy, cx, 8)); const z = ci === undefined ? 0 : Math.max(0, D.elev[ci]);
+      for (let q = 0; q < n; q++) poly[q] = [ox + a[3 + 2 * q] / 1e5, oy + a[4 + 2 * q] / 1e5, z];
+      return { f: a[0], h: a[1], a: a[2], z, poly }; });
+    BLD[k] = { items }; if (CITYNOW === k) { redraw(); renderLegend(); }
+  }).catch(() => { delete BLD[k]; });
+}
 let ZB = 0;                      // zoom bucket: 0 towns only, 1 + villages, 2 + hamlets
 let deck1, deck2, viewState = { longitude: 22.3, latitude: 39.4, zoom: 8.4, pitch: 55, bearing: -6, maxPitch: 75 };
 function homeView() {            // default camera: the Thessaly plain (Kalambaka to Volos, Elassona to Almyros) fitted to the map area at any screen size
@@ -513,6 +529,7 @@ const OV = [ // overlays: draped texture layers + vector layers
   { id: "grid", l: "Γραμμές ΥΤ & υποσταθμοί", src: "OSM", kind: "vec", on: false },
   { id: "solar", l: "Φωτοβολταϊκά πάρκα", src: "OSM", kind: "vec", on: false },
   { id: "towns", l: "Οικισμοί (χωριά εμφανίζονται με ζουμ)", src: "OSM/Overture", kind: "vec", on: true },
+  { id: "bld", l: "Κτίρια ανά κίνδυνο πλημμύρας (με ζουμ σε Λάρισα, Βόλο, Τρίκαλα, Καρδίτσα)", src: "Overture × ΥΠΕΝ × EMSR692", kind: "vec", on: true },
 ];
 const ov = id => OV.find(o => o.id === id);
 
@@ -545,6 +562,10 @@ function vectorLayers(id) {
     L.push(new deck.TextLayer({ id: id + "ddt", data: D.deddie, getPosition: r => [r[2], r[1], zOf(zc(r), 150)], getText: r => `${r[3].toLocaleString("el-GR")} MVA`, characterSet: "auto", getSize: 10.5,
       fontFamily: "Fira Sans, sans-serif", fontWeight: 600, getColor: r => col(r), outlineWidth: 3, outlineColor: [13, 21, 34, 255], fontSettings: { sdf: true, fontSize: 64, buffer: 6 },
       getTextAnchor: "start", getAlignmentBaseline: "center", getPixelOffset: [9, 0], billboard: true, parameters: { depthTest: false }, updateTriggers: { getPosition: EX } }));
+  }
+  if (ov("bld") && ov("bld").on && CITYNOW && BLD[CITYNOW] && BLD[CITYNOW].items) {
+    L.push(new deck.SolidPolygonLayer({ id: id + "bld" + CITYNOW, data: BLD[CITYNOW].items, pickable: true, getPolygon: d => d.poly.map(p => [p[0], p[1], zOf(p[2], 12)]), getFillColor: d => BCOL(d.f),
+      extruded: false, _full3d: true, parameters: { depthTest: false }, updateTriggers: { getPolygon: EX } }));
   }
   if (ov("solar").on) L.push(new deck.ScatterplotLayer({ id: id + "sol", data: V.solar, getPosition: p => [p[0], p[1], zOf(p[2], 60)], getRadius: 2.2, radiusUnits: "pixels", getFillColor: [255, 214, 120, 230], updateTriggers: { getPosition: EX } }));
   if (ov("towns").on) {
@@ -752,6 +773,7 @@ function cellAt(info) {
 }
 function tooltip(info) {
   const o = info.object, lid = info.layer && info.layer.id || "";
+  if (o && o.poly && lid.includes("bld")) return { html: `<b>Κτίριο</b> · ${fmt(o.a)} m² αποτύπωμα${o.h ? " · ύψος " + o.h + " m" : ""}<br>${BLAB(o.f)}`, style: { background: "#121D2E", color: "#E7ECF3", font: "12px 'Fira Sans', sans-serif", border: "1px solid #233149", borderRadius: "6px", padding: "6px 8px", maxWidth: "260px" } };
   if (Array.isArray(o) && lid.endsWith("dd")) return { html: `<b>Υ/Σ ${o[0]}</b><br>Ελεύθερο περιθώριο ΑΠΕ: ${fmt(o[3], 1)} MVA (μεγαλύτερο σε μετασχηματιστή: ${fmt(o[4], 1)})<br>${fmt(o[5])} σταθμοί ΑΠΕ · ΔΕΔΔΗΕ 10/11/2026` };
   if (o && typeof o === "object" && !Array.isArray(o)) {
     if (o.mm != null) { const p = o.p; if (o.gr) return { text: `${o.n}: ${o.gr} (6ωρο από +${Math.floor(wxK / 2) * 6} ώρες) · ${fmt(WX.temp_c[p][wxK], 0)} °C · άνεμος ${fmt(WX.wind_ms[p][wxK], 0)} m/s · βροχή ως τότε ${fmt(o.mm, 1)} mm` }; return { text: `${fmt(o.mm, 1)} mm έως +${wxK * 3} ώρες · ${fmt(WX.temp_c[p][wxK], 0)} °C · άνεμος ${fmt(WX.wind_ms[p][wxK], 0)} m/s` }; }
@@ -767,8 +789,8 @@ function tooltip(info) {
 }
 function makeDeck(container, layers) {
   return new deck.Deck({ parent: container, initialViewState: viewState, controller: { inertia: true }, layers,
-    getTooltip: tooltip, onClick: info => { const lid = info.layer && info.layer.id || ""; if (lid.endsWith("dd")) return; const i = cellAt(info); if (i >= 0 && (!info.object || typeof info.object !== "object" || Array.isArray(info.object))) showCard(i); },
-    onViewStateChange: ({ viewState: vs }) => { viewState = vs; { const zb = vs.zoom >= 10.6 ? 2 : vs.zoom >= 9.4 ? 1 : 0; if (zb !== ZB) { ZB = zb; setTimeout(redraw, 0); } } stopOrbit(); if (deck1) deck1.setProps({ viewState: vs }); if (deck2) deck2.setProps({ viewState: vs }); return vs; },
+    getTooltip: tooltip, onClick: info => { const lid = info.layer && info.layer.id || ""; if (lid.endsWith("dd") || lid.includes("bld")) return; const i = cellAt(info); if (i >= 0 && (!info.object || typeof info.object !== "object" || Array.isArray(info.object))) showCard(i); },
+    onViewStateChange: ({ viewState: vs }) => { viewState = vs; { const zb = vs.zoom >= 10.6 ? 2 : vs.zoom >= 9.4 ? 1 : 0, ck = cityAt(vs); if (ck && ov("bld").on) loadCity(ck); if (zb !== ZB || ck !== CITYNOW) { ZB = zb; CITYNOW = ck; setTimeout(() => { redraw(); renderLegend(); }, 0); } } stopOrbit(); if (deck1) deck1.setProps({ viewState: vs }); if (deck2) deck2.setProps({ viewState: vs }); return vs; },
     viewState, style: { position: "absolute", inset: 0 }, parameters: { clearColor: [13 / 255, 21 / 255, 34 / 255, 1] },
     effects: [new deck.LightingEffect({ amb: new deck.AmbientLight({ color: [255, 255, 255], intensity: 1.1 }),
       sun: new deck.DirectionalLight({ color: [255, 244, 225], intensity: 1.6, direction: [-3, -6, -4] }) })] });
@@ -802,6 +824,18 @@ function flyTo(ids) {
 // ---------- panel ----------
 function renderLegend() {
   const L = $("legend"); L.replaceChildren();
+  if (CITYNOW && ov("bld") && ov("bld").on && mode !== "today" && mode !== "swipe") {
+    const B = BLD[CITYNOW]; const t = el("div", "t");
+    if (!B || !B.items) { t.textContent = `Φόρτωση κτιρίων: ${CITY[CITYNOW][0]}…`; L.append(t); }
+    else { const n = B.items.length, c = m => B.items.reduce((s, d) => s + (m(d.f) ? 1 : 0), 0);
+      t.append(el("b", null, `${CITY[CITYNOW][0]}: ${fmt(n)} κτίρια`), document.createTextNode(" · χρώμα ανά κίνδυνο πλημμύρας"));
+      const row = (col, txt) => { const r = el("div", "lab bl"); const sw = el("i"); sw.style.background = `rgb(${col.slice(0, 3)})`; r.append(sw, el("span", null, txt)); return r; };
+      L.append(t, row(BCOL(4), `Πλημμύρισε στον Daniel εκτός ζώνης 1000 ετών: ${fmt(c(f => (f & 4) && !(f & 2)))}`), row(BCOL(6), `Πλημμύρισε στον Daniel, εντός ζώνης: ${fmt(c(f => (f & 4) && (f & 2)))}`),
+        row(BCOL(1), `Επίσημη ζώνη 100 ετών: ${fmt(c(f => !(f & 4) && (f & 1)))}`), row(BCOL(2), `Επίσημη ζώνη 1000 ετών: ${fmt(c(f => !(f & 4) && !(f & 1) && (f & 2)))}`), row(BCOL(0), "Εκτός ζωνών"));
+      if (CITYNOW === "volos") L.append(el("div", "lab", "Ο Daniel δεν χαρτογραφήθηκε στην πόλη του Βόλου (EMSR692): εδώ φαίνονται μόνο οι επίσημες ζώνες."));
+      L.append(el("div", "lab", "Κτίριο = κάθε κατασκευή (Overture/OSM), όχι κατοικία· πέρνα τον δείκτη για λεπτομέρειες.")); }
+    return;
+  }
   const ramp = (stops) => { const r = el("div", "ramp"); r.style.background = `linear-gradient(90deg, ${stops.map(c => `rgb(${c})`).join(",")})`; return r; };
   const lab = (a, b) => { const x = el("div", "lab"); x.append(el("span", null, a), el("span", null, b)); return x; };
   if (mode === "query" && !spec) {
@@ -1185,7 +1219,6 @@ function tourGo(k) {
   $("homeBtn").onclick = goHome; document.querySelector(".brand").onclick = goHome;
   $("tourBtn").onclick = () => tourGo(0); $("tourNext").onclick = () => tourGo(tourK + 1); $("tourExit").onclick = () => tourGo(-1);
   window.claude?.use?.("downloads")?.then(d => downloads = d).catch(() => {});
-  $("exag").oninput = () => { EX = +$("exag").value; $("exagOut").textContent = "×" + fmt(EX, 1); redraw(); };
   $("tlRange").oninput = () => { stopTL(); setTL(+$("tlRange").value); }; $("tlPlay").onclick = playTL;
   $("askBtn").onclick = ask; $("stopBtn").onclick = () => ctl?.abort();
   $("q").addEventListener("keydown", e => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) ask(); });

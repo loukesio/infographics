@@ -134,6 +134,8 @@ pre { font: 11px/1.5 var(--mono); color: var(--muted); white-space: pre-wrap; wo
 .tlrow input { width: 100%; accent-color: var(--water); }
 .big { color: var(--sun); font: 600 20px var(--mono); }
 
+.tourbtn.home { background: transparent; color: var(--ink); border: 1px solid color-mix(in srgb, var(--ink) 35%, transparent); }
+.brand { cursor: pointer; pointer-events: auto; }
 .tourbtn { pointer-events: auto; font: 600 12px var(--body); color: var(--bg); background: var(--ink); border: 0; border-radius: 999px; padding: 6px 12px; cursor: pointer; }
 .tour { position: absolute; z-index: 6; left: 50%; transform: translateX(-50%); top: calc(58px + env(safe-area-inset-top, 0px)); width: min(560px, calc(100% - 32px));
   background: var(--panel); border: 1px solid var(--line); border-left: 3px solid var(--sun); border-radius: 10px; padding: 12px 14px; display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; align-items: start; box-shadow: 0 12px 40px rgb(0 0 0 / .4); }
@@ -251,6 +253,7 @@ pre { font: 11px/1.5 var(--mono); color: var(--muted); white-space: pre-wrap; wo
     <div class="loading" id="loading">Φόρτωση 17.504 εξαγώνων…</div>
     <div class="topbar">
       <div class="brand">Θεσσαλία <span>·</span> Layers Agent</div>
+      <button class="tourbtn home" id="homeBtn" title="Επιστροφή στην αρχική" aria-label="Αρχική">⌂ Αρχική</button>
       <button class="tourbtn" id="tourBtn">▶ Ξενάγηση</button>
       <div class="stats" id="stats">H3 res 8 · 17.504 κελιά · 14.053 km² · 40+ layers</div>
     </div>
@@ -470,7 +473,9 @@ function homeView() {            // default camera: the Thessaly plain (Kalambak
 let S2W = null, WXB = null, WX = null, wxK = 8, wxThr = 40, wxPlayT = null, WXI = null, HAND = null, simK = 2, HANDTEX = null, openMore = false, failAt = null, EXC = [], showExcl = false, PIN = null, history = [], TOWNS = [], reveal = 1, revealT = null, EX = 2.5, LON, LAT, V = null, TL = null, tlIdx = 3, tlPlay = null;
 const IMG = {};
 const OV = [ // overlays: draped texture layers + vector layers
-  { id: "landcover", l: "Κάλυψη γης", src: "ESA WorldCover 2021", kind: "tex", on: false, op: 0.55 },
+  { id: "s2", l: "Δορυφόρος σήμερα (πραγματική εικόνα)", src: "Copernicus Sentinel-2", kind: "tex", on: false, op: 1 },
+  { id: "s2water", l: "Νερό σήμερα (δείκτης NDWI)", src: "Sentinel-2", kind: "tex", on: false, op: 0.9 },
+  { id: "landcover", l: "Κάλυψη γης 2021 (ταξινόμηση: δάσος, καλλιέργειες…)", src: "ESA WorldCover 2021", kind: "tex", on: false, op: 0.55 },
   { id: "natura", l: "Natura 2000", src: "EEA", kind: "tex", on: false, op: 0.9 },
   { id: "flood", l: "Πλημμύρα Daniel (σύνολο)", src: "EMSR692", kind: "tex", on: false, op: 0.9 },
   { id: "lake", l: "Λίμνη Τεμπών (σενάριο)", src: "DEM", kind: "tex", on: false, op: 0.85 },
@@ -1069,6 +1074,16 @@ const TOUR = [
 function flyView(v) { if (!deck1) return; const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
   viewState = { ...viewState, ...v, transitionDuration: reduce ? 0 : 2200, transitionInterpolator: new deck.FlyToInterpolator(), transitionEasing: t => 1 - Math.pow(1 - t, 3) };
   deck1.setProps({ viewState }); deck2 && deck2.setProps({ viewState }); }
+function goHome() {                // back to the start: no query, default layers, default camera
+  if (tourK >= 0) tourGo(-1);
+  stopWx(); stopTL(); setMode("query");
+  spec = null; history = []; RES = []; pass = null; PIN = null; showExcl = false;
+  $("q").value = ""; $("q").placeholder = "π.χ. Πού ζουν άνθρωποι κάτω από 100 m που πλημμύρισαν το 2023;"; $("status").textContent = ""; $("card").hidden = true;
+  let changed = false; OV.forEach(o => { const def = o.id === "rivers" || o.id === "towns"; if (o.on !== def) { o.on = def; changed = true; } });
+  if (changed) { TEX1 = composite(); texVer++; wxTexK = -1; renderLayersPanel(); }
+  renderWelcome(); renderLegend(); redraw(); flyView(homeView());
+  try { document.querySelector("aside").scrollTop = 0; } catch {}
+}
 function tourGo(k) {
   clearTimeout(tourT); stopTL();
   if (k >= TOUR.length || k < 0) { tourK = -1; $("tour").hidden = true; showExcl = false; if (spec) renderResult("preset"); redraw(); return; }
@@ -1103,7 +1118,8 @@ function tourGo(k) {
   $("loading").remove(); renderLegend(); renderLayersPanel(); initSwipe();
   if (innerWidth >= 820 && innerHeight < 720) document.querySelector(".layers").open = false;
   ["query", "time", "swipe", "sim", "wx", "today"].forEach(k => $("mode-" + k).onclick = () => setMode(k));
-  if (!IMG.s2) $("mode-today").hidden = true;
+  if (!IMG.s2) { $("mode-today").hidden = true; OV.splice(OV.findIndex(o => o.id === "s2"), 2); }
+  else if (S2W) { const d = new Date(S2W.date).toLocaleDateString("el-GR", { day: "numeric", month: "long", year: "numeric" }); ov("s2").src = `Copernicus Sentinel-2 · ${d}`; ov("s2water").src = `Sentinel-2 · ${d}`; }
   if (WX) {
     WXI = new Int16Array(N); WXB = new Float32Array(WX.rain_cum_mm.length).fill(-1);
     for (let i = 0; i < N; i++) { WXI[i] = wxIdx(i); WXB[WXI[i]] = Math.max(WXB[WXI[i]], D.elev[i]); }
@@ -1118,6 +1134,7 @@ function tourGo(k) {
     const first = WX.steps.findIndex(t => new Date(t) >= Date.now() - 3 * 36e5); if (first > 0) wxK = Math.max(wxK, first);
   } else $("mode-wx").hidden = true;
   $("simRange").max = HAND.levels.length - 1; $("simRange").oninput = () => setSim(+$("simRange").value);
+  $("homeBtn").onclick = goHome; document.querySelector(".brand").onclick = goHome;
   $("tourBtn").onclick = () => tourGo(0); $("tourNext").onclick = () => tourGo(tourK + 1); $("tourExit").onclick = () => tourGo(-1);
   window.claude?.use?.("downloads")?.then(d => downloads = d).catch(() => {});
   $("exag").oninput = () => { EX = +$("exag").value; $("exagOut").textContent = "×" + fmt(EX, 1); redraw(); };

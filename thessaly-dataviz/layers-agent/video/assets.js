@@ -20,7 +20,7 @@ ul{list-style:none;display:grid;gap:16px}li{font:400 32px/1.3 "IBM Plex Sans";co
 .rows{display:grid;gap:18px;margin-top:14px}.row{display:grid;grid-template-columns:560px 40px 1fr;align-items:baseline;gap:18px;padding:18px 0;border-top:1px solid #233149}
 .row b{font:600 30px/1.25 "IBM Plex Sans";color:#F3F6FA}.row i{font:400 28px "IBM Plex Sans";color:#F2A33A;font-style:normal}.row span{font:400 28px/1.3 "IBM Plex Sans";color:#C5CFDC}
 .who{font:600 36px/1.2 "IBM Plex Sans";color:#F3F6FA;margin-top:26px}.contact{font:400 32px/1.3 "IBM Plex Sans";color:#F2A33A}
-.ppl{display:grid;grid-template-columns:auto auto;justify-content:start;gap:90px;margin-top:34px}.ppl .k{margin-bottom:18px;text-transform:uppercase}.pr{margin-bottom:20px}.pr b{display:block;font:600 34px/1.2 "IBM Plex Sans";color:#F3F6FA}.pr span{display:block;font:400 26px/1.4 "IBM Plex Sans";color:#A9B6C8}
+.ppl{display:grid;grid-template-columns:auto auto;justify-content:start;gap:90px;margin-top:34px}.ppl .k{margin-bottom:18px}.pr{margin-bottom:20px}.pr b{display:block;font:600 34px/1.2 "IBM Plex Sans";color:#F3F6FA}.pr span{display:block;font:400 26px/1.4 "IBM Plex Sans";color:#A9B6C8}
 .cta{font:600 40px/1.2 "IBM Plex Sans";color:#F2A33A;margin-top:10px}`;
 (async () => { const b = await chromium.launch(); const p = await b.newPage({ viewport: { width: 1920, height: 1080 } }); fs.mkdirSync('art', { recursive: true });
   const shot = async (body, file, transparent, clip) => { await p.setContent(`<!doctype html><meta charset="utf-8">${FONT}<style>${CSS}${transparent ? 'html,body{background:transparent}' : ''}</style>${body}`); await p.evaluate(() => document.fonts.ready); await p.waitForTimeout(250); await p.screenshot({ path: file, omitBackground: !!transparent, clip }); };

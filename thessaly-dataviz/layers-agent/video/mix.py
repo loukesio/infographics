@@ -1,7 +1,8 @@
 """Places the narration clips at their scene times and mixes them with the music bed (ducked under the voice); builds the final files."""
 import json, subprocess, numpy as np, soundfile as sf
 SC = [f"v{i:02d}" for i in range(15)]; SR = 44100
-for lang in ("el", "en"):
+import sys
+for lang in (sys.argv[1:] or ["el", "en"]):
     T = json.load(open(f"out/times_{lang}.json")); open(f"list2_{lang}.txt", "w").write("".join(f"file 'out/{s}_{lang}.mp4'\n" for s in SC))
     total = sum(T[s]["dur"] for s in SC); voice = np.zeros(int(total * 24000) + 24000, "float32"); t0 = 0.0
     for s in SC:

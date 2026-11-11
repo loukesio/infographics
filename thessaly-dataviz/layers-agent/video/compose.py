@@ -15,6 +15,7 @@ def rgba(path, size=None):
 def blend(a, b, t): return a if t <= 0 else b if t >= 1 else Image.blend(a, b, t)
 MASK = Image.new("L", (PW, PH), 0); ImageDraw.Draw(MASK).rounded_rectangle((0, -20, PW - 1, PH - 1), 12, fill=255)
 CUR = rgba("art/cursor.png", (30, 30))
+BRAND = Image.open("art/brand.png").convert("RGB") if os.path.exists("art/brand.png") else None
 
 class Cursor:                        # keyframed pointer: pts = [(t, x, y)], clicks = [t]; coordinates in page px
     def __init__(self, pts, clicks=()): self.p = sorted(pts); self.c = list(clicks)
@@ -29,6 +30,7 @@ class Cursor:                        # keyframed pointer: pts = [(t, x, y)], cli
 
 def frame(bg, pg, cur, caps):
     f = bg.copy(); f.paste(pg, (PX, PY), MASK)
+    if BRAND is not None: f.paste(BRAND, (PX, PY + 6))       # product wordmark over the in-app title
     if cur:
         x, y, ring = cur; X, Y = PX + x, PY + y
         if ring is not None: r = 10 + 46 * ring / 0.45; a = int(230 * (1 - ring / 0.45)); ov = Image.new("RGBA", f.size, (0, 0, 0, 0)); ImageDraw.Draw(ov).ellipse((X - r, Y - r, X + r, Y + r), outline=(242, 163, 58, a), width=4); f.paste(ov, (0, 0), ov)

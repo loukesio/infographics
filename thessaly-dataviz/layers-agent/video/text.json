@@ -119,19 +119,69 @@
     "And for energy: where new capacity fits",
     "21 of 51 HV/MV transformers have no margin for new renewables (HEDNO, 10 Nov 2026)"
    ]
+  },
+  "s4b": {
+   "el": [
+    "Πρόγνωση βροχής πάνω στη χαμηλή γη",
+    "Οι περιοχές που θέλουν προσοχή φαίνονται πριν φτάσει η βροχή"
+   ],
+   "en": [
+    "Rainfall forecast over the low ground",
+    "The areas to watch stand out before the rain arrives"
+   ]
+  },
+  "s4c": {
+   "el": [
+    "Το έδαφος σήμερα, από δορυφόρο",
+    "Πρόσφατη εικόνα Copernicus Sentinel-2"
+   ],
+   "en": [
+    "The ground today, from space",
+    "A recent Copernicus Sentinel-2 image"
+   ]
+  },
+  "s5d": {
+   "el": [
+    "Κάθε απάντηση ανοίγει",
+    "Κλικ σε ένα εξάγωνο για όλες τις τιμές του· κλείσε ένα κριτήριο και η απάντηση αλλάζει"
+   ],
+   "en": [
+    "Every answer can be taken apart",
+    "Click a cell for all its values; switch a criterion off and the answer changes"
+   ]
+  },
+  "s8p": {
+   "el": [
+    "Ενέργεια: πού χωράει νέο φωτοβολταϊκό",
+    "Εκτός των ζωνών αποκλεισμού του νέου Ειδικού Χωροταξικού ΑΠΕ"
+   ],
+   "en": [
+    "Energy: where new solar could go",
+    "Outside the exclusion zones of the new national spatial framework for renewables"
+   ]
+  },
+  "s8c": {
+   "el": [
+    "Μπαταρίες δίπλα σε υποσταθμό με ελεύθερο περιθώριο",
+    "21 από τους 51 μετασχηματιστές ΥΤ/ΜΤ δεν χωρούν νέες ΑΠΕ (ΔΕΔΔΗΕ, 10/11/2026)"
+   ],
+   "en": [
+    "Batteries next to a substation with spare capacity",
+    "21 of 51 HV/MV transformers have no room for new renewables (HEDNO, 10 Nov 2026)"
+   ]
   }
  },
  "cards": {
   "title": {
    "el": {
     "k": "DEMO · ΝΟΕΜΒΡΙΟΣ 2026",
-    "h": "Θεσσαλία <span>·</span> Layers Agent",
+    "h": "Ανθεκτική <span>Θεσσαλία</span>",
     "p": "Ανοιχτά δεδομένα σε έναν χάρτη. Απαντήσεις με πηγή.",
     "f": ""
    },
    "en": {
     "k": "DEMO · NOVEMBER 2026",
-    "h": "Thessaly <span>·</span> Layers Agent",
+    "h": "Resilient <span>Thessaly</span>",
     "p": "Open data on one map. Answers with sources.",
     "f": ""
    }
@@ -179,30 +229,66 @@
   "end": {
    "el": {
     "k": "ΕΠΟΜΕΝΟ ΒΗΜΑ",
-    "h": "Από demo σε επιχειρησιακό εργαλείο",
-    "l": [
-     "Αισθητήρες ΚΕΣΥΠΠ σε πραγματικό χρόνο",
-     "Θέσεις και πρόοδος αντιπλημμυρικών έργων",
-     "Ακριβές ανάγλυφο: LiDAR ή DEM 5 m του Κτηματολογίου"
-    ],
-    "p": "Πρόταση: πιλοτική συνεργασία με την Περιφέρεια Θεσσαλίας",
-    "f": ""
+    "h": "Πιλοτική συνεργασία με την Περιφέρεια Θεσσαλίας",
+    "who": "Σεραφείμ Μουστακίδης · Λουκάς Θεοδοσίου",
+    "c": "Επικοινωνία: Γιάννης Ντάβαρος"
    },
    "en": {
     "k": "NEXT STEP",
-    "h": "From demo to an operational tool",
-    "l": [
-     "Real-time sensors of the regional civil-protection centre",
-     "Locations and progress of flood-protection works",
-     "Accurate terrain: LiDAR or the Cadastre 5 m DEM"
-    ],
-    "p": "Proposal: a pilot with the Region of Thessaly",
-    "f": ""
+    "h": "A pilot with the Region of Thessaly",
+    "who": "Serafeim Moustakidis · Loukas Theodosiou",
+    "c": "Contact: Giannis Ntavaros"
+   }
+  },
+  "future": {
+   "el": {
+    "k": "ΜΕ ΠΕΡΙΣΣΟΤΕΡΑ ΔΕΔΟΜΕΝΑ",
+    "h": "Τι άλλο μπορεί να κάνει",
+    "r": [
+     [
+      "Αισθητήρες στάθμης και βροχής, ζωντανά",
+      "Προειδοποίηση ανά δρόμο, σχολείο και νοσοκομείο καθώς ανεβαίνει το νερό"
+     ],
+     [
+      "Ακριβές ανάγλυφο: LiDAR ή DEM 5 m",
+      "Σενάρια με ακρίβεια μελέτης: αναχώματα, γέφυρες, βάθος νερού"
+     ],
+     [
+      "Θέσεις και πρόοδος αντιπλημμυρικών έργων",
+      "Πηγαίνουν τα χρήματα εκεί που είναι ο κίνδυνος;"
+     ],
+     [
+      "Ιδιοκτησίες και δηλώσεις καλλιεργειών",
+      "Εκτίμηση ζημιών την επόμενη μέρα μιας πλημμύρας"
+     ]
+    ]
+   },
+   "en": {
+    "k": "WITH MORE DATA",
+    "h": "What else it can do",
+    "r": [
+     [
+      "Live water-level and rain sensors",
+      "Warnings street by street, school by school, as the water rises"
+     ],
+     [
+      "Precise terrain: LiDAR or a 5 m DEM",
+      "Scenarios with engineering accuracy: embankments, bridges, water depth"
+     ],
+     [
+      "Locations and progress of flood-protection works",
+      "Is the money going where the risk is?"
+     ],
+     [
+      "Property and crop records",
+      "Damage estimates the day after a flood"
+     ]
+    ]
    }
   }
  },
  "bar": {
-  "el": "Θεσσαλία · Layers Agent — demo",
-  "en": "Thessaly · Layers Agent — demo"
+  "el": "Ανθεκτική Θεσσαλία — demo",
+  "en": "Resilient Thessaly — demo"
  }
 }

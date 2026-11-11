@@ -12,6 +12,12 @@ for bit, p in ((1, RAW / "official/el08_friv_0100_rev1.json"), (2, RAW / "offici
     g = gpd.read_file(p).to_crs(4326).geometry; M |= (bit * rasterize([(x, 1) for x in g if x is not None and not x.is_empty], out_shape=(TH, TW), transform=T, dtype="uint8")).astype("uint8")
 PAL = np.zeros((8, 4), "uint8"); PAL[1] = PAL[3] = (150, 100, 235, 120); PAL[2] = (190, 170, 235, 80); PAL[4] = PAL[5] = (240, 96, 80, 135); PAL[6] = PAL[7] = (79, 163, 224, 130)
 Image.fromarray(PAL[M], "RGBA").save(R / "web/assets/st/zones.png", optimize=True); print("zones.png", os.path.getsize(R / "web/assets/st/zones.png") // 1000, "kB")
+import rasterio
+from rasterio.warp import reproject, Resampling
+hw, hh = 2100, 900; hnd = np.full((hh, hw), np.nan, "float32")
+with rasterio.open(R / "cache/hand_90m.tif") as r_: reproject(rasterio.band(r_, 1), hnd, dst_transform=from_bounds(W0, S0, E0, N0, hw, hh), dst_crs="EPSG:4326", resampling=Resampling.min, dst_nodata=np.nan)
+cls = np.searchsorted(np.array([1, 2, 3, 4, 5, 6, 8, 10.]), hnd, side="left").astype("uint8")       # same water-level classes as the tiles (s27); min-resampled so thin flood corridors survive at ~130 m
+Image.fromarray(cls * 28, "L").save(R / "web/assets/st/hand.png", optimize=True); print("hand.png", os.path.getsize(R / "web/assets/st/hand.png") // 1000, "kB")
 km = {k: v["km"] for k, v in json.load(open(R / "data/roads_summary.json")).items()}
 h = R / "web/index.html"; s = h.read_text(); s2 = re.sub(r"/\*RKM\*/.*?/\*RKM\*/", lambda m: "/*RKM*/" + json.dumps(km, separators=(",", ":")) + "/*RKM*/", s, count=1); assert s2 != s or "/*RKM*/{" in s
 h.write_text(s2); print("RKM inlined", len(km))

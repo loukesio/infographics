@@ -37,6 +37,18 @@ def kind(c, n):
 po["kind"] = [kind(c, n) for c, n in zip(po.cat, po.name)]; po = po[po.kind.notna()]
 px, py = F.transform(po.lon.values, po.lat.values)
 Z = {k: gpd.read_file(p).to_crs(2100) for k, p in {"q100": RAW / "official/el08_friv_0100_rev1.json", "q1000": RAW / "official/el08_friv_1000_rev1.json", "dan": R / "data/daniel_flood_union.geojson"}.items()}
+import rasterio
+from scipy.ndimage import median_filter
+from rasterio.warp import reproject, Resampling
+# Height above nearest drainage: the 90 m model (s10), which agrees with Storm Daniel better than a 30 m run (s29: CSI 0.42 vs 0.46), resampled bilinearly to 30 m for sampling
+with rasterio.open(R / "cache/hand_90m.tif") as r_:
+    HT = rasterio.transform.from_origin(r_.bounds.left, r_.bounds.top, 30, 30); HND = np.full((r_.height * 3, r_.width * 3), np.nan, "float32")
+    reproject(rasterio.band(r_, 1), HND, dst_transform=HT, dst_crs=r_.crs, resampling=Resampling.bilinear, dst_nodata=np.nan)
+LEVELS = np.array([1, 2, 3, 4, 5, 6, 8, 10.])
+def hcls(xs, ys):                   # water-level class: index of the first level in LEVELS that floods the point; 8 = never (above +10 m)
+    xs, ys = np.asarray(xs, float), np.asarray(ys, float); c = ((xs - HT.c) / 30).astype(int); r = ((HT.f - ys) / 30).astype(int); ok = (c >= 0) & (c < HND.shape[1]) & (r >= 0) & (r < HND.shape[0])
+    v = np.full(xs.shape, np.nan, "float32"); v[ok] = HND[r[ok], c[ok]]; return np.searchsorted(LEVELS, v, side="left").astype(int)
+KMH = np.zeros(9); BH = np.zeros(9, int); PH = np.zeros(9, int)
 PAL = np.zeros((8, 4), "uint8"); PAL[1] = PAL[3] = (150, 100, 235, 120); PAL[2] = (190, 170, 235, 80); PAL[4] = PAL[5] = (240, 96, 80, 135); PAL[6] = PAL[7] = (79, 163, 224, 130)
 cat = lambda f: "dan_out" if (f & 4 and not f & 2) else "dan" if f & 4 else "q100" if f & 1 else "q1000" if f & 2 else "ok"
 def enc(c, x0, y0):
@@ -63,20 +75,21 @@ for i in range(9):
             xy = shapely.get_coordinates(gm)
             if len(xy) < 2: continue
             mid = (xy[:-1] + xy[1:]) / 2; f = samp(mid[:, 0], mid[:, 1]); seg = np.hypot(*(xy[1:] - xy[:-1]).T); ni = -1; rk = RANK[cls]
+            hc = hcls(mid[:, 0], mid[:, 1]); hc = median_filter(hc, 5, mode="nearest") if len(hc) >= 5 else hc; key = f.astype(int) * 16 + hc
             if isinstance(nm, str) and nm.strip():
                 nm = nm.strip(); ni = nidx.get(nm, -1)
                 if ni < 0: ni = nidx[nm] = len(names); names.append(nm)
-            cut = np.flatnonzero(f[1:] != f[:-1]) + 1; st = np.r_[0, cut]; en = np.r_[cut, len(f)]
+            cut = np.flatnonzero(key[1:] != key[:-1]) + 1; st = np.r_[0, cut]; en = np.r_[cut, len(f)]
             for s, e in zip(st, en):
-                fl = int(f[s]); KM[cat(fl)] = KM.get(cat(fl), 0) + float(seg[s:e].sum()) / 1000; pieces.append(shapely.linestrings(xy[s:e + 1])); meta.append((rk, fl, ni))
+                fl = int(f[s]); KM[cat(fl)] = KM.get(cat(fl), 0) + float(seg[s:e].sum()) / 1000; KMH[int(hc[s])] += float(seg[s:e].sum()) / 1000; pieces.append(shapely.linestrings(xy[s:e + 1])); meta.append((rk, fl, ni, int(hc[s])))
             L = shapely.length(gm)
             if ni >= 0 and rk <= 2 and L > 90:
                 p, a, b = (shapely.line_interpolate_point(gm, t, normalized=True) for t in (.5, .45, .55)); ang = math.degrees(math.atan2(b.y - a.y, b.x - a.x)); ang = ang - 180 if ang > 90 else ang + 180 if ang < -90 else ang
                 lab.append((rk, -L, ni, p.x, p.y, round(ang)))
-        pieces = np.array(pieces, dtype=object); fine = bwd(shapely.simplify(pieces, 2.5)); roads = [[rk, fl, ni] + enc(shapely.get_coordinates(gg), x0, y0) for gg, (rk, fl, ni) in zip(fine, meta)]
+        pieces = np.array(pieces, dtype=object); fine = bwd(shapely.simplify(pieces, 2.5)); roads = [[rk, fl, ni, hc] + enc(shapely.get_coordinates(gg), x0, y0) for gg, (rk, fl, ni, hc) in zip(fine, meta)]
         main = [q for q, m in enumerate(meta) if m[0] <= 1]
         if main:
-            for gg, q in zip(bwd(shapely.simplify(pieces[main], 12.0)), main): REG.append([meta[q][0], meta[q][1]] + enc(shapely.get_coordinates(gg), X00, Y00))
+            for gg, q in zip(bwd(shapely.simplify(pieces[main], 12.0)), main): REG.append([meta[q][0], meta[q][1], meta[q][3]] + enc(shapely.get_coordinates(gg), X00, Y00))
         lab.sort(); cell, labels = {}, []       # one label per street name per ~350 m, none closer than 45 m to another; most important first
         for rk, nl, ni, x, y, ang in lab:
             cx, cy = int(x // 350), int(y // 350); near = [u for a in (-1, 0, 1) for b in (-1, 0, 1) for u in cell.get((cx + a, cy + b), ())]
@@ -87,26 +100,32 @@ for i in range(9):
         for q in np.flatnonzero(pm)[np.argsort(-po.confidence.values[pm])]:
             r_ = po.iloc[q]
             if any(k == r_.kind and math.hypot(px[q] - ux, py[q] - uy) < 70 for k, ux, uy in seen): continue
-            seen.append((r_.kind, px[q], py[q])); pois.append([r_.kind, r_["name"][:60], round((r_.lon - x0) * 1e5), round((r_.lat - y0) * 1e5), int(samp(px[q:q + 1], py[q:q + 1])[0])])
+            seen.append((r_.kind, px[q], py[q])); pois.append([r_.kind, r_["name"][:60], round((r_.lon - x0) * 1e5), round((r_.lat - y0) * 1e5), int(samp(px[q:q + 1], py[q:q + 1])[0]), int(hcls(px[q:q + 1], py[q:q + 1])[0])]); PH[pois[-1][5]] += 1
         out = {"o": [x0, y0], "names": names, "r": roads, "labels": labels, "pois": pois}
-        Ms = M[::4, ::4]
+        Ms = M[::4, ::4]; hh, ww = Ms.shape; ex, ey = X0 - RES, Y1 + RES
+        cx_, cy_ = B.transform([ex, ex, ex + ww * 20, ex + ww * 20], [ey - hh * 20, ey, ey, ey - hh * 20])     # bottom-left, top-left, top-right, bottom-right
+        out["q"] = [[round(a, 6), round(b, 6)] for a, b in zip(cx_, cy_)]
+        gx, gy = np.meshgrid(ex + (np.arange(ww) + .5) * 20, ey - (np.arange(hh) + .5) * 20); hcl = hcls(gx.ravel(), gy.ravel()).reshape(hh, ww).astype("uint8")
+        if (hcl < 8).any(): buf = io.BytesIO(); Image.fromarray(hcl * 28, "L").save(buf, "PNG", optimize=True); out["hand"] = base64.b64encode(buf.getvalue()).decode()
         if Ms.any():
-            buf = io.BytesIO(); Image.fromarray(PAL[Ms], "RGBA").save(buf, "PNG", optimize=True); hh, ww = Ms.shape; ex, ey = X0 - RES, Y1 + RES
-            cx_, cy_ = B.transform([ex, ex, ex + ww * 20, ex + ww * 20], [ey - hh * 20, ey, ey, ey - hh * 20])     # bottom-left, top-left, top-right, bottom-right
-            out["zone"] = {"png": base64.b64encode(buf.getvalue()).decode(), "q": [[round(a, 6), round(b, 6)] for a, b in zip(cx_, cy_)]}
+            buf = io.BytesIO(); Image.fromarray(PAL[Ms], "RGBA").save(buf, "PNG", optimize=True)
+            out["zone"] = {"png": base64.b64encode(buf.getvalue()).decode(), "q": out["q"]}
         (OUT / f"r_{i}_{j}.json").write_text(json.dumps(out, ensure_ascii=False, separators=(",", ":"))); man["r"].append([i, j])
         bm = (bx >= X0) & (bx < X1) & (by >= Y0) & (by < Y1); nb = 0
         if bm.any():
             lon, lat = B.transform(bx[bm], by[bm]); bm2 = np.flatnonzero(bm)[(lon >= x0) & (lon < x1) & (lat >= y0) & (lat < y1)]     # assign by lon/lat centroid so each building lands in exactly one tile
             if len(bm2):
                 polys = bgeo[bm2]; big = shapely.get_type_id(polys) == 6; polys = np.where(big, [max(shapely.get_parts(p), key=shapely.area) if t else p for p, t in zip(polys, big)], polys)
-                ring = bwd(shapely.simplify(shapely.get_exterior_ring(polys), 0.8)); fl = samp(bx[bm2], by[bm2]); bl = []
-                for gg, f_ in zip(ring, fl):
+                ring = bwd(shapely.simplify(shapely.get_exterior_ring(polys), 0.8)); fl = samp(bx[bm2], by[bm2]); bh = hcls(bx[bm2], by[bm2]); BH += np.bincount(bh, minlength=9); bl = []
+                for gg, f_, h_ in zip(ring, fl, bh):
                     c = shapely.get_coordinates(gg)
-                    if len(c) >= 4: bl.append([int(f_)] + enc(c[:-1], x0, y0))
+                    if len(c) >= 4: bl.append([int(f_), int(h_)] + enc(c[:-1], x0, y0))
                 nb = len(bl); (OUT / f"b_{i}_{j}.json").write_text(json.dumps({"o": [x0, y0], "b": bl}, separators=(",", ":"))); man["b"].append([i, j])
         print(i, j, "roads", len(roads), "labels", len(labels), "pois", len(pois), "bld", nb, "kb", os.path.getsize(OUT / f"r_{i}_{j}.json") // 1000, (os.path.getsize(OUT / f"b_{i}_{j}.json") // 1000 if nb else 0), flush=True)
 (OUT / "region.json").write_text(json.dumps({"o": [X00, Y00], "r": REG}, separators=(",", ":")))
 man["km"] = {k: round(v) for k, v in KM.items()}
+cal = {c["level"]: c for c in json.load(open(R / "web/assets/hand.json"))["calibration"]}
+man["sim"] = {"levels": LEVELS.tolist(), "km": np.cumsum(KMH[:8]).round().astype(int).tolist(), "bld": np.cumsum(BH[:8]).tolist(), "pois": np.cumsum(PH[:8]).tolist(), "km_total": round(float(KMH.sum())), "bld_total": int(BH.sum()), "pois_total": int(PH.sum()),
+              "cal": [{"hit": cal[l]["hit_rate"], "fa": cal[l]["false_alarm"], "km2": cal[l]["sim_km2"]} for l in LEVELS.tolist()]}
 (OUT / "manifest.json").write_text(json.dumps(man, separators=(",", ":")))
 print("region roads", len(REG), os.path.getsize(OUT / "region.json") // 1000, "kB; km", man["km"], "tiles", len(man["r"]), len(man["b"]))

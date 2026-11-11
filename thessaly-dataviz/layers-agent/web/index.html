@@ -555,13 +555,23 @@ const RKM = /*RKM*/{"larisa":{"ok":681.9,"dan_out":90.6,"dan":68.7,"q1000":80.9,
 const ST = { man: null, has: { r: new Set(), b: new Set() }, r: {}, b: {}, region: null, zones: null };   // street tiles (pipeline/s27): roads + labels + facilities + zone raster, buildings, region main roads
 const RCOL = f => (f & 4) ? ((f & 2) ? [79, 163, 224] : [240, 96, 80]) : (f & 1) ? [150, 100, 235] : (f & 2) ? [190, 170, 235] : [214, 220, 228];
 const PKIND = { hospital: ["Νοσοκομείο / κλινική", [240, 96, 80], "Ν"], school: ["Σχολείο", [245, 190, 70], "Σ"], townhall: ["Δημαρχείο", [120, 200, 220], "Δ"], fire: ["Πυροσβεστική", [240, 140, 60], "Π"], police: ["Αστυνομία", [110, 150, 240], "Α"], care: ["Μονάδα φροντίδας", [200, 150, 230], "Φ"] };
-const street = () => CITYVIEW === "map" && mode === "query";
+const street = () => CITYVIEW === "map" && (mode === "query" || mode === "sim");
+const simSt = () => mode === "sim" && CITYVIEW === "map";       // water-level scenario drawn on the street map (30 m HAND classes carried by every road, building and facility)
+const WET = [58, 150, 230], DRY = [150, 160, 174];
+const HLAB = h => h < 8 ? `Κάτω από το νερό από στάθμη +${ST.man.sim.levels[h]} m και πάνω` : "Πάνω από +10 m: εκτός όλων των σεναρίων";
+function handCanvas(H, k) {         // colour the cells that a water level floods; cached per level
+  if (H.k === k && H.cv) return H.cv; const cv = H.cv || document.createElement("canvas"); cv.width = H.w; cv.height = H.h; const g = cv.getContext("2d"), im = g.createImageData(H.w, H.h), d = im.data, c = H.cls;
+  for (let i = 0; i < c.length; i++) if (c[i] <= k) { d[4 * i] = 58; d[4 * i + 1] = 150; d[4 * i + 2] = 230; d[4 * i + 3] = 150; }
+  g.putImageData(im, 0, 0); H.cv = cv; H.k = k; H.ver = (H.ver || 0) + 1; return cv; }
+async function handFrom(src) { const im = await loadImg(src), c = document.createElement("canvas"); c.width = im.width; c.height = im.height; const g = c.getContext("2d", { willReadFrequently: true }); g.drawImage(im, 0, 0);
+  const d = g.getImageData(0, 0, c.width, c.height).data, cls = new Uint8Array(c.width * c.height); for (let i = 0; i < cls.length; i++) cls[i] = Math.round(d[4 * i] / 28); return { cls, w: c.width, h: c.height }; }
 const stDec = (a, s, ox, oy) => { const n = (a.length - s) / 2, p = new Array(n); let x = a[s], y = a[s + 1]; p[0] = [ox + x / 1e5, oy + y / 1e5]; for (let q = 1; q < n; q++) { x += a[s + 2 * q]; y += a[s + 1 + 2 * q]; p[q] = [ox + x / 1e5, oy + y / 1e5]; } return p; };
 function stInit() {
   if (ST.man || ST.loading) return; ST.loading = true;
   fetch("assets/st/manifest.json").then(r => r.json()).then(m => { ST.man = m; ST.has.r = new Set(m.r.map(a => a.join("_"))); ST.has.b = new Set(m.b.map(a => a.join("_"))); TK = stKey(viewState); redraw(); renderLegend(); }).catch(() => { ST.loading = false; });
-  fetch("assets/st/region.json").then(r => r.json()).then(j => { ST.region = j.r.map(a => ({ rk: a[0], f: a[1], path: stDec(a, 2, j.o[0], j.o[1]) })); redraw(); }).catch(() => {});
+  fetch("assets/st/region.json").then(r => r.json()).then(j => { ST.region = j.r.map(a => ({ rk: a[0], f: a[1], h: a[2], path: stDec(a, 3, j.o[0], j.o[1]) })); redraw(); }).catch(() => {});
   loadImg("assets/st/zones.png").then(im => { ST.zones = im; redraw(); }).catch(() => {});
+  handFrom("assets/st/hand.png").then(H => { ST.hand = H; redraw(); }).catch(() => {});
 }
 function stTiles(vs) {              // tile indices under the viewport (padded); empty below street zoom
   const m = ST.man; if (!m || vs.zoom < 12.3) return [];
@@ -575,11 +585,12 @@ function stLoad(kind, k) {
   if (ST[kind][k]) return; ST[kind][k] = { loading: true };
   fetch(`assets/st/${kind}_${k}.json`).then(r => r.json()).then(async j => {
     const [ox, oy] = j.o;
-    if (kind === "b") { ST.b[k] = { items: j.b.map(a => ({ f: a[0], poly: stDec(a, 1, ox, oy) })) }; }
+    if (kind === "b") { ST.b[k] = { items: j.b.map(a => ({ f: a[0], h: a[1], poly: stDec(a, 2, ox, oy) })) }; }
     else {
-      const items = j.r.map(a => ({ rk: a[0], f: a[1], n: a[2] >= 0 ? j.names[a[2]] : "", path: stDec(a, 3, ox, oy) }));
+      const items = j.r.map(a => ({ rk: a[0], f: a[1], n: a[2] >= 0 ? j.names[a[2]] : "", h: a[3], path: stDec(a, 4, ox, oy) }));
       const T = { items, main: items.filter(d => d.rk <= 2), labels: j.labels.map(a => ({ t: j.names[a[0]], x: ox + a[1] / 1e5, y: oy + a[2] / 1e5, ang: a[3], rk: a[4] })),
-        pois: j.pois.map(a => ({ kind: a[0], name: a[1], x: ox + a[2] / 1e5, y: oy + a[3] / 1e5, f: a[4] })) };
+        pois: j.pois.map(a => ({ kind: a[0], name: a[1], x: ox + a[2] / 1e5, y: oy + a[3] / 1e5, f: a[4], h: a[5] })), q: j.q };
+      if (j.hand) { try { T.hand = await handFrom("data:image/png;base64," + j.hand); } catch {} }
       if (j.zone) { try { T.zone = { img: await loadImg("data:image/png;base64," + j.zone.png), q: j.zone.q }; } catch {} }
       ST.r[k] = T;
     }
@@ -592,24 +603,27 @@ function setCityView(v, quiet) {
   TK = stKey(viewState); if (!quiet) flyView(v === "map" ? { pitch: 0, bearing: 0 } : { pitch: 55, bearing: 15 }); redraw(); renderLegend();
 }
 function mapLayers(id) {            // flat street map of the whole region: dark plate, flood zones, buildings, roads by flood status, street names, key facilities
-  const L = [], nd = { depthTest: false }, z = viewState.zoom, keys = stTiles(viewState), wid = [15, 10, 6, 3.5];
+  const L = [], nd = { depthTest: false }, z = viewState.zoom, keys = stTiles(viewState), wid = [15, 10, 6, 3.5], sim = simSt(), ut = [sim, simK];
+  const rc = d => sim ? (d.h <= simK ? [...WET, 255] : [...DRY, d.rk >= 3 ? 120 : 200]) : [...RCOL(d.f), (d.f & 7) ? 255 : d.rk >= 3 ? 150 : 235];
   L.push(new deck.SolidPolygonLayer({ id: id + "mp", data: [0], getPolygon: () => [[BOUNDS[0] - 2, BOUNDS[1] - 2], [BOUNDS[2] + 2, BOUNDS[1] - 2], [BOUNDS[2] + 2, BOUNDS[3] + 2], [BOUNDS[0] - 2, BOUNDS[3] + 2]], getFillColor: [17, 25, 39, 255], parameters: nd }));
   const ready = keys.filter(k => ST.r[k] && ST.r[k].items), all = keys.length && ready.length === keys.length;
-  if (!all && ST.zones) L.push(new deck.BitmapLayer({ id: id + "mz", image: ST.zones, bounds: BOUNDS, opacity: .55, parameters: nd }));
-  ready.forEach(k => { const T = ST.r[k]; if (T.zone) L.push(new deck.BitmapLayer({ id: id + "mz" + k, image: T.zone.img, bounds: T.zone.q, opacity: .5, parameters: nd })); });
+  if (sim) { if (!all && ST.hand) { const cv = handCanvas(ST.hand, simK); L.push(new deck.BitmapLayer({ id: id + "mh" + ST.hand.ver, image: cv, bounds: BOUNDS, opacity: .55, parameters: nd })); }
+    ready.forEach(k => { const T = ST.r[k]; if (T.hand) { const cv = handCanvas(T.hand, simK); L.push(new deck.BitmapLayer({ id: id + "mh" + k + T.hand.ver, image: cv, bounds: T.q, opacity: .5, parameters: nd })); } }); }
+  else { if (!all && ST.zones) L.push(new deck.BitmapLayer({ id: id + "mz", image: ST.zones, bounds: BOUNDS, opacity: .55, parameters: nd }));
+    ready.forEach(k => { const T = ST.r[k]; if (T.zone) L.push(new deck.BitmapLayer({ id: id + "mz" + k, image: T.zone.img, bounds: T.zone.q, opacity: .5, parameters: nd })); }); }
   if (z >= 13.6) keys.forEach(k => { if (!ST.has.b.has(k)) return; const B = ST.b[k]; if (!B) return stLoad("b", k);
-    if (B.items) L.push(new deck.SolidPolygonLayer({ id: id + "mbt" + k, data: B.items, getPolygon: d => d.poly, getFillColor: d => (d.f & 7) ? [...BCOL(d.f), 175] : [66, 78, 98, 255], parameters: nd })); });
+    if (B.items) L.push(new deck.SolidPolygonLayer({ id: id + "mbt" + k, data: B.items, getPolygon: d => d.poly, getFillColor: d => sim ? (d.h <= simK ? [...WET, 200] : [66, 78, 98, 255]) : (d.f & 7) ? [...BCOL(d.f), 175] : [66, 78, 98, 255], updateTriggers: { getFillColor: ut }, parameters: nd })); });
   if (!all && ST.region) L.push(new deck.PathLayer({ id: id + "mrg", data: ST.region, getPath: d => d.path, getWidth: d => d.rk ? 9 : 16, widthUnits: "meters", widthMinPixels: 1.1, widthMaxPixels: 14,
-    getColor: d => [...RCOL(d.f), (d.f & 7) ? 255 : d.rk ? 150 : 230], capRounded: true, jointRounded: true, parameters: nd }));
+    getColor: rc, updateTriggers: { getColor: ut }, capRounded: true, jointRounded: true, parameters: nd }));
   keys.forEach(k => { const T = ST.r[k]; if (!T) return stLoad("r", k); if (!T.items) return; const data = z >= 13 ? T.items : T.main;
     L.push(new deck.PathLayer({ id: id + "mr0" + k, data, getPath: d => d.path, getWidth: d => wid[d.rk] + 3, widthUnits: "meters", widthMinPixels: 1.6, widthMaxPixels: 22, getColor: [10, 15, 24, 255], capRounded: true, jointRounded: true, parameters: nd }));
-    L.push(new deck.PathLayer({ id: id + "mr1" + k, data, pickable: true, getPath: d => d.path, getWidth: d => wid[d.rk], widthUnits: "meters", widthMinPixels: 1, widthMaxPixels: 18, getColor: d => [...RCOL(d.f), (d.f & 7) ? 255 : d.rk >= 3 ? 150 : 235], capRounded: true, jointRounded: true, parameters: nd })); });
+    L.push(new deck.PathLayer({ id: id + "mr1" + k, data, pickable: true, getPath: d => d.path, getWidth: d => wid[d.rk], widthUnits: "meters", widthMinPixels: 1, widthMaxPixels: 18, getColor: rc, updateTriggers: { getColor: ut }, capRounded: true, jointRounded: true, parameters: nd })); });
   ready.forEach(k => { const T = ST.r[k], lab = T.labels.filter(d => d.rk <= LB);
     if (lab.length) L.push(new deck.TextLayer({ id: id + "ml" + k + LB, data: lab, getPosition: d => [d.x, d.y], getText: d => d.t, getAngle: d => d.ang, getSize: d => d.rk === 0 ? 12.5 : 11, billboard: false, characterSet: "auto",
       fontFamily: "Fira Sans, sans-serif", fontWeight: 600, getColor: [236, 241, 247, 255], outlineWidth: 3, outlineColor: [10, 15, 24, 255], fontSettings: { sdf: true, fontSize: 64, buffer: 6 }, getTextAnchor: "middle", getAlignmentBaseline: "center", parameters: nd }));
     if (T.pois.length && z >= 12.8) {
       L.push(new deck.ScatterplotLayer({ id: id + "mpo" + k, data: T.pois, pickable: true, getPosition: d => [d.x, d.y], getRadius: 9, radiusUnits: "pixels", getFillColor: d => PKIND[d.kind][1], stroked: true, lineWidthUnits: "pixels",
-        getLineWidth: d => (d.f & 5) ? 3 : 1.5, getLineColor: d => (d.f & 5) ? [255, 255, 255, 255] : [10, 15, 24, 255], parameters: nd }));
+        getLineWidth: d => (sim ? d.h <= simK : d.f & 5) ? 3 : 1.5, getLineColor: d => (sim ? d.h <= simK : d.f & 5) ? [255, 255, 255, 255] : [10, 15, 24, 255], updateTriggers: { getLineWidth: ut, getLineColor: ut }, parameters: nd }));
       L.push(new deck.TextLayer({ id: id + "mpt" + k, data: T.pois, getPosition: d => [d.x, d.y], getText: d => PKIND[d.kind][2], getSize: 11, characterSet: "auto", fontFamily: "Fira Sans, sans-serif", fontWeight: 700, getColor: [10, 15, 24, 255], getTextAnchor: "middle", getAlignmentBaseline: "center", billboard: true, parameters: nd }));
     } });
   return L;
@@ -936,8 +950,8 @@ function cellAt(info) {
 }
 function tooltip(info) {
   const o = info.object, lid = info.layer && info.layer.id || "";
-  if (o && o.path && lid.includes("mr1")) return { html: `<b>${o.n || "Δρόμος χωρίς όνομα"}</b><br>${BLAB(o.f).replace("Εκτός επίσημων ζωνών· δεν πλημμύρισε στον Daniel", "Εκτός επίσημων ζωνών και εκτός πλημμύρας Daniel")}`, style: { background: "#121D2E", color: "#E7ECF3", font: "12px 'Fira Sans', sans-serif", border: "1px solid #233149", borderRadius: "6px", padding: "6px 8px", maxWidth: "260px" } };
-  if (o && o.kind && lid.includes("mpo")) return { html: `<b>${o.name}</b><br>${PKIND[o.kind][0]} · ${BLAB(o.f)}`, style: { background: "#121D2E", color: "#E7ECF3", font: "12px 'Fira Sans', sans-serif", border: "1px solid #233149", borderRadius: "6px", padding: "6px 8px", maxWidth: "260px" } };
+  if (o && o.path && lid.includes("mr1")) return { html: `<b>${o.n || "Δρόμος χωρίς όνομα"}</b><br>${simSt() ? HLAB(o.h) : BLAB(o.f).replace("Εκτός επίσημων ζωνών· δεν πλημμύρισε στον Daniel", "Εκτός επίσημων ζωνών και εκτός πλημμύρας Daniel")}`, style: { background: "#121D2E", color: "#E7ECF3", font: "12px 'Fira Sans', sans-serif", border: "1px solid #233149", borderRadius: "6px", padding: "6px 8px", maxWidth: "260px" } };
+  if (o && o.kind && lid.includes("mpo")) return { html: `<b>${o.name}</b><br>${PKIND[o.kind][0]} · ${simSt() ? HLAB(o.h) : BLAB(o.f)}`, style: { background: "#121D2E", color: "#E7ECF3", font: "12px 'Fira Sans', sans-serif", border: "1px solid #233149", borderRadius: "6px", padding: "6px 8px", maxWidth: "260px" } };
   if (o && o.poly && (lid.includes("bld") || lid.includes("mb"))) return { html: `<b>Κτίριο</b> · ${fmt(o.a)} m² αποτύπωμα · ύψος ${(o.f & 8) ? o.h + " m (OSM)" : "~" + o.h + " m (εκτίμηση)"}<br>${BLAB(o.f)}`, style: { background: "#121D2E", color: "#E7ECF3", font: "12px 'Fira Sans', sans-serif", border: "1px solid #233149", borderRadius: "6px", padding: "6px 8px", maxWidth: "260px" } };
   if (Array.isArray(o) && lid.endsWith("dd")) return { html: `<b>Υ/Σ ${o[0]}</b><br>Ελεύθερο περιθώριο ΑΠΕ: ${fmt(o[3], 1)} MVA (μεγαλύτερο σε μετασχηματιστή: ${fmt(o[4], 1)})<br>${fmt(o[5])} σταθμοί ΑΠΕ · ΔΕΔΔΗΕ 10/11/2026` };
   if (o && typeof o === "object" && !Array.isArray(o)) {
@@ -989,6 +1003,14 @@ function flyTo(ids) {
 // ---------- panel ----------
 function renderLegend() {
   const L = $("legend"); L.replaceChildren();
+  if (simSt() && ST.man && ST.man.sim) {
+    const S = ST.man.sim, k = simK, c = S.cal[k], t = el("div", "t"), row = (col, txt) => { const r = el("div", "lab bl"); const sw = el("i"); sw.style.background = `rgb(${col})`; r.append(sw, el("span", null, txt)); return r; };
+    t.append(el("b", null, `Στάθμη +${fmt(S.levels[k])} m πάνω από το ποτάμι`), document.createTextNode(" · όλη η Θεσσαλία"));
+    L.append(t, row(WET, `Κάτω από το νερό: ${fmt(S.km[k])} km δρόμων (${fmt(S.km[k] / S.km_total * 100, 1)}%)`), row(WET, `${fmt(S.bld[k])} κτίρια (${fmt(S.bld[k] / S.bld_total * 100, 1)}%)`),
+      row(WET, `${fmt(S.pois[k])} από ${fmt(S.pois_total)} σχολεία, νοσοκομεία και υπηρεσίες (λευκό περίγραμμα)`), row(DRY, "Πάνω από τη στάθμη"));
+    L.append(el("div", "lab", "Πρώτο φίλτρο, όχι χάρτης κινδύνου. Μοντέλο 90 m: σε επίπεδο δρόμου είναι ενδεικτικό. Ο έλεγχος με τον Daniel φαίνεται κάτω από τον χάρτη."));
+    return;
+  }
   if (street()) {
     const t = el("div", "t"), km = (CITYNOW && RKM[CITYNOW]) || (ST.man && ST.man.km) || null, tot = km ? Object.values(km).reduce((a, b) => a + b, 0) : 0, kv = x => km ? `: ${fmt(km[x] || 0, km === RKM[CITYNOW] ? 1 : 0)} km` : "";
     const row = (col, txt) => { const r = el("div", "lab bl"); const sw = el("i"); sw.style.background = `rgb(${col.slice(0, 3)})`; r.append(sw, el("span", null, txt)); return r; };
@@ -1195,7 +1217,7 @@ async function ask() {
 let mode = "query";
 const GR_MONTH = d => { const [y, m, dd] = d.split("-"); return `${+dd} Σεπ ${y}`; };
 function setMode(m) {
-  if (m !== "query") setCityView("3d", true); $("viewSw").hidden = m !== "query";
+  if (m !== "query" && m !== "sim") setCityView("3d", true); $("viewSw").hidden = m !== "query" && m !== "sim";
   stopWx(); $("wxUI").hidden = m !== "wx"; if (m === "wx") setTimeout(() => { setWx(WX.steps.length - 1); flyView({ longitude: 21.62, latitude: 39.12, zoom: 7.85, pitch: 42, bearing: 0 }); }, 0);
   mode = m; ["query", "time", "swipe", "sim", "wx", "today"].forEach(k => $("mode-" + k).setAttribute("aria-pressed", m === k));
   $("simUI").hidden = m !== "sim"; renderModeInfo(); if (m === "sim") { HANDTEX = HANDTEX || composite([{ id: "flood", op: 0.35 }]); setSim(simK); }
@@ -1288,7 +1310,7 @@ function setSim(k) {
       el("div", null, `${fmt(cal.false_alarm * 100)}% της προσομοιωμένης έκτασης δεν πλημμύρισε το 2023 · CSI ${fmt(cal.csi, 2)}`));
     if (lv === HAND.best.level) C.append(el("div", "best", "Καλύτερη συμφωνία με τον Daniel σε αυτή τη στάθμη"));
   }
-  redraw();
+  redraw(); if (simSt()) renderLegend();
 }
 function setTL(k) {
   tlIdx = k; $("tlRange").value = k; $("tlDate").textContent = GR_MONTH(TL.dates[k]);
@@ -1332,7 +1354,7 @@ const TOUR = [
   { cap: "Σήμερα από δορυφόρο: πόσο νερό έχει η Κάρλα τώρα, δίπλα στην έκταση του Daniel. Σύρε τη γραμμή.", run: () => { if (IMG.s2) setMode("today"); }, wait: 9000 },
   { cap: "Κάρλα: πού έμεινε το νερό τις περισσότερες μέρες, η βάση για τεκμηριωμένες αποφάσεις παραχώρησης.", run: () => { const p = PRESETS[1]; setMode("query"); $("q").value = p.q; apply(structuredClone(p.spec), "preset", true, p.q, false); }, wait: 8500 },
   { cap: "Αντιπλημμυρικά: πού ζουν οι περισσότεροι σε χαμηλή γη δίπλα σε ποτάμι, για ιεράρχηση έργων και καθαρισμών.", run: () => { const p = PRESETS[0]; $("q").value = p.q; apply(structuredClone(p.spec), "preset", true, p.q, false); }, wait: 8500 },
-  { cap: "Σενάριο στάθμης +3 m: πιάνει το 83% της πραγματικής πλημμύρας. Περίπου μία στις δύο επισημάνσεις είναι ψευδής: πρώτο φίλτρο, όχι χάρτης κινδύνου.", run: () => { setMode("sim"); setSim(HAND.levels.indexOf(HAND.best.level)); flyView({ longitude: 22.2, latitude: 39.5, zoom: 8.5, pitch: 52, bearing: -15 }); }, wait: 9000 },
+  { cap: "Σενάριο στάθμης +3 m: πιάνει το 83% της πραγματικής πλημμύρας. Περίπου μία στις δύο επισημάνσεις είναι ψευδής: πρώτο φίλτρο, όχι χάρτης κινδύνου.", run: () => { setCityView("3d", true); setMode("sim"); setSim(HAND.levels.indexOf(HAND.best.level)); flyView({ longitude: 22.2, latitude: 39.5, zoom: 8.5, pitch: 52, bearing: -15 }); }, wait: 9000 },
   { cap: "Πριν από τη βροχή: η πρόγνωση γίνεται έκθεση ανά ενότητα και οικισμό, σε σημείωμα για το ΚΕΣΥΠΠ με ένα κλικ.", run: () => { if (WX) setMode("wx"); }, wait: 9000 },
   { cap: "Χωροθέτηση: φωτοβολταϊκά σε γη που πλημμύρισε. Διασταύρωση που χρειάζεται κάθε γνωμοδότηση.", run: () => { const p = PRESETS[2]; setMode("query"); $("q").value = p.q; apply(structuredClone(p.spec), "preset", true, p.q, false); }, wait: 8500 },
 ];
@@ -1382,7 +1404,7 @@ function tourGo(k) {
   deck1 = makeDeck($("map"), queryLayers());
   $("loading").remove(); renderLegend(); renderLayersPanel(); initSwipe();
   if (innerWidth <= 1180) document.querySelector(".layers").open = false;
-  document.querySelectorAll("#viewSw button").forEach(b => b.onclick = () => { if (b.dataset.v === "map" && mode !== "query") setMode("query"); setCityView(b.dataset.v); });
+  document.querySelectorAll("#viewSw button").forEach(b => b.onclick = () => { if (b.dataset.v === "map" && mode !== "query" && mode !== "sim") setMode("query"); setCityView(b.dataset.v); });
   ["query", "time", "swipe", "sim", "wx", "today"].forEach(k => $("mode-" + k).onclick = () => setMode(k));
   if (!IMG.s2) { $("mode-today").hidden = true; OV.splice(OV.findIndex(o => o.id === "s2"), 2); }
   else if (S2W) { const d = new Date(S2W.date).toLocaleDateString("el-GR", { day: "numeric", month: "long", year: "numeric" }); ov("s2").src = `Copernicus Sentinel-2 · ${d}`; ov("s2water").src = `Sentinel-2 · ${d}`; }

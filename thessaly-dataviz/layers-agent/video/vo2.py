@@ -27,7 +27,8 @@ for key, txt in T.items():
     if only and key not in only: continue
     parts = []
     for s in re.split(r"(?<=[.?!])\s+", txt):
-        a, sr = k.create(s, voice=VOICE, speed=SPEED, lang="en-us" if VOICE[0] == "a" else "en-gb"); assert sr == SR
+        lg = "en-us" if VOICE[0] == "a" else "en-gb"; ph = k.tokenizer.phonemize(s, lg).replace("θˈɛsəli", "θˈɛsɐli")     # "Thessaly" with a clear second vowel: THE-sa-li
+        a, sr = k.create(ph, voice=VOICE, speed=SPEED, lang=lg, is_phonemes=True); assert sr == SR
         nz = np.flatnonzero(np.abs(a) > 0.004); a = a[max(0, nz[0] - 600): nz[-1] + 1800] if len(nz) else a       # trim the silence the model pads with, keep a short natural tail
         parts += [a, np.zeros(int(0.30 * SR), "float32")]
     w = np.concatenate(parts[:-1]); sf.write(f"{key}.wav", w, SR); dur[key] = round(len(w) / SR, 2); print(key, dur[key], flush=True)

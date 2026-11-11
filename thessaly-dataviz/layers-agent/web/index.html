@@ -40,6 +40,9 @@ body { background: var(--bg); color: var(--ink); font-family: var(--body); font-
 .legend .ramp { height: 8px; border-radius: 4px; }
 .legend .bl { display: flex; align-items: center; gap: 7px; justify-content: flex-start; }
 .legend .bl i { width: 11px; height: 11px; border-radius: 2px; flex: none; }
+.cview { display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
+.cview button { font: 600 12px var(--body); padding: 5px 11px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--ink) 30%, transparent); background: transparent; color: var(--ink); cursor: pointer; }
+.cview button.on { background: var(--sun); color: var(--bg); border-color: var(--sun); }
 .lab { display: flex; justify-content: space-between; font: 11px var(--mono); color: var(--muted); }
 .legend .t { font-size: 12px; color: var(--ink); }
 
@@ -510,7 +513,44 @@ function cityAt(vs) { if (vs.zoom < 11.4) return null; let best = null, bd = 1e9
   for (const k in CITY) { const c = CITY[k]; if (vs.longitude > c[1] - .012 && vs.longitude < c[3] + .012 && vs.latitude > c[2] - .012 && vs.latitude < c[4] + .012) {
     const d = Math.hypot((vs.longitude - (c[1] + c[3]) / 2) * .77, vs.latitude - (c[2] + c[4]) / 2); if (d < bd) { bd = d; best = k; } } }
   return best; }
+let CITYVIEW = "map", LB = 0;       // city view: "map" = flat street map with roads coloured by flood risk, "3d" = volumes + aerial photo; LB = label zoom bucket
+const ROADS = {};
+const RCOL = f => (f & 4) ? ((f & 2) ? [79, 163, 224] : [240, 96, 80]) : (f & 1) ? [150, 100, 235] : (f & 2) ? [190, 170, 235] : [214, 220, 228];
+const PKIND = { hospital: ["Νοσοκομείο / κλινική", [240, 96, 80], "Ν"], school: ["Σχολείο", [245, 190, 70], "Σ"], townhall: ["Δημαρχείο", [120, 200, 220], "Δ"], fire: ["Πυροσβεστική", [240, 140, 60], "Π"], police: ["Αστυνομία", [110, 150, 240], "Α"], care: ["Μονάδα φροντίδας", [200, 150, 230], "Φ"] };
+function loadRoads(k) {
+  if (ROADS[k]) return; ROADS[k] = { loading: true };
+  Promise.all([fetch(`assets/roads_${k}.json`).then(r => r.json()), DEMP]).then(([j]) => {
+    const [ox, oy] = j.o, zz = (x, y) => Math.max(0, demZ(x, y) || 0);
+    const items = j.r.map(a => { const n = (a.length - 3) / 2, x = ox + a[3] / 1e5, y = oy + a[4] / 1e5, z = zz(x, y), path = new Array(n);
+      for (let q = 0; q < n; q++) path[q] = [ox + a[3 + 2 * q] / 1e5, oy + a[4 + 2 * q] / 1e5, z]; return { rk: a[0], f: a[1], ni: a[2], z, path }; });
+    const labels = j.labels.map(a => { const x = ox + a[1] / 1e5, y = oy + a[2] / 1e5; return { t: j.names[a[0]], x, y, z: zz(x, y), ang: a[3], rk: a[4] }; });
+    const pois = j.pois.map(a => { const x = ox + a[2] / 1e5, y = oy + a[3] / 1e5; return { kind: a[0], name: a[1], x, y, z: zz(x, y), f: a[4] }; });
+    ROADS[k] = { items, labels, pois, km: j.km, names: j.names }; if (CITYNOW === k) { redraw(); renderLegend(); }
+  }).catch(() => { delete ROADS[k]; });
+}
+function setCityView(v) { if (v === CITYVIEW) return; CITYVIEW = v; flyView(v === "map" ? { pitch: 0, bearing: 0 } : { pitch: 55, bearing: 15 }); redraw(); renderLegend(); }
+function mapLayers(id) {            // flat street map of the place under the camera: plate, buildings, roads by flood status, street names, key facilities
+  const k = CITYNOW, c = CITY[k], R = ROADS[k], B = BLD[k], L = [], nd = { depthTest: false };
+  const zb = zOf(Math.max(0, demZ((c[1] + c[3]) / 2, (c[2] + c[4]) / 2) || 0), 30), m = .004;
+  L.push(new deck.SolidPolygonLayer({ id: id + "mp" + k, data: [0], getPolygon: () => [[c[1] - m, c[2] - m, zb], [c[3] + m, c[2] - m, zb], [c[3] + m, c[4] + m, zb], [c[1] - m, c[4] + m, zb]], getFillColor: [17, 25, 39, 245], _full3d: true, parameters: nd }));
+  if (B && B.items && ov("bld").on) L.push(new deck.SolidPolygonLayer({ id: id + "mb" + k, data: B.items, pickable: true, getPolygon: d => d.poly.map(q => [q[0], q[1], zb]), getFillColor: d => (d.f & 7) ? [...BCOL(d.f), 170] : [70, 82, 102, 255], _full3d: true, parameters: nd }));
+  if (R && R.items) {
+    const wid = [15, 10, 6, 3.5];
+    L.push(new deck.PathLayer({ id: id + "mr0" + k, data: R.items, getPath: d => d.path.map(q => [q[0], q[1], zb]), getWidth: d => wid[d.rk] + 3, widthUnits: "meters", widthMinPixels: 1.6, widthMaxPixels: 22, getColor: [10, 15, 24, 255], capRounded: true, jointRounded: true, parameters: nd }));
+    L.push(new deck.PathLayer({ id: id + "mr1" + k, data: R.items, pickable: true, getPath: d => d.path.map(q => [q[0], q[1], zb]), getWidth: d => wid[d.rk], widthUnits: "meters", widthMinPixels: 1, widthMaxPixels: 18, getColor: d => [...RCOL(d.f), (d.f & 7) ? 255 : d.rk >= 3 ? 150 : 235], capRounded: true, jointRounded: true, parameters: nd }));
+    const lab = R.labels.filter(d => d.rk <= LB);
+    if (lab.length) L.push(new deck.TextLayer({ id: id + "ml" + k + LB, data: lab, getPosition: d => [d.x, d.y, zb], getText: d => d.t, getAngle: d => d.ang, getSize: d => d.rk === 0 ? 12.5 : 11, billboard: false, characterSet: "auto",
+      fontFamily: "Fira Sans, sans-serif", fontWeight: 600, getColor: [236, 241, 247, 255], outlineWidth: 3, outlineColor: [10, 15, 24, 255], fontSettings: { sdf: true, fontSize: 64, buffer: 6 }, getTextAnchor: "middle", getAlignmentBaseline: "center", parameters: nd }));
+    if (R.pois.length) {
+      L.push(new deck.ScatterplotLayer({ id: id + "mpo" + k, data: R.pois, pickable: true, getPosition: d => [d.x, d.y, zb], getRadius: 9, radiusUnits: "pixels", getFillColor: d => PKIND[d.kind][1], stroked: true, lineWidthUnits: "pixels",
+        getLineWidth: d => (d.f & 5) ? 3 : 1.5, getLineColor: d => (d.f & 5) ? [255, 255, 255, 255] : [10, 15, 24, 255], parameters: nd }));
+      L.push(new deck.TextLayer({ id: id + "mpt" + k, data: R.pois, getPosition: d => [d.x, d.y, zb], getText: d => PKIND[d.kind][2], getSize: 11, characterSet: "auto", fontFamily: "Fira Sans, sans-serif", fontWeight: 700, getColor: [10, 15, 24, 255], getTextAnchor: "middle", getAlignmentBaseline: "center", billboard: true, parameters: nd }));
+    }
+  }
+  return L;
+}
 function loadCity(k) {
+  loadRoads(k);
   if (BLD[k]) return; BLD[k] = { loading: true };
   Promise.all([fetch(`assets/bld_${k}.json`).then(r => r.json()), DEMP]).then(([j]) => {
     const [ox, oy] = j.o; const items = j.b.map(a => { const n = (a.length - 3) / 2, poly = new Array(n); const cx = ox + a[3] / 1e5, cy = oy + a[4] / 1e5;
@@ -523,7 +563,7 @@ function loadCity(k) {
 // ---- aerial orthophotos (local demo only): relayed by serve_local.py from the Hellenic Cadastre viewing service; the hosted page cannot load them ----
 let ORTHO = false, OPK = "", OKEYS = null, LOKEYS = null;   // ORTHO: false | "live" (local relay) | "static" (tiles shipped with a private copy of the page)
 const OLIFT = 45, ODX = 0.02, ODY = 0.015, OPATCH = {};
-const orthoOn = () => ORTHO && ov("ortho") && ov("ortho").on && CITYNOW && DEMH;
+const orthoOn = () => ORTHO && CITYVIEW === "3d" && ov("ortho") && ov("ortho").on && CITYNOW && DEMH;
 function orthoKey(vs) { return ORTHO && cityAt(vs) && vs.zoom >= 12.2 ? Math.floor(vs.longitude / ODX) + "_" + Math.floor(vs.latitude / ODY) : ""; }
 function orthoLayers(id) {       // photo quads per ~1.7 km patch; corners sit on the DEM so neighbours meet. Hosted copy: light previews for the whole city at once, sharp tiles only around the camera target
   if (!orthoOn() || viewState.zoom < 12.2) return [];
@@ -618,7 +658,8 @@ function vectorLayers(id) {
       fontFamily: "Fira Sans, sans-serif", fontWeight: 600, getColor: r => col(r), outlineWidth: 3, outlineColor: [13, 21, 34, 255], fontSettings: { sdf: true, fontSize: 64, buffer: 6 },
       getTextAnchor: "start", getAlignmentBaseline: "center", getPixelOffset: [9, 0], billboard: true, parameters: { depthTest: false }, updateTriggers: { getPosition: EX } }));
   }
-  if (ov("bld") && ov("bld").on && CITYNOW && BLD[CITYNOW] && BLD[CITYNOW].items) {
+  if (CITYNOW && CITYVIEW === "map" && mode !== "today" && mode !== "swipe") L.push(...mapLayers(id));
+  else if (ov("bld") && ov("bld").on && CITYNOW && BLD[CITYNOW] && BLD[CITYNOW].items) {
     // extruded from sea level up to ground + building height: the part below the terrain mesh is hidden by the depth test, so each volume stands on the ground
     L.push(new deck.SolidPolygonLayer({ id: id + "bld" + CITYNOW, data: BLD[CITYNOW].items, pickable: true, getPolygon: d => d.poly, getFillColor: d => BCOL(d.f),
       extruded: true, getElevation: d => zOf(d.z, 1) + d.h + (orthoOn() ? OLIFT : 0), material: { ambient: .5, diffuse: .65, shininess: 18, specularColor: [50, 50, 55] }, updateTriggers: { getElevation: [EX, orthoOn()] } }));
@@ -830,7 +871,9 @@ function cellAt(info) {
 }
 function tooltip(info) {
   const o = info.object, lid = info.layer && info.layer.id || "";
-  if (o && o.poly && lid.includes("bld")) return { html: `<b>Κτίριο</b> · ${fmt(o.a)} m² αποτύπωμα · ύψος ${(o.f & 8) ? o.h + " m (OSM)" : "~" + o.h + " m (εκτίμηση)"}<br>${BLAB(o.f)}`, style: { background: "#121D2E", color: "#E7ECF3", font: "12px 'Fira Sans', sans-serif", border: "1px solid #233149", borderRadius: "6px", padding: "6px 8px", maxWidth: "260px" } };
+  if (o && o.path && lid.includes("mr1")) return { html: `<b>${o.ni >= 0 && ROADS[CITYNOW] ? ROADS[CITYNOW].names[o.ni] : "Δρόμος χωρίς όνομα"}</b><br>${BLAB(o.f).replace("Εκτός επίσημων ζωνών· δεν πλημμύρισε στον Daniel", "Εκτός επίσημων ζωνών και εκτός πλημμύρας Daniel")}`, style: { background: "#121D2E", color: "#E7ECF3", font: "12px 'Fira Sans', sans-serif", border: "1px solid #233149", borderRadius: "6px", padding: "6px 8px", maxWidth: "260px" } };
+  if (o && o.kind && lid.includes("mpo")) return { html: `<b>${o.name}</b><br>${PKIND[o.kind][0]} · ${BLAB(o.f)}`, style: { background: "#121D2E", color: "#E7ECF3", font: "12px 'Fira Sans', sans-serif", border: "1px solid #233149", borderRadius: "6px", padding: "6px 8px", maxWidth: "260px" } };
+  if (o && o.poly && (lid.includes("bld") || lid.includes("mb"))) return { html: `<b>Κτίριο</b> · ${fmt(o.a)} m² αποτύπωμα · ύψος ${(o.f & 8) ? o.h + " m (OSM)" : "~" + o.h + " m (εκτίμηση)"}<br>${BLAB(o.f)}`, style: { background: "#121D2E", color: "#E7ECF3", font: "12px 'Fira Sans', sans-serif", border: "1px solid #233149", borderRadius: "6px", padding: "6px 8px", maxWidth: "260px" } };
   if (Array.isArray(o) && lid.endsWith("dd")) return { html: `<b>Υ/Σ ${o[0]}</b><br>Ελεύθερο περιθώριο ΑΠΕ: ${fmt(o[3], 1)} MVA (μεγαλύτερο σε μετασχηματιστή: ${fmt(o[4], 1)})<br>${fmt(o[5])} σταθμοί ΑΠΕ · ΔΕΔΔΗΕ 10/11/2026` };
   if (o && typeof o === "object" && !Array.isArray(o)) {
     if (o.mm != null) { const p = o.p; if (o.gr) return { text: `${o.n}: ${o.gr} (6ωρο από +${Math.floor(wxK / 2) * 6} ώρες) · ${fmt(WX.temp_c[p][wxK], 0)} °C · άνεμος ${fmt(WX.wind_ms[p][wxK], 0)} m/s · βροχή ως τότε ${fmt(o.mm, 1)} mm` }; return { text: `${fmt(o.mm, 1)} mm έως +${wxK * 3} ώρες · ${fmt(WX.temp_c[p][wxK], 0)} °C · άνεμος ${fmt(WX.wind_ms[p][wxK], 0)} m/s` }; }
@@ -846,8 +889,8 @@ function tooltip(info) {
 }
 function makeDeck(container, layers) {
   return new deck.Deck({ parent: container, initialViewState: viewState, controller: { inertia: true }, layers,
-    getTooltip: tooltip, onClick: info => { const lid = info.layer && info.layer.id || ""; if (lid.endsWith("dd") || lid.includes("bld")) return; const i = cellAt(info); if (i >= 0 && (!info.object || typeof info.object !== "object" || Array.isArray(info.object))) showCard(i); },
-    onViewStateChange: ({ viewState: vs }) => { viewState = vs; { const zb = vs.zoom >= 10.6 ? 2 : vs.zoom >= 9.4 ? 1 : 0, ck = cityAt(vs); if (ck && ov("bld").on) loadCity(ck); const ok_ = orthoKey(vs); if (zb !== ZB || ck !== CITYNOW || ok_ !== OPK) { ZB = zb; CITYNOW = ck; OPK = ok_; setTimeout(() => { redraw(); renderLegend(); }, 0); } } stopOrbit(); if (deck1) deck1.setProps({ viewState: vs }); if (deck2) deck2.setProps({ viewState: vs }); return vs; },
+    getTooltip: tooltip, onClick: info => { const lid = info.layer && info.layer.id || ""; if (lid.endsWith("dd") || lid.includes("bld") || /m(b|r1|po)/.test(lid.slice(-12))) return; if (CITYNOW && CITYVIEW === "map") return; const i = cellAt(info); if (i >= 0 && (!info.object || typeof info.object !== "object" || Array.isArray(info.object))) showCard(i); },
+    onViewStateChange: ({ viewState: vs }) => { viewState = vs; { const zb = vs.zoom >= 10.6 ? 2 : vs.zoom >= 9.4 ? 1 : 0, ck = cityAt(vs); if (ck && ov("bld").on) loadCity(ck); const ok_ = orthoKey(vs), lb = vs.zoom >= 15.2 ? 2 : vs.zoom >= 13.8 ? 1 : vs.zoom >= 12.4 ? 0 : -1; if (zb !== ZB || ck !== CITYNOW || ok_ !== OPK || lb !== LB) { ZB = zb; CITYNOW = ck; OPK = ok_; LB = lb; setTimeout(() => { redraw(); renderLegend(); }, 0); } } stopOrbit(); if (deck1) deck1.setProps({ viewState: vs }); if (deck2) deck2.setProps({ viewState: vs }); return vs; },
     viewState, style: { position: "absolute", inset: 0 }, parameters: { clearColor: [13 / 255, 21 / 255, 34 / 255, 1] },
     effects: [new deck.LightingEffect({ amb: new deck.AmbientLight({ color: [255, 255, 255], intensity: 1.1 }),
       sun: new deck.DirectionalLight({ color: [255, 244, 225], intensity: 1.6, direction: [-3, -6, -4] }) })] });
@@ -883,6 +926,20 @@ function renderLegend() {
   const L = $("legend"); L.replaceChildren();
   if (CITYNOW && ov("bld") && ov("bld").on && mode !== "today" && mode !== "swipe") {
     const B = BLD[CITYNOW]; const t = el("div", "t");
+    { const sw = el("div", "cview"); [["map", "Χάρτης δρόμων"], ["3d", "3D με αεροφωτογραφία"]].forEach(([v, lbl]) => { const b = el("button", v === CITYVIEW ? "on" : null, lbl); b.type = "button"; b.onclick = () => setCityView(v); sw.append(b); }); L.append(sw); }
+    const R = ROADS[CITYNOW];
+    if (CITYVIEW === "map" && R && R.items) {
+      const km = R.km || {}, tot = Object.values(km).reduce((a, b) => a + b, 0), kv = x => fmt(km[x] || 0, 1) + " km";
+      const row = (col, txt) => { const r = el("div", "lab bl"); const sw = el("i"); sw.style.background = `rgb(${col.slice(0, 3)})`; r.append(sw, el("span", null, txt)); return r; };
+      t.append(el("b", null, `${CITY[CITYNOW][0]}: ${fmt(tot, 0)} km δρόμων`), document.createTextNode(" · χρώμα ανά κίνδυνο πλημμύρας"));
+      L.append(t, row(RCOL(4), `Πλημμύρισαν στον Daniel εκτός ζώνης 1000 ετών: ${kv("dan_out")}`), row(RCOL(6), `Πλημμύρισαν στον Daniel, εντός ζώνης: ${kv("dan")}`),
+        row(RCOL(1), `Σε επίσημη ζώνη 100 ετών: ${kv("q100")}`), row(RCOL(2), `Σε επίσημη ζώνη 1000 ετών: ${kv("q1000")}`), row(RCOL(0), `Εκτός ζωνών: ${kv("ok")}`));
+      if (R.pois.length) { const risk = R.pois.filter(d => d.f & 5).length; L.append(el("div", "lab", `Κύκλοι: ${R.pois.length} σχολεία, νοσοκομεία και υπηρεσίες· ${risk} σε ζώνη 100 ετών ή μέσα στην πλημμύρα Daniel (λευκό περίγραμμα). Τα κτίρια έχουν τα ίδια χρώματα.`)); }
+      else L.append(el("div", "lab", "Τα κτίρια έχουν τα ίδια χρώματα."));
+      if (CITYNOW === "volos") L.append(el("div", "lab", "Ο Daniel δεν χαρτογραφήθηκε στην πόλη του Βόλου (EMSR692): εδώ φαίνονται μόνο οι επίσημες ζώνες."));
+      L.append(el("div", "lab", "Δρόμοι: OpenStreetMap (Overture). Σημεία: Overture Places, ελλιπή. «Σε ζώνη» δεν σημαίνει ότι ο δρόμος θα κοπεί· δείχνει έκθεση, όχι βάθος νερού."));
+      return;
+    }
     if (!B || !B.items) { t.textContent = `Φόρτωση κτιρίων: ${CITY[CITYNOW][0]}…`; L.append(t); }
     else { const n = B.items.length, c = m => B.items.reduce((s, d) => s + (m(d.f) ? 1 : 0), 0);
       t.append(el("b", null, `${CITY[CITYNOW][0]}: ${fmt(n)} κτίρια`), document.createTextNode(" · χρώμα ανά κίνδυνο πλημμύρας"));
@@ -1280,7 +1337,7 @@ function tourGo(k) {
   { const G = $("goto"), ks = Object.keys(CITY), big = ks.filter(k => !/^p\d/.test(k)), rest = ks.filter(k => /^p\d/.test(k)).sort((a, b) => CITY[a][0].localeCompare(CITY[b][0], "el"));
     const grp = (label, list) => { const og = document.createElement("optgroup"); og.label = label; list.forEach(k => { const o = document.createElement("option"); o.value = k; o.textContent = CITY[k][0]; og.append(o); }); G.append(og); };
     grp("Πόλεις", big); if (rest.length) grp("Κωμοπόλεις και χωριά με κτίρια σε κίνδυνο", rest);
-    G.onchange = () => { const c = CITY[G.value]; if (!c) return; if (tourK >= 0) tourGo(-1); flyView({ longitude: (c[1] + c[3]) / 2, latitude: (c[2] + c[4]) / 2, zoom: /^p\d/.test(G.value) ? 14.4 : 13.6, pitch: 55, bearing: 15 }); G.value = ""; }; }
+    G.onchange = () => { const c = CITY[G.value]; if (!c) return; if (tourK >= 0) tourGo(-1); flyView({ longitude: (c[1] + c[3]) / 2, latitude: (c[2] + c[4]) / 2, zoom: /^p\d/.test(G.value) ? 14.4 : 13.6, pitch: CITYVIEW === "map" ? 0 : 55, bearing: CITYVIEW === "map" ? 0 : 15 }); G.value = ""; }; }
   $("homeBtn").onclick = goHome; document.querySelector(".brand").onclick = goHome;
   $("tourBtn").onclick = () => tourGo(0); $("tourNext").onclick = () => tourGo(tourK + 1); $("tourExit").onclick = () => tourGo(-1);
   window.claude?.use?.("downloads")?.then(d => downloads = d).catch(() => {});

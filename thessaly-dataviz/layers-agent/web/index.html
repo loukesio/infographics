@@ -314,8 +314,8 @@ pre { font: 11px/1.5 var(--mono); color: var(--muted); white-space: pre-wrap; wo
       <div class="tag r" id="tagR">Αν έκλειναν τα Τέμπη<small>σενάριο από DEM · στάθμη 121,6 m</small></div>
     </div>
         <div class="seg" role="group" aria-label="Προβολή" id="viewSw">
-          <button data-v="3d" aria-pressed="true">Ανάλυση 3D</button>
-          <button data-v="map" aria-pressed="false">Χάρτης δρόμων</button>
+          <button data-v="map" aria-pressed="true">Χάρτης δρόμων</button>
+          <button data-v="3d" aria-pressed="false">Ανάλυση 3D</button>
         </div>
         <div class="card" id="card" hidden></div>
         <div class="tour" id="tour" hidden role="status"><span class="tn" id="tourN"></span><p id="tourCap"></p><div class="tb"><button class="btn" id="tourNext">Επόμενο</button><button class="btn ghost" id="tourExit">Έξοδος</button></div></div>
@@ -550,7 +550,7 @@ function cityAt(vs) { if (vs.zoom < 11.4) return null; let best = null, bd = 1e9
   for (const k in CITY) { const c = CITY[k]; if (vs.longitude > c[1] - .012 && vs.longitude < c[3] + .012 && vs.latitude > c[2] - .012 && vs.latitude < c[4] + .012) {
     const d = Math.hypot((vs.longitude - (c[1] + c[3]) / 2) * .77, vs.latitude - (c[2] + c[4]) / 2); if (d < bd) { bd = d; best = k; } } }
   return best; }
-let CITYVIEW = "3d", LB = 0, TK = "";       // view: "3d" = analysis (hexagons, relief, 3D buildings in settlements), "map" = flat street map of the whole region; LB = label zoom bucket; TK = visible street tiles
+let CITYVIEW = "map", LB = 0, TK = "";       // view: "3d" = analysis (hexagons, relief, 3D buildings in settlements), "map" = flat street map of the whole region; LB = label zoom bucket; TK = visible street tiles
 const RKM = /*RKM*/{"larisa":{"ok":681.9,"dan_out":90.6,"dan":68.7,"q1000":80.9,"q100":108.9},"volos":{"ok":616.5,"q100":158.8,"q1000":52.8},"trikala":{"q100":248.6,"q1000":88.8,"ok":222.2,"dan":1.9},"karditsa":{"ok":183.5,"q1000":84.9,"q100":145.1,"dan_out":0.5,"dan":3.5},"p00":{"q100":87.6,"q1000":10.5,"ok":31.3},"p01":{"dan":60.1,"ok":24.3,"q1000":2.3,"q100":2.1,"dan_out":2.0},"p02":{"ok":43.3,"q1000":12.8,"q100":50.8,"dan":0.5,"dan_out":0.0},"p03":{"q100":75.1,"q1000":9.6,"ok":37.4,"dan":0.2,"dan_out":1.8},"p04":{"q100":12.8,"ok":19.7,"q1000":24.8,"dan":52.9,"dan_out":0.1},"p05":{"ok":3.8,"q100":28.1,"q1000":8.2,"dan":1.5},"p06":{"ok":6.8,"dan":25.0,"q1000":1.1,"q100":1.1,"dan_out":0.7},"p07":{"dan":14.6,"dan_out":22.8,"ok":1.8,"q1000":0.1,"q100":0.0},"p08":{"dan":36.5,"q100":0.6,"ok":3.2,"dan_out":1.5,"q1000":0.3},"p09":{"dan":17.3,"q100":15.8,"q1000":4.2,"dan_out":0.6,"ok":8.9},"p10":{"dan":26.9,"q100":3.3,"q1000":5.6,"ok":6.1,"dan_out":0.5},"p11":{"dan_out":19.0,"ok":1.5,"dan":15.4,"q1000":0.0},"p12":{"dan":12.5,"dan_out":26.9,"q100":0.1},"p13":{"dan":30.8,"q100":9.8,"q1000":2.5,"ok":5.4,"dan_out":0.5},"p14":{"q100":37.7,"q1000":2.2,"ok":2.0},"p15":{"q100":25.5,"q1000":12.9,"ok":11.3},"p16":{"q100":24.8,"q1000":1.3,"dan":2.8,"ok":14.2,"dan_out":0.3},"p17":{"ok":12.1,"q1000":2.0,"q100":22.0},"p18":{"dan":14.5,"dan_out":15.9,"q1000":2.4,"ok":103.6,"q100":0.6},"p19":{"dan":15.5,"dan_out":8.6,"ok":6.0,"q100":0.3,"q1000":0.1}}/*RKM*/;        // road km by flood status per settlement (pipeline/s25, inlined by s28)
 const ST = { man: null, has: { r: new Set(), b: new Set() }, r: {}, b: {}, region: null, zones: null };   // street tiles (pipeline/s27): roads + labels + facilities + zone raster, buildings, region main roads
 const RCOL = f => (f & 4) ? ((f & 2) ? [79, 163, 224] : [240, 96, 80]) : (f & 1) ? [150, 100, 235] : (f & 2) ? [190, 170, 235] : [214, 220, 228];
@@ -670,6 +670,7 @@ let deck1, deck2, viewState = { longitude: 22.3, latitude: 39.4, zoom: 8.4, pitc
 function homeView() {            // default camera: the Thessaly plain (Kalambaka to Volos, Elassona to Almyros) fitted to the map area at any screen size
   const st = document.getElementById("stage"), w = Math.max(320, st.clientWidth), h = Math.max(300, st.clientHeight);
   const v = new deck.WebMercatorViewport({ width: w, height: h }).fitBounds([[21.5, 39.12], [23.02, 39.92]], { padding: Math.round(Math.min(w, h) * 0.03) });
+  if (CITYVIEW === "map") return { longitude: v.longitude, latitude: v.latitude, zoom: v.zoom + 0.1, pitch: 0, bearing: 0, maxPitch: 75 };
   return { longitude: v.longitude + 0.02, latitude: v.latitude - 0.1, zoom: v.zoom + 0.05, pitch: 55, bearing: -6, maxPitch: 75 };
 }
 let S2W = null, WXB = null, WX = null, wxK = 8, wxThr = 40, wxPlayT = null, WXI = null, HAND = null, simK = 2, HANDTEX = null, openMore = false, failAt = null, EXC = [], showExcl = false, PIN = null, history = [], TOWNS = [], reveal = 1, revealT = null, EX = 2.5, LON, LAT, V = null, TL = null, tlIdx = 3, tlPlay = null;
@@ -996,7 +997,7 @@ function renderLegend() {
       row(RCOL(1), `Σε επίσημη ζώνη 100 ετών${kv("q100")}`), row(RCOL(2), `Σε επίσημη ζώνη 1000 ετών${kv("q1000")}`), row(RCOL(0), `Εκτός ζωνών${kv("ok")}`));
     L.append(el("div", "lab", viewState.zoom < 12.3 ? "Κύριοι δρόμοι. Με ζουμ εμφανίζονται όλοι οι δρόμοι, ονόματα οδών, κτίρια, σχολεία και νοσοκομεία." : "Κύκλοι: Ν νοσοκομείο, Σ σχολείο, Δ δημαρχείο, Π πυροσβεστική, Α αστυνομία, Φ μονάδα φροντίδας· λευκό περίγραμμα = σε ζώνη 100 ετών ή μέσα στην πλημμύρα Daniel. Τα κτίρια και οι σκιασμένες εκτάσεις έχουν τα ίδια χρώματα."));
     if (CITYNOW === "volos") L.append(el("div", "lab", "Ο Daniel δεν χαρτογραφήθηκε στην πόλη του Βόλου (EMSR692): εδώ φαίνονται μόνο οι επίσημες ζώνες."));
-    L.append(el("div", "lab", "Δρόμοι και κτίρια: OpenStreetMap (Overture). Σημεία: Overture Places, ελλιπή. «Σε ζώνη» δεν σημαίνει ότι ο δρόμος θα κοπεί· δείχνει έκθεση, όχι βάθος νερού."));
+    if (viewState.zoom >= 12.3) L.append(el("div", "lab", "Δρόμοι και κτίρια: OpenStreetMap (Overture). Σημεία: Overture Places, ελλιπή. «Σε ζώνη» δεν σημαίνει ότι ο δρόμος θα κοπεί· δείχνει έκθεση, όχι βάθος νερού."));
     return;
   }
   if (CITYNOW && ov("bld") && ov("bld").on && mode !== "today" && mode !== "swipe") {
@@ -1222,7 +1223,7 @@ function setMode(m) {
   redraw(); renderLegend();
 }
 const MODEINFO = {
-  time: ["Ο Daniel μέρα με τη μέρα", "Πώς απλώθηκε και υποχώρησε το νερό από 6 έως 22 Σεπτεμβρίου 2023, από 12 δορυφορικές λήψεις του Copernicus EMS. Πάτα αναπαραγωγή κάτω αριστερά."],
+  time: ["Ο Daniel μέρα με τη μέρα", "Πώς απλώθηκε και υποχώρησε το νερό από 6 έως 22 Σεπτεμβρίου 2023, από 12 δορυφορικές λήψεις του Copernicus EMS. Πάτα αναπαραγωγή κάτω από τον χάρτη."],
   swipe: ["Daniel ↔ λίμνη των Τεμπών", "Αριστερά η πραγματική πλημμύρα του 2023, δεξιά ο κάμπος αν έκλειναν τα Τέμπη. Σύρε τη γραμμή: σχεδόν όλη η πλημμύρα έπεσε μέσα στην αρχαία λεκάνη."],
   today: ["Σήμερα από δορυφόρο", "Η πιο πρόσφατη καθαρή εικόνα Sentinel-2 της Θεσσαλίας, με το νερό σε γαλάζιο. Σύρε τη γραμμή για να τη συγκρίνεις με την έκταση της πλημμύρας του Daniel πάνω στην ίδια εικόνα. Η εικόνα ανανεώνεται όποτε υπάρχει νέα λήψη χωρίς σύννεφα (κάθε 2–5 μέρες)."],
   wx: ["Πρόγνωση βροχής 72 ωρών", "Αθροιστική βροχή από την πρόγνωση του MET Norway (μοντέλο ECMWF). Τα σημεία πρόγνωσης απέχουν ~25 km· ανάμεσά τους το χρώμα είναι εκτίμηση. Τα πορτοκαλί εξάγωνα είναι χαμηλή γη δίπλα σε ποτάμια (από το σενάριο στάθμης) όπου η πρόγνωση ξεπερνά το όριο που ορίζεις: πού αξίζει να κοιτάξει κανείς πρώτα. Με ένα κλικ βγαίνει σημείωμα για το ΚΕΣΥΠΠ με έκθεση ανά ενότητα και οικισμό. Δεν είναι πρόγνωση πλημμύρας."],
@@ -1235,7 +1236,7 @@ function renderWelcome() {        // first view: nothing computed yet, explain w
   const ul = el("ul");
   [["Ρώτα", "μια ερώτηση για τη γη της Θεσσαλίας. Ο χάρτης δείχνει πού ισχύει και πόσα km² είναι."],
    ["Δες", "πώς βρέθηκε το αποτέλεσμα, κριτήριο προς κριτήριο, με την πηγή κάθε δεδομένου."],
-   ["Εξερεύνησε", "τον Daniel μέρα-μέρα, σενάρια στάθμης νερού και την πρόγνωση βροχής από τις καρτέλες κάτω αριστερά."]].forEach(([b, t]) => { const li = el("li"); li.append(el("b", null, b + " "), document.createTextNode(t)); ul.append(li); });
+   ["Εξερεύνησε", "τον Daniel μέρα-μέρα, σενάρια στάθμης νερού και την πρόγνωση βροχής από τις καρτέλες πάνω από τον χάρτη."]].forEach(([b, t]) => { const li = el("li"); li.append(el("b", null, b + " "), document.createTextNode(t)); ul.append(li); });
   W.append(ul, el("p", "hint", "Ξεκίνα με ένα από τα παραδείγματα πάνω, ή πάτα «Ξενάγηση» για μια περιήγηση 1 λεπτού."));
   R.append(W);
 }
@@ -1326,7 +1327,7 @@ function renderLayersPanel() {
 // ---------- guided tour ----------
 let tourK = -1, tourT = null;
 const TOUR = [
-  { cap: "Ανθεκτική Θεσσαλία: 14.053 km² σε 17.504 εξάγωνα, με ανάγλυφο και 40+ ανοιχτά δεδομένα σε ένα κοινό πλέγμα.", run: () => { setMode("query"); spec = null; renderWelcome(); renderLegend(); redraw(); flyView(homeView()); } },
+  { cap: "Θεσσαλία: 48.564 km δρόμων χρωματισμένα ανά κίνδυνο πλημμύρας. Κόκκινο = πλημμύρισε στον Daniel έξω από τους επίσημους χάρτες. Πίσω από αυτό, 40+ ανοιχτά δεδομένα σε 17.504 εξάγωνα.", run: () => { setMode("query"); setCityView("map", true); spec = null; renderWelcome(); renderLegend(); redraw(); flyView(homeView()); } },
   { cap: "Σεπτέμβριος 2023: ο Daniel μέρα με τη μέρα, από 12 δορυφορικές λήψεις του Copernicus.", run: () => { setMode("time"); setTL(0); flyView({ longitude: 22.2, latitude: 39.5, zoom: 8.6, pitch: 55, bearing: -20 }); setTimeout(() => { if (tourK === 1) playTL(); }, 600); }, wait: 14500 },
   { cap: "Σήμερα από δορυφόρο: πόσο νερό έχει η Κάρλα τώρα, δίπλα στην έκταση του Daniel. Σύρε τη γραμμή.", run: () => { if (IMG.s2) setMode("today"); }, wait: 9000 },
   { cap: "Κάρλα: πού έμεινε το νερό τις περισσότερες μέρες, η βάση για τεκμηριωμένες αποφάσεις παραχώρησης.", run: () => { const p = PRESETS[1]; setMode("query"); $("q").value = p.q; apply(structuredClone(p.spec), "preset", true, p.q, false); }, wait: 8500 },
@@ -1340,7 +1341,7 @@ function flyView(v) { if (!deck1) return; const reduce = matchMedia("(prefers-re
   deck1.setProps({ viewState }); deck2 && deck2.setProps({ viewState }); }
 function goHome() {                // back to the start: no query, default layers, default camera
   if (tourK >= 0) tourGo(-1);
-  stopWx(); stopTL(); setMode("query"); setCityView("3d", true);
+  stopWx(); stopTL(); setMode("query"); setCityView("map", true);
   spec = null; history = []; RES = []; pass = null; PIN = null; showExcl = false;
   $("q").value = ""; $("q").placeholder = "π.χ. Πού ζουν άνθρωποι κάτω από 100 m που πλημμύρισαν το 2023;"; $("status").textContent = ""; $("card").hidden = true;
   let changed = false; OV.forEach(o => { const def = ["rivers", "towns", "bld", "ortho"].includes(o.id); if (o.on !== def) { o.on = def; changed = true; } });
@@ -1377,6 +1378,7 @@ function tourGo(k) {
   $("tlRange").max = TL.dates.length - 1;
   renderWelcome();
   try { viewState = homeView(); } catch {}
+  stInit();
   deck1 = makeDeck($("map"), queryLayers());
   $("loading").remove(); renderLegend(); renderLayersPanel(); initSwipe();
   if (innerWidth <= 1180) document.querySelector(".layers").open = false;

@@ -1,25 +1,208 @@
 {
  "caps": {
-  "s2a": {"el": ["Όλη η Θεσσαλία σε έναν χάρτη", "48.564 km δρόμων και 536.000 κτίρια, χρωματισμένα ανά κίνδυνο πλημμύρας"], "en": ["All of Thessaly on one map", "48,564 km of roads and 536,000 buildings, coloured by flood risk"]},
-  "s2b": {"el": ["Κόκκινο: πλημμύρισε στον Daniel, έξω από τους επίσημους χάρτες", "Μέχρι το επίπεδο του δρόμου, με σχολεία, νοσοκομεία και υπηρεσίες"], "en": ["Red: flooded by Storm Daniel, outside the official hazard maps", "Down to street level, with schools, hospitals and public services"]},
-  "s3a": {"el": ["Σενάριο στάθμης: τι πλημμυρίζει αν το νερό ανέβει", "Ο ολισθητής ξαναχρωματίζει δρόμους, κτίρια και κρίσιμες υποδομές στιγμιαία"], "en": ["Water-level scenario: what floods if the river rises", "The slider recolours roads, buildings and critical facilities instantly"]},
-  "s3b": {"el": ["Στα +3 m: 7.273 km δρόμων, 60.620 κτίρια, 16 σχολεία και υπηρεσίες", "Ελεγμένο με τον Daniel: πιάνει το 83% της πραγματικής πλημμύρας. Πρώτο φίλτρο, όχι υδραυλικό μοντέλο."], "en": ["At +3 m: 7,273 km of roads, 60,620 buildings, 16 schools and services", "Checked against Storm Daniel: captures 83% of the real flood. A first filter, not a hydraulic model."]},
-  "s4": {"el": ["Ο Daniel μέρα με τη μέρα", "12 δορυφορικές λήψεις Copernicus EMS, 6–22 Σεπτεμβρίου 2023"], "en": ["Storm Daniel, day by day", "12 Copernicus EMS satellite acquisitions, 6–22 September 2023"]},
-  "s5a": {"el": ["Ρωτάς σε απλά ελληνικά", "Το AI μετατρέπει την ερώτηση σε κριτήρια πάνω σε 40+ layers · αναπαραγωγή απάντησης, μέσος χρόνος 18 δευτ."], "en": ["Ask in plain language", "The AI turns the question into criteria over 40+ layers · replayed answer, median response time 18 s"]},
-  "s5b": {"el": ["Οι αριθμοί υπολογίζονται από τα δεδομένα, όχι από το μοντέλο", "Κάθε κριτήριο φαίνεται, αλλάζει με ένα κλικ και έχει πηγή"], "en": ["The numbers are computed from the data, not by the model", "Every criterion is visible, can be switched off, and carries its source"]},
-  "s5c": {"el": ["Όταν τα δεδομένα δεν φτάνουν, το λέει", "Δοκιμή με 51 ερωτήσεις: 36/36 έγκυρες απαντήσεις, 10/10 σωστές αρνήσεις, 5/5 συνέχειες"], "en": ["When the data cannot answer, it says so", "Tested on 51 questions: 36/36 valid answers, 10/10 correct refusals, 5/5 follow-ups"]},
-  "s6": {"el": ["40% των κτιρίων που πλημμύρισαν ήταν «εκτός χάρτη»", "Περίπου 6.800 κτίρια έξω από τη ζώνη 1000 ετών· σχεδόν τα μισά στον Δήμο Λαρισαίων"], "en": ["40% of the flooded buildings were “off the map”", "About 6,800 buildings outside the 1000-year zone; almost half in the Municipality of Larissa"]},
-  "s7": {"el": ["Κτίριο προς κτίριο, σε 24 οικισμούς", "Όγκοι κτιρίων ανά κίνδυνο, με ορθοφωτογραφίες © Ελληνικό Κτηματολόγιο"], "en": ["Building by building, in 24 settlements", "Building volumes by risk, with orthophotos © Hellenic Cadastre"]},
-  "s8": {"el": ["Επίσημες και ανοιχτές πηγές, σε κοινό πλέγμα", "ΥΠΕΝ · Copernicus · ΔΕΔΔΗΕ · Κτηματολόγιο · ESA · OpenStreetMap"], "en": ["Official and open sources on one common grid", "Ministry of Environment · Copernicus · HEDNO · Hellenic Cadastre · ESA · OpenStreetMap"]},
-  "s8b": {"el": ["Και για την ενέργεια: πού χωράει νέα ισχύς", "21 από τους 51 μετασχηματιστές ΥΤ/ΜΤ δεν έχουν περιθώριο για νέες ΑΠΕ (ΔΕΔΔΗΕ, 10/11/2026)"], "en": ["And for energy: where new capacity fits", "21 of 51 HV/MV transformers have no margin for new renewables (HEDNO, 10 Nov 2026)"]}
+  "s2a": {
+   "el": [
+    "Όλη η Θεσσαλία σε έναν χάρτη",
+    "48.564 km δρόμων και 536.000 κτίρια, χρωματισμένα ανά κίνδυνο πλημμύρας"
+   ],
+   "en": [
+    "All of Thessaly on one map",
+    "48,564 km of roads and 536,000 buildings, coloured by flood risk"
+   ]
+  },
+  "s2b": {
+   "el": [
+    "Κόκκινο: πλημμύρισε στον Daniel, έξω από τους επίσημους χάρτες",
+    "Μέχρι το επίπεδο του δρόμου, με σχολεία, νοσοκομεία και υπηρεσίες"
+   ],
+   "en": [
+    "Red: flooded by Storm Daniel, outside the official hazard maps",
+    "Down to street level, with schools, hospitals and public services"
+   ]
+  },
+  "s3a": {
+   "el": [
+    "Σενάριο στάθμης: τι πλημμυρίζει αν το νερό ανέβει",
+    "Ο ολισθητής ξαναχρωματίζει δρόμους, κτίρια και κρίσιμες υποδομές στιγμιαία"
+   ],
+   "en": [
+    "Water-level scenario: what floods if the river rises",
+    "The slider recolours roads, buildings and critical facilities instantly"
+   ]
+  },
+  "s3b": {
+   "el": [
+    "Στα +3 m: 7.273 km δρόμων, 60.620 κτίρια, 16 σχολεία και υπηρεσίες",
+    "Ελεγμένο με τον Daniel: πιάνει το 83% της πραγματικής πλημμύρας. Πρώτο φίλτρο, όχι υδραυλικό μοντέλο."
+   ],
+   "en": [
+    "At +3 m: 7,273 km of roads, 60,620 buildings, 16 schools and services",
+    "Checked against Storm Daniel: captures 83% of the real flood. A first filter, not a hydraulic model."
+   ]
+  },
+  "s4": {
+   "el": [
+    "Ο Daniel μέρα με τη μέρα",
+    "12 δορυφορικές λήψεις Copernicus EMS, 6–22 Σεπτεμβρίου 2023"
+   ],
+   "en": [
+    "Storm Daniel, day by day",
+    "12 Copernicus EMS satellite acquisitions, 6–22 September 2023"
+   ]
+  },
+  "s5a": {
+   "el": [
+    "Ρωτάς σε απλά ελληνικά",
+    "Το AI μετατρέπει την ερώτηση σε κριτήρια πάνω σε 40+ layers · αναπαραγωγή απάντησης, μέσος χρόνος 18 δευτ."
+   ],
+   "en": [
+    "Ask in plain language",
+    "The AI turns the question into criteria over 40+ layers · replayed answer, median response time 18 s"
+   ]
+  },
+  "s5b": {
+   "el": [
+    "Οι αριθμοί υπολογίζονται από τα δεδομένα, όχι από το μοντέλο",
+    "Κάθε κριτήριο φαίνεται, αλλάζει με ένα κλικ και έχει πηγή"
+   ],
+   "en": [
+    "The numbers are computed from the data, not by the model",
+    "Every criterion is visible, can be switched off, and carries its source"
+   ]
+  },
+  "s5c": {
+   "el": [
+    "Όταν τα δεδομένα δεν φτάνουν, το λέει",
+    "Δοκιμή με 51 ερωτήσεις: 36/36 έγκυρες απαντήσεις, 10/10 σωστές αρνήσεις, 5/5 συνέχειες"
+   ],
+   "en": [
+    "When the data cannot answer, it says so",
+    "Tested on 51 questions: 36/36 valid answers, 10/10 correct refusals, 5/5 follow-ups"
+   ]
+  },
+  "s6": {
+   "el": [
+    "40% των κτιρίων που πλημμύρισαν ήταν «εκτός χάρτη»",
+    "Περίπου 6.800 κτίρια έξω από τη ζώνη 1000 ετών· σχεδόν τα μισά στον Δήμο Λαρισαίων"
+   ],
+   "en": [
+    "40% of the flooded buildings were “off the map”",
+    "About 6,800 buildings outside the 1000-year zone; almost half in the Municipality of Larissa"
+   ]
+  },
+  "s7": {
+   "el": [
+    "Κτίριο προς κτίριο, σε 24 οικισμούς",
+    "Όγκοι κτιρίων ανά κίνδυνο, με ορθοφωτογραφίες © Ελληνικό Κτηματολόγιο"
+   ],
+   "en": [
+    "Building by building, in 24 settlements",
+    "Building volumes by risk, with orthophotos © Hellenic Cadastre"
+   ]
+  },
+  "s8": {
+   "el": [
+    "Επίσημες και ανοιχτές πηγές, σε κοινό πλέγμα",
+    "ΥΠΕΝ · Copernicus · ΔΕΔΔΗΕ · Κτηματολόγιο · ESA · OpenStreetMap"
+   ],
+   "en": [
+    "Official and open sources on one common grid",
+    "Ministry of Environment · Copernicus · HEDNO · Hellenic Cadastre · ESA · OpenStreetMap"
+   ]
+  },
+  "s8b": {
+   "el": [
+    "Και για την ενέργεια: πού χωράει νέα ισχύς",
+    "21 από τους 51 μετασχηματιστές ΥΤ/ΜΤ δεν έχουν περιθώριο για νέες ΑΠΕ (ΔΕΔΔΗΕ, 10/11/2026)"
+   ],
+   "en": [
+    "And for energy: where new capacity fits",
+    "21 of 51 HV/MV transformers have no margin for new renewables (HEDNO, 10 Nov 2026)"
+   ]
+  }
  },
  "cards": {
-  "title": {"el": {"k": "DEMO · ΝΟΕΜΒΡΙΟΣ 2026", "h": "Θεσσαλία <span>·</span> Layers Agent", "p": "Ανοιχτά δεδομένα σε έναν χάρτη. Απαντήσεις με πηγή.", "f": "AIDEAS"},
-            "en": {"k": "DEMO · NOVEMBER 2026", "h": "Thessaly <span>·</span> Layers Agent", "p": "Open data on one map. Answers with sources.", "f": "AIDEAS"}},
-  "hook": {"el": {"k": "ΣΕΠΤΕΜΒΡΙΟΣ 2023 · ΚΑΚΟΚΑΙΡΙΑ DANIEL", "n": [["926 km²", "πλημμύρισαν στη Θεσσαλία"], ["19%", "ήταν έξω ακόμη και από τη ζώνη 1000 ετών των επίσημων χαρτών"], ["6.800", "κτίρια πλημμύρισαν «εκτός χάρτη»"]], "p": "Τα δεδομένα υπήρχαν. Δεν ήταν στο ίδιο σημείο.", "s": "Πηγές: Copernicus EMS EMSR692 · ΥΠΕΝ, Χάρτες Επικινδυνότητας Πλημμύρας (2ος κύκλος) · Overture Maps"},
-           "en": {"k": "SEPTEMBER 2023 · STORM DANIEL", "n": [["926 km²", "flooded in Thessaly"], ["19%", "lay outside even the 1000-year zone of the official hazard maps"], ["6,800", "buildings flooded “off the map”"]], "p": "The data existed. It was not in one place.", "s": "Sources: Copernicus EMS EMSR692 · Ministry of Environment flood hazard maps (2nd cycle) · Overture Maps"}},
-  "end": {"el": {"k": "ΕΠΟΜΕΝΟ ΒΗΜΑ", "h": "Από demo σε επιχειρησιακό εργαλείο", "l": ["Αισθητήρες ΚΕΣΥΠΠ σε πραγματικό χρόνο", "Θέσεις και πρόοδος αντιπλημμυρικών έργων", "Ακριβές ανάγλυφο: LiDAR ή DEM 5 m του Κτηματολογίου"], "p": "Πρόταση: πιλοτική συνεργασία με την Περιφέρεια Θεσσαλίας", "f": "AIDEAS · info@aideas.eu"},
-          "en": {"k": "NEXT STEP", "h": "From demo to an operational tool", "l": ["Real-time sensors of the regional civil-protection centre", "Locations and progress of flood-protection works", "Accurate terrain: LiDAR or the Cadastre 5 m DEM"], "p": "Proposal: a pilot with the Region of Thessaly", "f": "AIDEAS · info@aideas.eu"}}
+  "title": {
+   "el": {
+    "k": "DEMO · ΝΟΕΜΒΡΙΟΣ 2026",
+    "h": "Θεσσαλία <span>·</span> Layers Agent",
+    "p": "Ανοιχτά δεδομένα σε έναν χάρτη. Απαντήσεις με πηγή.",
+    "f": ""
+   },
+   "en": {
+    "k": "DEMO · NOVEMBER 2026",
+    "h": "Thessaly <span>·</span> Layers Agent",
+    "p": "Open data on one map. Answers with sources.",
+    "f": ""
+   }
+  },
+  "hook": {
+   "el": {
+    "k": "ΣΕΠΤΕΜΒΡΙΟΣ 2023 · ΚΑΚΟΚΑΙΡΙΑ DANIEL",
+    "n": [
+     [
+      "926 km²",
+      "πλημμύρισαν στη Θεσσαλία"
+     ],
+     [
+      "19%",
+      "ήταν έξω ακόμη και από τη ζώνη 1000 ετών των επίσημων χαρτών"
+     ],
+     [
+      "6.800",
+      "κτίρια πλημμύρισαν «εκτός χάρτη»"
+     ]
+    ],
+    "p": "Τα δεδομένα υπήρχαν. Δεν ήταν στο ίδιο σημείο.",
+    "s": "Πηγές: Copernicus EMS EMSR692 · ΥΠΕΝ, Χάρτες Επικινδυνότητας Πλημμύρας (2ος κύκλος) · Overture Maps"
+   },
+   "en": {
+    "k": "SEPTEMBER 2023 · STORM DANIEL",
+    "n": [
+     [
+      "926 km²",
+      "flooded in Thessaly"
+     ],
+     [
+      "19%",
+      "lay outside even the 1000-year zone of the official hazard maps"
+     ],
+     [
+      "6,800",
+      "buildings flooded “off the map”"
+     ]
+    ],
+    "p": "The data existed. It was not in one place.",
+    "s": "Sources: Copernicus EMS EMSR692 · Ministry of Environment flood hazard maps (2nd cycle) · Overture Maps"
+   }
+  },
+  "end": {
+   "el": {
+    "k": "ΕΠΟΜΕΝΟ ΒΗΜΑ",
+    "h": "Από demo σε επιχειρησιακό εργαλείο",
+    "l": [
+     "Αισθητήρες ΚΕΣΥΠΠ σε πραγματικό χρόνο",
+     "Θέσεις και πρόοδος αντιπλημμυρικών έργων",
+     "Ακριβές ανάγλυφο: LiDAR ή DEM 5 m του Κτηματολογίου"
+    ],
+    "p": "Πρόταση: πιλοτική συνεργασία με την Περιφέρεια Θεσσαλίας",
+    "f": ""
+   },
+   "en": {
+    "k": "NEXT STEP",
+    "h": "From demo to an operational tool",
+    "l": [
+     "Real-time sensors of the regional civil-protection centre",
+     "Locations and progress of flood-protection works",
+     "Accurate terrain: LiDAR or the Cadastre 5 m DEM"
+    ],
+    "p": "Proposal: a pilot with the Region of Thessaly",
+    "f": ""
+   }
+  }
  },
- "bar": {"el": "Θεσσαλία · Layers Agent — demo", "en": "Thessaly · Layers Agent — demo"}
+ "bar": {
+  "el": "Θεσσαλία · Layers Agent — demo",
+  "en": "Thessaly · Layers Agent — demo"
+ }
 }

@@ -1,4 +1,4 @@
-"""Roads and key facilities per place, flagged by flood exposure → web/assets/roads_<key>.json.
+"""Road km and key facilities per place by flood exposure → data/roads_summary.json (the map tiles come from s27).
 Roads: Overture transportation segments (OSM). Each road is cut wherever its flood status changes (sampled every 20 m on 5 m masks).
 flag bits: 1 = inside official Q100 zone, 2 = inside Q1000, 4 = inside Storm Daniel extent (EMSR692).
 Facilities: Overture Places (schools, hospitals/clinics, town halls, fire/police, care homes) filtered by category + name; incomplete by nature."""
@@ -78,7 +78,6 @@ for key, (x0, y0, x1, y1) in AREAS.items():
     kms = {}
     for f, v in km.items(): kms[cat(f)] = round(kms.get(cat(f), 0) + v, 1)
     out = {"o": [x0, y0], "names": names, "r": roads, "labels": labels, "pois": pois, "km": kms}
-    (R / f"web/assets/roads_{key}.json").write_text(json.dumps(out, ensure_ascii=False, separators=(",", ":")))
-    summary[key] = {"km": kms, "roads": len(roads), "labels": len(labels), "pois": len(pois), "pois_at_risk": sum(1 for p in pois if p[4] & 5), "kb": round(os.path.getsize(R / f"web/assets/roads_{key}.json") / 1e3)}
+    summary[key] = {"km": kms, "roads": len(roads), "labels": len(labels), "pois": len(pois), "pois_at_risk": sum(1 for p in pois if p[4] & 5)}   # the map itself is drawn from the region-wide tiles of s27
     print(key, summary[key], flush=True)
 json.dump(summary, open(R / "data/roads_summary.json", "w"), ensure_ascii=False, indent=1)

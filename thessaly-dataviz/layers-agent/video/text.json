@@ -230,14 +230,46 @@
    "el": {
     "k": "ΕΠΟΜΕΝΟ ΒΗΜΑ",
     "h": "Πιλοτική συνεργασία με την Περιφέρεια Θεσσαλίας",
-    "who": "Σεραφείμ Μουστακίδης · Λουκάς Θεοδοσίου",
-    "c": "Επικοινωνία: Γιάννης Ντάβαρος"
+    "who": "Ομάδα ανάπτυξης: Σεραφείμ Μουστακίδης · Λουκάς Θεοδοσίου",
+    "c": "Επικοινωνία: Γιάννης Ντάβαρος",
+    "g1": "Ομάδα ανάπτυξης",
+    "g2": "Επικοινωνία",
+    "p": [
+     [
+      "Σεραφείμ Μουστακίδης",
+      "smoustakidis@gmail.com"
+     ],
+     [
+      "Λουκάς Θεοδοσίου",
+      "loukesio@gmail.com"
+     ]
+    ],
+    "q": [
+     "Γιάννης Ντάβαρος",
+     "gdavaros@joistpark.eu"
+    ]
    },
    "en": {
     "k": "NEXT STEP",
     "h": "A pilot with the Region of Thessaly",
-    "who": "Serafeim Moustakidis · Loukas Theodosiou",
-    "c": "Contact: Giannis Ntavaros"
+    "who": "Development team: Serafeim Moustakidis · Loukas Theodosiou",
+    "c": "Communication: Giannis Davaros",
+    "g1": "Development team",
+    "g2": "Communication",
+    "p": [
+     [
+      "Serafeim Moustakidis",
+      "smoustakidis@gmail.com"
+     ],
+     [
+      "Loukas Theodosiou",
+      "loukesio@gmail.com"
+     ]
+    ],
+    "q": [
+     "Giannis Davaros",
+     "gdavaros@joistpark.eu"
+    ]
    }
   },
   "future": {

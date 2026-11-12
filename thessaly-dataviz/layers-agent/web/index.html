@@ -111,6 +111,8 @@ aside { background: var(--panel); border-left: 1px solid var(--line); display: f
 .w input { width: 100%; accent-color: var(--sun); }
 .w output { font: 11px var(--mono); color: var(--muted); text-align: right; }
 
+.step .rule { display: block; font-size: 10.5px; color: var(--muted, #8b95a3); }
+.okcheck { color: var(--ok, #6fbf73); font-size: 12px; }
 .caveat { border: 1px solid color-mix(in srgb, var(--warn) 45%, var(--line)); background: color-mix(in srgb, var(--warn) 7%, var(--panel)); border-radius: 8px; padding: 9px 11px; font-size: 12.5px; display: grid; gap: 4px; }
 .caveat b { color: var(--warn); font-weight: 600; }
 .refuse { border-color: color-mix(in srgb, var(--bad) 50%, var(--line)); background: color-mix(in srgb, var(--bad) 8%, var(--panel)); }
@@ -559,7 +561,7 @@ function evaluate() {
   failAt = new Int8Array(n);
   spec.filters.forEach((f, k) => {
     const v = D[f.col], op = OPS[f.op];
-    if (enabled[k] && v && op) for (let i = 0; i < n; i++) if (m[i] && !op(v[i], f.value)) { m[i] = 0; failAt[i] = k + 1; }
+    if (enabled[k] && v && op) for (let i = 0; i < n; i++) if (m[i] && (v[i] === -1 || !op(v[i], f.value))) { m[i] = 0; failAt[i] = k + 1; }   // -1 = no data: never passes
     let a = 0, p = 0, c = 0; for (let i = 0; i < n; i++) if (m[i]) { a += D.area[i]; p += D.pop[i]; c++; }
     steps.push({label: f.label || `${f.col} ${f.op} ${f.value}`, col: f.col, area: a, pop: p, cells: c, on: enabled[k]});
   });
@@ -1143,7 +1145,7 @@ function renderResult(src) {
     const row = el("label", "step" + (st.on ? "" : " off"));
     const lb = el("div", "lbl"); const tt = el("div", null, j === 0 ? "Όλη η Θεσσαλία" : st.label);
     if (showExcl && j > 0) { const sw = el("i", "sw"); const c = EXCL[(j - 1) % EXCL.length]; sw.style.background = `rgb(${c[0]},${c[1]},${c[2]})`; tt.prepend(sw); }
-    lb.append(tt); if (st.col && CAT[st.col]) lb.append(el("small", null, CAT[st.col].src));
+    lb.append(tt); if (st.col && CAT[st.col]) { const f = spec.filters[j - 1]; lb.append(el("small", "rule", `εφαρμόστηκε: ${ruleText(f)} · ${CAT[st.col].src}`)); }
     row.append(lb, el("div", "num", fmt(st.area) + " km²"));
     if (j === 0) row.append(el("span")); else { const cb = el("input"); cb.type = "checkbox"; cb.className = "tog"; cb.checked = st.on; cb.id = "f" + j; cb.setAttribute("aria-label", "Ενεργό: " + st.label);
       cb.onchange = () => { enabled[j - 1] = cb.checked; evaluate(); renderResult(src); renderLegend(); animateReveal(); }; row.append(cb); }
@@ -1151,7 +1153,10 @@ function renderResult(src) {
     F.append(row);
   });
   R.append(F);
-  // 3. what to keep in mind
+  // 3. self-check
+  if (spec.checks && spec.checks.length) { const ck = el("div", "caveat check"); ck.append(el("b", null, "Αυτόματος έλεγχος: προσοχή")); spec.checks.forEach(t => ck.append(el("div", null, t))); R.append(ck); }
+  else { R.append(el("p", "hint okcheck", "✓ Αυτόματος έλεγχος: τα όρια είναι μέσα στο εύρος των δεδομένων και οι ετικέτες ταιριάζουν με ό,τι εφαρμόστηκε.")); }
+  // 4. what to keep in mind
   const cav = el("div", "caveat"); cav.append(el("b", null, "Τι να προσέξεις"));
   (spec.caveats && spec.caveats.length ? spec.caveats : ["Κάθε εξάγωνο είναι ~0,74 km²: αποτέλεσμα για πρώτο φίλτρο, όχι για συγκεκριμένο αγροτεμάχιο."]).forEach(t => cav.append(el("div", null, t)));
   R.append(cav);
@@ -1192,6 +1197,7 @@ function apply(s, src, fly, q, followup) {
   spec.dropped = raw.length - spec.filters.length;
   spec.score = (Array.isArray(spec.score) ? spec.score : []).filter(t => t && D[t.col]);
   spec.caveats = Array.isArray(spec.caveats) ? spec.caveats.filter(c => typeof c === "string") : [];
+  spec.checks = selfCheck(spec.filters);
   if (spec.dropped) spec.caveats.unshift(`${spec.dropped} κριτήριο/α του agent αγνοήθηκαν γιατί αναφέρονταν σε στήλη ή τιμή που δεν υπάρχει.`);
   if (!spec.refuse && !spec.filters.length) spec.refuse = "Δεν μπόρεσα να μετατρέψω την ερώτηση σε κριτήρια πάνω στα layers. Δοκίμασε να την πεις πιο συγκεκριμένα (π.χ. «χαμηλή γη δίπλα σε ποτάμι με κατοίκους»).";
   if (typeof spec.refuse !== "string") spec.refuse = spec.refuse ? "Δεν απαντιέται με αυτά τα δεδομένα." : "";
@@ -1199,6 +1205,30 @@ function apply(s, src, fly, q, followup) {
   if (spec.refuse) { pass = new Uint8Array(N); RES = []; score = new Float32Array(N); renderResult(src); renderLegend(); redraw(); return; }
   evaluate(); renderResult(src); renderLegend(); $("card").hidden = true; animateReveal(); if (fly && deck1) flyTo(RES);
   if (fly && innerWidth < 820) try { $("stage").scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" }); } catch {}
+}
+// ---------- self-check of a spec: deterministic, runs on every answer (preset or live agent) ----------
+const SH = c => CAT[c] && CAT[c].u === "0-1";
+function ruleText(f) { const u = CAT[f.col] ? CAT[f.col].u : ""; const v = SH(f.col) ? fmt(f.value * 100) + "%" : fmt(f.value, Number.isInteger(f.value) ? 0 : 2) + (u && u !== "0/1" && u !== "κωδ." ? " " + u : "");
+  return `${CAT[f.col] ? CAT[f.col].l : f.col} ${{"<": "<", "<=": "≤", ">": ">", ">=": "≥", "==": "=", "!=": "≠"}[f.op]} ${v}`; }
+function selfCheck(filters) {
+  const out = []; const inReg = i => D.area[i] > 0;
+  filters.forEach(f => {
+    const v = D[f.col]; let lo = Infinity, hi = -Infinity, miss = 0, tot = 0;
+    for (let i = 0; i < N; i++) { if (!inReg(i)) continue; tot++; const x = v[i]; if (x === -1) { miss++; continue; } if (x < lo) lo = x; if (x > hi) hi = x; }
+    const op = OPS[f.op]; let any = false, all = true;
+    for (const x of [lo, hi]) { const ok = op(x, f.value); any = any || ok; all = all && ok; }
+    if (f.op === ">" || f.op === ">=" ? !op(hi, f.value) : f.op === "<" || f.op === "<=" ? !op(lo, f.value) : false)
+      out.push(`«${f.label}»: κανένα κελί δεν έχει τέτοια τιμή (εύρος στη Θεσσαλία ${fmt(SH(f.col) ? lo * 100 : lo, 1)}–${fmt(SH(f.col) ? hi * 100 : hi, 1)}${SH(f.col) ? "%" : ""}).`);
+    else if ((f.op === ">" || f.op === ">=") ? op(lo, f.value) : (f.op === "<" || f.op === "<=") ? op(hi, f.value) : false)
+      out.push(`«${f.label}»: όλα τα κελιά με δεδομένα το πληρούν, οπότε δεν φιλτράρει τίποτα.`);
+    if (miss / tot > 0.05) out.push(`«${f.label}»: η στήλη δεν έχει τιμή στο ${fmt(miss / tot * 100)}% της Θεσσαλίας (κελιά χωρίς κτίρια ή χωρίς μέτρηση)· αυτά εξαιρούνται.`);
+    if (SH(f.col) && f.value > 1) out.push(`«${f.label}»: το όριο ${f.value} είναι μεγαλύτερο από 1, ενώ η στήλη είναι μερίδιο 0–1. Πιθανό λάθος του agent (εννοούσε ${f.value}%;).`);
+    const nums = [...f.label.matchAll(/(?:<|>|≤|≥|=|πάνω από|κάτω από|λιγότερ\S* από|περισσότερ\S* από|έως|ως|μέχρι|τουλάχιστον|άνω των|κάτω των)\s*(\d+(?:[.,]\d+)?)/gi)].map(m => +m[1].replace(",", "."));
+    const want = SH(f.col) ? [f.value, f.value * 100] : [f.value];
+    if (nums.length && !nums.some(x => want.some(w => Math.abs(x - w) <= Math.max(0.01, Math.abs(w) * 0.02))))
+      out.push(`«${f.label}»: η ετικέτα δεν ταιριάζει με το όριο που εφαρμόστηκε (${ruleText(f)}).`);
+  });
+  return out;
 }
 function placeName(i) { const d = D.dimoi && D.dimos[i] >= 0 ? "Δ. " + D.dimoi[D.dimos[i]] : null, p = D.pe_names && D.pe[i] >= 0 ? "ΠΕ " + D.pe_names[D.pe[i]] : RU[D.ru[i]]; return d ? `${d}, ${p}` : p; }
 function showCard(i) {
@@ -1238,7 +1268,7 @@ ${crit ? `<h2>Ερώτημα: ${esc(spec.title)}</h2><ul>${crit}</ul>` : ""}<h2>
 let sample = null, ctl = null;
 function catalogText() { return Object.entries(CAT).map(([k, c]) => `${k}: ${c.l} [${c.u}] — ${c.d} (πηγή: ${c.src})`).join("\n"); }
 function promptFor(q) {
-  return `Είσαι ο agent ενός εργαλείου που απαντά ερωτήσεις για τη Θεσσαλία συνδυάζοντας χωρικά layers. Τα δεδομένα είναι ένας πίνακας με 17.504 εξάγωνα H3 (~0,74 km² το καθένα), με αυτές τις στήλες:\n\n${catalogText()}\n\nΜετέτρεψε την ερώτηση του χρήστη σε προδιαγραφή φίλτρων. ΔΕΝ υπολογίζεις αποτελέσματα· η σελίδα εφαρμόζει τα φίλτρα.\nΚανόνες:\n- Χρησιμοποίησε ΜΟΝΟ τις παραπάνω στήλες. Μερίδια είναι 0-1.\n- Αν η ερώτηση χρειάζεται δεδομένα που δεν υπάρχουν (π.χ. τιμές γης, κτηματολόγιο, χωρητικότητα δικτύου, μελλοντικός κίνδυνος, ονόματα χωριών), απάντησε {"refuse": "<εξήγηση στα ελληνικά τι λείπει>"}.\n- Το 'lake' είναι υποθετικό σενάριο και το 'flood' ένα ιστορικό γεγονός: ανέφερέ το στα caveats όταν τα χρησιμοποιείς.\n- Κάθε κριτήριο της ερώτησης γίνεται φίλτρο (όχι μόνο score). 2 έως 7 φίλτρα, με σύντομες ελληνικές ετικέτες που λένε το όριο.\n- Αόριστες λέξεις → λογικό όριο που φαίνεται στην ετικέτα: «κοντά» ≤ 3–5 km, «μακριά από δρόμο» ≥ 2 km, «μακριά» από υποσταθμό/γραμμή ≥ 10 km, «πυκνοκατοικημένο» pop ≥ 500 ανά εξάγωνο, «κατοικημένο» pop ≥ 20, «πολλές/κυρίως» μερίδιο ≥ 0,5, «επίπεδο» flat ≥ 0,7.\n- Περιφερειακές ενότητες: η ru=1 ενώνει Καρδίτσα ΚΑΙ Τρίκαλα (NUTS-3)· αν ο χρήστης ζητά μόνο τη μία, χρησιμοποίησε ru==1 και γράψε στα caveats ότι περιλαμβάνεται και η άλλη.\n- «Πόσο κράτησε / έμεινε το νερό» → floodn (π.χ. ≥ 3 προϊόντα) μαζί με flood > 0.2.\n- Ονομασμένο ποτάμι (π.χ. Πηνειός, Ενιπέας): ΜΗΝ αρνηθείς· χρησιμοποίησε hand3 (χαμηλή γη δίπλα σε οποιοδήποτε ποτάμι) και γράψε στα caveats ότι δεν ξεχωρίζει το συγκεκριμένο ποτάμι.\n- Για «που πλημμύρισε» ή «όχι πλημμυρισμένο» βάλε και mapped > 0, αλλιώς οι μη χαρτογραφημένες περιοχές μετρούν ως «δεν πλημμύρισαν».\n\nΑπάντησε ΜΟΝΟ με JSON αυτής της μορφής:\n{"title": "...", "answer": "1-2 προτάσεις τι δείχνει ο χάρτης", "filters": [{"col": "slope", "op": "<", "value": 5, "label": "Κλίση κάτω από 5°"}], "score": [{"col": "dsub", "dir": "low", "cap": 5, "w": 0.5, "label": "Κοντά σε υποσταθμό"}], "caveats": ["..."]}\nop ∈ <, <=, >, >=, ==, !=. dir ∈ low, high. cap = τιμή όπου ο όρος κορεστεί.\n\nΕρώτηση: ${q}`;
+  return `Είσαι ο agent ενός εργαλείου που απαντά ερωτήσεις για τη Θεσσαλία συνδυάζοντας χωρικά layers. Τα δεδομένα είναι ένας πίνακας με 17.504 εξάγωνα H3 (~0,74 km² το καθένα), με αυτές τις στήλες:\n\n${catalogText()}\n\nΜετέτρεψε την ερώτηση του χρήστη σε προδιαγραφή φίλτρων. ΔΕΝ υπολογίζεις αποτελέσματα· η σελίδα εφαρμόζει τα φίλτρα.\nΚανόνες:\n- Χρησιμοποίησε ΜΟΝΟ τις παραπάνω στήλες. Μερίδια είναι 0-1. Η τιμή -1 σημαίνει «χωρίς δεδομένα» και εξαιρείται αυτόματα από κάθε φίλτρο.\n- Αν η ερώτηση χρειάζεται δεδομένα που δεν υπάρχουν (π.χ. τιμές γης, κτηματολόγιο, χωρητικότητα δικτύου, μελλοντικός κίνδυνος, ονόματα χωριών), απάντησε {"refuse": "<εξήγηση στα ελληνικά τι λείπει>"}.\n- Το 'lake' είναι υποθετικό σενάριο και το 'flood' ένα ιστορικό γεγονός: ανέφερέ το στα caveats όταν τα χρησιμοποιείς.\n- Κάθε κριτήριο της ερώτησης γίνεται φίλτρο (όχι μόνο score). 2 έως 7 φίλτρα, με σύντομες ελληνικές ετικέτες που λένε το όριο.\n- Αόριστες λέξεις → λογικό όριο που φαίνεται στην ετικέτα: «κοντά» ≤ 3–5 km, «μακριά από δρόμο» ≥ 2 km, «μακριά» από υποσταθμό/γραμμή ≥ 10 km, «πυκνοκατοικημένο» pop ≥ 500 ανά εξάγωνο, «κατοικημένο» pop ≥ 20, «πολλές/κυρίως» μερίδιο ≥ 0,5, «επίπεδο» flat ≥ 0,7.\n- Περιφερειακές ενότητες: η ru=1 ενώνει Καρδίτσα ΚΑΙ Τρίκαλα (NUTS-3)· αν ο χρήστης ζητά μόνο τη μία, χρησιμοποίησε ru==1 και γράψε στα caveats ότι περιλαμβάνεται και η άλλη.\n- «Πόσο κράτησε / έμεινε το νερό» → floodn (π.χ. ≥ 3 προϊόντα) μαζί με flood > 0.2.\n- Ονομασμένο ποτάμι (π.χ. Πηνειός, Ενιπέας): ΜΗΝ αρνηθείς· χρησιμοποίησε hand3 (χαμηλή γη δίπλα σε οποιοδήποτε ποτάμι) και γράψε στα caveats ότι δεν ξεχωρίζει το συγκεκριμένο ποτάμι.\n- Για «που πλημμύρισε» ή «όχι πλημμυρισμένο» βάλε και mapped > 0, αλλιώς οι μη χαρτογραφημένες περιοχές μετρούν ως «δεν πλημμύρισαν».\n\nΑπάντησε ΜΟΝΟ με JSON αυτής της μορφής:\n{"title": "...", "answer": "1-2 προτάσεις τι δείχνει ο χάρτης", "filters": [{"col": "slope", "op": "<", "value": 5, "label": "Κλίση κάτω από 5°"}], "score": [{"col": "dsub", "dir": "low", "cap": 5, "w": 0.5, "label": "Κοντά σε υποσταθμό"}], "caveats": ["..."]}\nop ∈ <, <=, >, >=, ==, !=. dir ∈ low, high. cap = τιμή όπου ο όρος κορεστεί.\n\nΕρώτηση: ${q}`;
 }
 async function ask() {
   const q = $("q").value.trim(); if (!q) return;

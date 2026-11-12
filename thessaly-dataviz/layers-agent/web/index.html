@@ -669,8 +669,10 @@ function mapLayers(id) {            // flat street map of the whole region: dark
   else { if (!all && ST.zones) L.push(new deck.BitmapLayer({ id: id + "mz", image: ST.zones, bounds: BOUNDS, opacity: .55, parameters: nd }));
     ready.forEach(k => { const T = ST.r[k]; if (T.zone) L.push(new deck.BitmapLayer({ id: id + "mz" + k, image: T.zone.img, bounds: T.zone.q, opacity: .5, parameters: nd })); }); }
   { const ov = overlayCanvas(); if (ov) L.push(new deck.BitmapLayer({ id: id + "mov", image: ov, bounds: BOUNDS, parameters: nd })); }   // the user's layers and query results, above the plate
-  if (z >= 13.6) keys.forEach(k => { if (!ST.has.b.has(k)) return; const B = ST.b[k]; if (!B) return stLoad("b", k);
-    if (B.items) L.push(new deck.SolidPolygonLayer({ id: id + "mbt" + k, data: B.items, getPolygon: d => d.poly, getFillColor: d => sim ? (d.h <= simK ? [...WET, 200] : [66, 78, 98, 255]) : (d.f & 7) ? [...BCOL(d.f), 175] : [66, 78, 98, 255], updateTriggers: { getFillColor: ut }, parameters: nd })); });
+  const photo = orthoOn(); if (photo) L.push(...orthoLayers(id));
+  const bOn = ov("bld") && ov("bld").on;
+  if (z >= 13.6 && bOn) keys.forEach(k => { if (!ST.has.b.has(k)) return; const B = ST.b[k]; if (!B) return stLoad("b", k);
+    if (B.items) L.push(new deck.SolidPolygonLayer({ id: id + "mbt" + k + (photo ? "p" : ""), data: photo ? B.items.filter(d => sim ? d.h <= simK : d.f & 7) : B.items, getPolygon: d => d.poly, getFillColor: d => sim ? (d.h <= simK ? [...WET, 200] : [66, 78, 98, 255]) : (d.f & 7) ? [...BCOL(d.f), 175] : [66, 78, 98, 255], updateTriggers: { getFillColor: ut }, parameters: nd })); });
   if (!all && ST.region) L.push(new deck.PathLayer({ id: id + "mrg", data: ST.region, getPath: d => d.path, getWidth: d => d.rk ? 9 : 16, widthUnits: "meters", widthMinPixels: 1.1, widthMaxPixels: 14,
     getColor: rc, updateTriggers: { getColor: ut }, capRounded: true, jointRounded: true, parameters: nd }));
   keys.forEach(k => { const T = ST.r[k]; if (!T) return stLoad("r", k); if (!T.items) return; const data = z >= 13 ? T.items : T.main;
@@ -699,12 +701,12 @@ function loadCity(k) {
 // ---- aerial orthophotos (local demo only): relayed by serve_local.py from the Hellenic Cadastre viewing service; the hosted page cannot load them ----
 let ORTHO = false, OPK = "", OKEYS = null, LOKEYS = null;   // ORTHO: false | "live" (local relay) | "static" (tiles shipped with a private copy of the page)
 const OLIFT = 45, ODX = 0.02, ODY = 0.015, OPATCH = {};
-const orthoOn = () => ORTHO && !street() && ov("ortho") && ov("ortho").on && CITYNOW && DEMH;
+const orthoOn = () => ORTHO && ov("ortho") && ov("ortho").on && CITYNOW && (street() || DEMH);
 function orthoKey(vs) { return ORTHO && cityAt(vs) && vs.zoom >= 12.2 ? Math.floor(vs.longitude / ODX) + "_" + Math.floor(vs.latitude / ODY) : ""; }
 function orthoLayers(id) {       // photo quads per ~1.7 km patch; corners sit on the DEM so neighbours meet. Hosted copy: light previews for the whole city at once, sharp tiles only around the camera target
   if (!orthoOn() || viewState.zoom < 12.2) return [];
   const c = CITY[CITYNOW], cx = Math.floor(viewState.longitude / ODX), cy = Math.floor(viewState.latitude / ODY), L = [], st = ORTHO === "static";
-  const zc = (x, y) => zOf(demZ(x, y), OLIFT);
+  const flat = street(), zc = (x, y) => flat ? 0 : zOf(demZ(x, y), OLIFT);
   const i0 = st ? Math.floor((c[1] - .01) / ODX) : cx - 2, i1 = st ? Math.floor((c[3] + .01) / ODX) : cx + 2, j0 = st ? Math.floor((c[2] - .01) / ODY) : cy - 2, j1 = st ? Math.floor((c[4] + .01) / ODY) : cy + 2;
   for (let i = i0; i <= i1; i++) for (let j = j0; j <= j1; j++) {
     const x0 = +(i * ODX).toFixed(4), y0 = +(j * ODY).toFixed(4), x1 = +(x0 + ODX).toFixed(4), y1 = +(y0 + ODY).toFixed(4);
@@ -716,8 +718,8 @@ function orthoLayers(id) {       // photo quads per ~1.7 km patch; corners sit o
     const near = Math.abs(i - cx) <= 1 && Math.abs(j - cy) <= 1;
     if (!P.hiReq && (!st || near || !LOKEYS.has(k))) { P.hiReq = true; loadImg(st ? `assets/ortho/${k}.jpg` : `/ortho?bbox=${x0},${y0},${x1},${y1}&w=1536&h=1490`).then(im => { P.img = im; redraw(); }).catch(() => { P.hiReq = false; }); }
     const im = P.img || P.lo; if (!im) continue;
-    if (!P.roof && BLD[CITYNOW] && BLD[CITYNOW].items) P.roof = roofMesh(BLD[CITYNOW].items, x0, y0, x1, y1);
-    L.push(new deck.BitmapLayer({ id: id + "or" + k, image: im, bounds: [[x0, y0, zc(x0, y0)], [x0, y1, zc(x0, y1)], [x1, y1, zc(x1, y1)], [x1, y0, zc(x1, y0)]], pickable: false }));
+    if (!flat && !P.roof && BLD[CITYNOW] && BLD[CITYNOW].items) P.roof = roofMesh(BLD[CITYNOW].items, x0, y0, x1, y1);
+    L.push(new deck.BitmapLayer({ id: id + "or" + k, image: im, bounds: [[x0, y0, zc(x0, y0)], [x0, y1, zc(x0, y1)], [x1, y1, zc(x1, y1)], [x1, y0, zc(x1, y0)]], pickable: false, ...(flat ? { parameters: { depthTest: false } } : {}) }));
   }
   return L;
 }
@@ -764,7 +766,7 @@ const OV = [ // overlays: draped texture layers + vector layers
   { id: "grid", l: "Γραμμές ΥΤ & υποσταθμοί", src: "OSM", kind: "vec", on: false },
   { id: "solar", l: "Φωτοβολταϊκά πάρκα", src: "OSM", kind: "vec", on: false },
   { id: "towns", l: "Οικισμοί (χωριά εμφανίζονται με ζουμ)", src: "OSM/Overture", kind: "vec", on: true },
-  { id: "bld", l: "Κτίρια 3D ανά κίνδυνο πλημμύρας (με ζουμ σε 24 οικισμούς)", src: "Overture × ΥΠΕΝ × EMSR692", kind: "vec", on: true },
+  { id: "bld", l: "Κτίρια ανά κίνδυνο πλημμύρας (με ζουμ· σε 3D για 24 οικισμούς)", src: "Overture × ΥΠΕΝ × EMSR692", kind: "vec", on: true },
 ];
 const ov = id => OV.find(o => o.id === id);
 
@@ -781,37 +783,37 @@ function terrain(id, tex) {
   return new deck.TerrainLayer({ id: id + "-" + EX, elevationData: "assets/dem.png", texture: tex, bounds: BOUNDS, meshMaxError: 12,
     elevationDecoder: { rScaler: 256 * EX, gScaler: EX, bScaler: EX / 256, offset: -32768 * EX }, pickable: true, material: { ambient: .62, diffuse: .55, shininess: 8, specularColor: [40, 40, 40] } });
 }
-const zOf = (z, lift = 0) => Math.max(0, z) * EX + lift;
-function vectorLayers(id) {
-  const L = [...orthoLayers(id)];
-  if (ov("rivers").on) L.push(new deck.PathLayer({ id: id + "riv", data: V.rivers, getPath: p => p.map(q => [q[0], q[1], zOf(q[2], 25)]), getColor: [111, 182, 235, 210], widthUnits: "pixels", getWidth: 1.6, updateTriggers: { getPath: EX } }));
+const zOfT = (z, lift = 0) => Math.max(0, z) * EX + lift, zOf = zOfT;
+function vectorLayers(id) {        // the same switches drive both views: 2D street map (flat, opaque base drawn first) and 3D terrain
+  const sv = street(), zOf = sv ? () => 0 : zOfT, EXV = [EX, sv];
+  const L = sv ? [...mapLayers(id)] : [...orthoLayers(id)];
+  if (ov("rivers").on) L.push(new deck.PathLayer({ id: id + "riv", data: V.rivers, getPath: p => p.map(q => [q[0], q[1], zOf(q[2], 25)]), getColor: [111, 182, 235, 210], widthUnits: "pixels", getWidth: 1.6, updateTriggers: { getPath: EXV } }));
   if (ov("grid").on) {
-    L.push(new deck.PathLayer({ id: id + "pl", data: V.lines, getPath: p => p.map(q => [q[0], q[1], zOf(q[2], 120)]), getColor: [242, 163, 58, 170], widthUnits: "pixels", getWidth: 1.2, updateTriggers: { getPath: EX } }));
-    L.push(new deck.ScatterplotLayer({ id: id + "sub", data: V.subs, getPosition: p => [p[0], p[1], zOf(p[2], 140)], getRadius: 5, radiusUnits: "pixels", getFillColor: [242, 163, 58], getLineColor: [13, 21, 34], lineWidthUnits: "pixels", getLineWidth: 1.5, stroked: true, updateTriggers: { getPosition: EX } }));
+    L.push(new deck.PathLayer({ id: id + "pl", data: V.lines, getPath: p => p.map(q => [q[0], q[1], zOf(q[2], 120)]), getColor: [242, 163, 58, 170], widthUnits: "pixels", getWidth: 1.2, updateTriggers: { getPath: EXV } }));
+    L.push(new deck.ScatterplotLayer({ id: id + "sub", data: V.subs, getPosition: p => [p[0], p[1], zOf(p[2], 140)], getRadius: 5, radiusUnits: "pixels", getFillColor: [242, 163, 58], getLineColor: [13, 21, 34], lineWidthUnits: "pixels", getLineWidth: 1.5, stroked: true, updateTriggers: { getPosition: EXV } }));
   }
   if (ov("deddie") && ov("deddie").on && D.deddie) {
     const zc = r => { const i = IDXMAP.get(h3.latLngToCell(r[1], r[2], 8)); return i === undefined ? 0 : Math.max(0, D.elev[i]); };
     const col = r => r[4] >= 2 ? [92, 194, 142] : r[4] > 0 ? [242, 163, 58] : [226, 92, 76];
     L.push(new deck.ScatterplotLayer({ id: id + "dd", data: D.deddie, pickable: true, getPosition: r => [r[2], r[1], zOf(zc(r), 150)], getRadius: r => 5 + Math.sqrt(Math.max(r[3], 1)) * 1.4, radiusUnits: "pixels",
-      getFillColor: col, getLineColor: [13, 21, 34], lineWidthUnits: "pixels", getLineWidth: 1.5, stroked: true, parameters: { depthTest: false }, updateTriggers: { getPosition: EX } }));
+      getFillColor: col, getLineColor: [13, 21, 34], lineWidthUnits: "pixels", getLineWidth: 1.5, stroked: true, parameters: { depthTest: false }, updateTriggers: { getPosition: EXV } }));
     L.push(new deck.TextLayer({ id: id + "ddt", data: D.deddie, getPosition: r => [r[2], r[1], zOf(zc(r), 150)], getText: r => `${r[3].toLocaleString("el-GR")} MVA`, characterSet: "auto", getSize: 10.5,
       fontFamily: "Fira Sans, sans-serif", fontWeight: 600, getColor: r => col(r), outlineWidth: 3, outlineColor: [13, 21, 34, 255], fontSettings: { sdf: true, fontSize: 64, buffer: 6 },
-      getTextAnchor: "start", getAlignmentBaseline: "center", getPixelOffset: [9, 0], billboard: true, parameters: { depthTest: false }, updateTriggers: { getPosition: EX } }));
+      getTextAnchor: "start", getAlignmentBaseline: "center", getPixelOffset: [9, 0], billboard: true, parameters: { depthTest: false }, updateTriggers: { getPosition: EXV } }));
   }
-  if (street()) L.push(...mapLayers(id));
-  else if (ov("bld") && ov("bld").on && CITYNOW && BLD[CITYNOW] && BLD[CITYNOW].items) {
+  if (!sv && ov("bld") && ov("bld").on && CITYNOW && BLD[CITYNOW] && BLD[CITYNOW].items) {
     // extruded from sea level up to ground + building height: the part below the terrain mesh is hidden by the depth test, so each volume stands on the ground
     L.push(new deck.SolidPolygonLayer({ id: id + "bld" + CITYNOW, data: BLD[CITYNOW].items, pickable: true, getPolygon: d => d.poly, getFillColor: d => BCOL(d.f),
       extruded: true, getElevation: d => zOf(d.z, 1) + d.h + (orthoOn() ? OLIFT : 0), material: { ambient: .5, diffuse: .65, shininess: 18, specularColor: [50, 50, 55] }, updateTriggers: { getElevation: [EX, orthoOn()] } }));
     L.push(...roofLayers(id));
   }
-  if (ov("solar").on) L.push(new deck.ScatterplotLayer({ id: id + "sol", data: V.solar, getPosition: p => [p[0], p[1], zOf(p[2], 60)], getRadius: 2.2, radiusUnits: "pixels", getFillColor: [255, 214, 120, 230], updateTriggers: { getPosition: EX } }));
+  if (ov("solar").on) L.push(new deck.ScatterplotLayer({ id: id + "sol", data: V.solar, getPosition: p => [p[0], p[1], zOf(p[2], 60)], getRadius: 2.2, radiusUnits: "pixels", getFillColor: [255, 214, 120, 230], updateTriggers: { getPosition: EXV } }));
   if (ov("towns").on) {
     const towns = TOWNS;
     L.push(new deck.TextLayer({ id: id + "town", data: [...towns, { ...V.peak, p: 1e5 }], getPosition: t => [t.x, t.y, zOf(t.z, 200)], getText: t => t.n,
       getSize: t => (t.p || 0) > 50000 ? 15 : (t.p || 0) > 10000 ? 12.5 : 11, characterSet: "auto", fontFamily: "Fira Sans, sans-serif", fontWeight: 600,
       getColor: t => t.n === "Όλυμπος" ? [210, 200, 255] : [236, 241, 247], outlineWidth: 3, outlineColor: [13, 21, 34, 255], fontSettings: { sdf: true, fontSize: 64, buffer: 6 },
-      getTextAnchor: "middle", getAlignmentBaseline: "bottom", getPixelOffset: [0, -4], billboard: true, parameters: { depthTest: false }, updateTriggers: { getPosition: EX } }));
+      getTextAnchor: "middle", getAlignmentBaseline: "bottom", getPixelOffset: [0, -4], billboard: true, parameters: { depthTest: false }, updateTriggers: { getPosition: EXV } }));
     if (D.vill && ZB > 0) {
       const vz = r => { const i = IDXMAP.get(h3.latLngToCell(r[1], r[2], 8)); return i === undefined ? 0 : Math.max(0, D.elev[i]); };
       const vd = D.vill.filter(r => r[3] === 0 || ZB > 1);
@@ -819,10 +821,10 @@ function vectorLayers(id) {
       L.push(new deck.TextLayer({ id: id + "vill" + ZB, data: vd, getPosition: r => [r[2], r[1], zOf(vz(r), 60)], getText: r => r[0], getSize: r => r[3] ? 11 : 12.5,
         characterSet: "auto", fontFamily: "Fira Sans, sans-serif", fontWeight: 500, getColor: r => r[3] ? [200, 210, 222, 220] : [226, 233, 241, 240],
         outlineWidth: 2, outlineColor: [13, 21, 34, 230], fontSettings: { sdf: true, fontSize: 64, buffer: 6 }, getTextAnchor: "middle", getAlignmentBaseline: "bottom", getPixelOffset: [0, -3],
-        billboard: true, parameters: { depthTest: false }, updateTriggers: { getPosition: EX }, ...ext }));
-      L.push(new deck.ScatterplotLayer({ id: id + "vdot" + ZB, data: vd, getPosition: r => [r[2], r[1], zOf(vz(r), 30)], getRadius: 1.6, radiusUnits: "pixels", getFillColor: [226, 233, 241, 200], parameters: { depthTest: false }, updateTriggers: { getPosition: EX } }));
+        billboard: true, parameters: { depthTest: false }, updateTriggers: { getPosition: EXV }, ...ext }));
+      L.push(new deck.ScatterplotLayer({ id: id + "vdot" + ZB, data: vd, getPosition: r => [r[2], r[1], zOf(vz(r), 30)], getRadius: 1.6, radiusUnits: "pixels", getFillColor: [226, 233, 241, 200], parameters: { depthTest: false }, updateTriggers: { getPosition: EXV } }));
     }
-    L.push(new deck.ScatterplotLayer({ id: id + "tdot", data: towns, getPosition: t => [t.x, t.y, zOf(t.z, 40)], getRadius: 2.5, radiusUnits: "pixels", getFillColor: [236, 241, 247], parameters: { depthTest: false }, updateTriggers: { getPosition: EX } }));
+    L.push(new deck.ScatterplotLayer({ id: id + "tdot", data: towns, getPosition: t => [t.x, t.y, zOf(t.z, 40)], getRadius: 2.5, radiusUnits: "pixels", getFillColor: [236, 241, 247], parameters: { depthTest: false }, updateTriggers: { getPosition: EXV } }));
   }
   return L;
 }
@@ -1040,7 +1042,7 @@ function tooltip(info) {
 }
 function makeDeck(container, layers) {
   return new deck.Deck({ parent: container, initialViewState: viewState, controller: { inertia: true }, layers,
-    getTooltip: tooltip, onClick: info => { const lid = info.layer && info.layer.id || ""; if (lid.endsWith("dd") || lid.includes("bld") || /m(b|r1|po)/.test(lid.slice(-12))) return; if (street()) return; const i = cellAt(info); if (i >= 0 && (!info.object || typeof info.object !== "object" || Array.isArray(info.object))) showCard(i); },
+    getTooltip: tooltip, onClick: info => { const lid = info.layer && info.layer.id || ""; if (lid.endsWith("dd") || lid.includes("bld") || /m(b|r1|po)/.test(lid.slice(-12))) return; const i = cellAt(info); if (i >= 0 && (!info.object || typeof info.object !== "object" || Array.isArray(info.object))) showCard(i); },
     onViewStateChange: ({ viewState: vs }) => { viewState = vs; { const zb = vs.zoom >= 10.6 ? 2 : vs.zoom >= 9.4 ? 1 : 0, ck = cityAt(vs); if (ck && ov("bld").on) loadCity(ck); const ok_ = orthoKey(vs), lb = vs.zoom >= 15.2 ? 2 : vs.zoom >= 13.8 ? 1 : vs.zoom >= 12.4 ? 0 : -1; const tk = stKey(vs); if (zb !== ZB || ck !== CITYNOW || ok_ !== OPK || lb !== LB || tk !== TK) { ZB = zb; CITYNOW = ck; OPK = ok_; LB = lb; TK = tk; setTimeout(() => { redraw(); renderLegend(); }, 0); } } stopOrbit(); if (deck1) deck1.setProps({ viewState: vs }); if (deck2) deck2.setProps({ viewState: vs }); return vs; },
     viewState, style: { position: "absolute", inset: 0 }, parameters: { clearColor: [13 / 255, 21 / 255, 34 / 255, 1] },
     effects: [new deck.LightingEffect({ amb: new deck.AmbientLight({ color: [255, 255, 255], intensity: 1.1 }),
@@ -1067,7 +1069,7 @@ function flyTo(ids) {
   if (!ids.length || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
   let x0 = 99, x1 = -99, y0 = 99, y1 = -99; ids.forEach(i => { x0 = Math.min(x0, LON[i]); x1 = Math.max(x1, LON[i]); y0 = Math.min(y0, LAT[i]); y1 = Math.max(y1, LAT[i]); });
   const span = Math.max(x1 - x0, (y1 - y0) * 1.6, 0.25); const zoom = Math.min(10.5, Math.max(7.6, Math.log2(360 / span) - 0.9));
-  const target = { ...viewState, longitude: (x0 + x1) / 2, latitude: (y0 + y1) / 2 - 0.04, zoom, pitch: 55,
+  const sv = street(), target = { ...viewState, longitude: (x0 + x1) / 2, latitude: (y0 + y1) / 2 - (sv ? 0 : 0.04), zoom: zoom + (sv ? 0.3 : 0), pitch: sv ? 0 : 55, bearing: sv ? 0 : viewState.bearing,
     transitionDuration: 1800, transitionInterpolator: new deck.FlyToInterpolator(), transitionEasing: t => 1 - Math.pow(1 - t, 3) };
   viewState = target; deck1.setProps({ viewState: target }); deck2 && deck2.setProps({ viewState: target });
 }
@@ -1083,13 +1085,14 @@ function renderLegend() {
     L.append(el("div", "lab", "Πρώτο φίλτρο, όχι χάρτης κινδύνου. Μοντέλο 90 m: σε επίπεδο δρόμου είναι ενδεικτικό. Ο έλεγχος με τον Daniel φαίνεται κάτω από τον χάρτη."));
     return;
   }
-  if (street()) {
+  if (street() && !(mode === "query" && spec && !spec.refuse)) {
     const t = el("div", "t"), km = (CITYNOW && RKM[CITYNOW]) || (ST.man && ST.man.km) || null, tot = km ? Object.values(km).reduce((a, b) => a + b, 0) : 0, kv = x => km ? `: ${fmt(km[x] || 0, km === RKM[CITYNOW] ? 1 : 0)} km` : "";
     const row = (col, txt) => { const r = el("div", "lab bl"); const sw = el("i"); sw.style.background = `rgb(${col.slice(0, 3)})`; r.append(sw, el("span", null, txt)); return r; };
     t.append(el("b", null, km ? `${CITYNOW && RKM[CITYNOW] ? CITY[CITYNOW][0] : "Θεσσαλία"}: ${fmt(tot, 0)} km δρόμων` : "Χάρτης δρόμων"), document.createTextNode(" · χρώμα ανά κίνδυνο πλημμύρας"));
     L.append(t, row(RCOL(4), `Πλημμύρισαν στον Daniel εκτός ζώνης 1000 ετών${kv("dan_out")}`), row(RCOL(6), `Πλημμύρισαν στον Daniel, εντός ζώνης${kv("dan")}`),
       row(RCOL(1), `Σε επίσημη ζώνη 100 ετών${kv("q100")}`), row(RCOL(2), `Σε επίσημη ζώνη 1000 ετών${kv("q1000")}`), row(RCOL(0), `Εκτός ζωνών${kv("ok")}`));
     L.append(el("div", "lab", viewState.zoom < 12.3 ? "Κύριοι δρόμοι. Με ζουμ εμφανίζονται όλοι οι δρόμοι, ονόματα οδών, κτίρια, σχολεία και νοσοκομεία." : "Κύκλοι: Ν νοσοκομείο, Σ σχολείο, Δ δημαρχείο, Π πυροσβεστική, Α αστυνομία, Φ μονάδα φροντίδας· λευκό περίγραμμα = σε ζώνη 100 ετών ή μέσα στην πλημμύρα Daniel. Τα κτίρια και οι σκιασμένες εκτάσεις έχουν τα ίδια χρώματα."));
+    { const on = OV.filter(o => o.kind === "tex" && o.on); if (on.length) L.append(el("div", "lab", "Από πάνω: " + on.map(o => o.l).join(" · "))); }
     if (CITYNOW === "volos") L.append(el("div", "lab", "Ο Daniel δεν χαρτογραφήθηκε στην πόλη του Βόλου (EMSR692): εδώ φαίνονται μόνο οι επίσημες ζώνες."));
     if (viewState.zoom >= 12.3) L.append(el("div", "lab", "Δρόμοι και κτίρια: OpenStreetMap (Overture). Σημεία: Overture Places, ελλιπή. «Σε ζώνη» δεν σημαίνει ότι ο δρόμος θα κοπεί· δείχνει έκθεση, όχι βάθος νερού."));
     return;
@@ -1213,7 +1216,6 @@ function renderResult(src) {
   R.append(S);
 }
 function apply(s, src, fly, q, followup) {
-  setCityView("3d", true);
   if (q) history = followup ? [...history, q] : [q];
   spec = s; const raw = Array.isArray(spec.filters) ? spec.filters : [];
   spec.filters = raw.filter(f => f && D[f.col] && OPS[f.op] && typeof f.value === "number" && isFinite(f.value));
@@ -1458,11 +1460,11 @@ const TOUR = [
   { cap: "Θεσσαλία: 48.564 km δρόμων χρωματισμένα ανά κίνδυνο πλημμύρας. Κόκκινο = πλημμύρισε στον Daniel έξω από τους επίσημους χάρτες. Πίσω από αυτό, 40+ ανοιχτά δεδομένα σε 17.504 εξάγωνα.", run: () => { setMode("query"); setCityView("map", true); spec = null; renderWelcome(); renderLegend(); redraw(); flyView(homeView()); } },
   { cap: "Σεπτέμβριος 2023: ο Daniel μέρα με τη μέρα, από 12 δορυφορικές λήψεις του Copernicus.", run: () => { setMode("time"); setTL(0); flyView({ longitude: 22.2, latitude: 39.5, zoom: 8.6, pitch: 55, bearing: -20 }); setTimeout(() => { if (tourK === 1) playTL(); }, 600); }, wait: 14500 },
   { cap: "Σήμερα από δορυφόρο: πόσο νερό έχει η Κάρλα τώρα, δίπλα στην έκταση του Daniel. Σύρε τη γραμμή.", run: () => { if (IMG.s2) setMode("today"); }, wait: 9000 },
-  { cap: "Κάρλα: πού έμεινε το νερό τις περισσότερες μέρες, η βάση για τεκμηριωμένες αποφάσεις παραχώρησης.", run: () => { const p = PRESETS[1]; setMode("query"); $("q").value = p.q; apply(structuredClone(p.spec), "preset", true, p.q, false); }, wait: 8500 },
-  { cap: "Αντιπλημμυρικά: πού ζουν οι περισσότεροι σε χαμηλή γη δίπλα σε ποτάμι, για ιεράρχηση έργων και καθαρισμών.", run: () => { const p = PRESETS[0]; $("q").value = p.q; apply(structuredClone(p.spec), "preset", true, p.q, false); }, wait: 8500 },
+  { cap: "Κάρλα: πού έμεινε το νερό τις περισσότερες μέρες, η βάση για τεκμηριωμένες αποφάσεις παραχώρησης.", run: () => { const p = PRESETS[1]; setCityView("3d", true); setMode("query"); $("q").value = p.q; apply(structuredClone(p.spec), "preset", true, p.q, false); }, wait: 8500 },
+  { cap: "Αντιπλημμυρικά: πού ζουν οι περισσότεροι σε χαμηλή γη δίπλα σε ποτάμι, για ιεράρχηση έργων και καθαρισμών.", run: () => { const p = PRESETS[0]; setCityView("3d", true); $("q").value = p.q; apply(structuredClone(p.spec), "preset", true, p.q, false); }, wait: 8500 },
   { cap: "Σενάριο στάθμης +3 m: πιάνει το 83% της πραγματικής πλημμύρας. Περίπου μία στις δύο επισημάνσεις είναι ψευδής: πρώτο φίλτρο, όχι χάρτης κινδύνου.", run: () => { setCityView("3d", true); setMode("sim"); setSim(HAND.levels.indexOf(HAND.best.level)); flyView({ longitude: 22.2, latitude: 39.5, zoom: 8.5, pitch: 52, bearing: -15 }); }, wait: 9000 },
   { cap: "Πριν από τη βροχή: η πρόγνωση γίνεται έκθεση ανά ενότητα και οικισμό, σε σημείωμα για το ΚΕΣΥΠΠ με ένα κλικ.", run: () => { if (WX) setMode("wx"); }, wait: 9000 },
-  { cap: "Χωροθέτηση: φωτοβολταϊκά σε γη που πλημμύρισε. Διασταύρωση που χρειάζεται κάθε γνωμοδότηση.", run: () => { const p = PRESETS[2]; setMode("query"); $("q").value = p.q; apply(structuredClone(p.spec), "preset", true, p.q, false); }, wait: 8500 },
+  { cap: "Χωροθέτηση: φωτοβολταϊκά σε γη που πλημμύρισε. Διασταύρωση που χρειάζεται κάθε γνωμοδότηση.", run: () => { const p = PRESETS[2]; setCityView("3d", true); setMode("query"); $("q").value = p.q; apply(structuredClone(p.spec), "preset", true, p.q, false); }, wait: 8500 },
 ];
 function flyView(v) { if (!deck1) return; const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
   viewState = { ...viewState, ...v, transitionDuration: reduce ? 0 : 2200, transitionInterpolator: new deck.FlyToInterpolator(), transitionEasing: t => 1 - Math.pow(1 - t, 3) };

@@ -25,6 +25,7 @@ body { background: var(--bg); color: var(--ink); font-family: var(--body); font-
 .railhead { display: grid; gap: 10px; }
 .railbtns { display: flex; gap: 6px; flex-wrap: wrap; }
 .stage { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.modebar[hidden] { display: none !important; }
 .modebar { display: flex; align-items: center; overflow-x: auto; scrollbar-width: none; padding: 8px 12px; border-bottom: 1px solid var(--line); background: var(--panel); }
 .maparea { position: relative; flex: 1; min-height: 0; }
 .mapwrap { position: absolute; inset: 0; overflow: hidden; }
@@ -91,6 +92,14 @@ aside { background: var(--panel); border-left: 1px solid var(--line); display: f
 .lgd[open] > summary::before { transform: rotate(90deg); }
 .lgd > summary .cnt { font: 500 10px var(--body); letter-spacing: 0; text-transform: none; color: var(--muted); margin-left: auto; }
 .lgd { border-bottom: 1px solid var(--line); padding-bottom: 4px; }
+.lyrwrap > .tl { margin: 2px 0 8px 22px; padding: 8px 10px; gap: 5px; }
+.lyrwrap .tlhead { flex-wrap: wrap; gap: 2px 10px; }
+.lyrwrap .tlhead b { font-size: 14px; }
+.lyrwrap .tlhead span { font-size: 11.5px; }
+.lyrwrap .tlrow { grid-template-columns: 1fr; gap: 4px; }
+.lyrwrap .tlrow:has(> button) { grid-template-columns: auto 1fr; }
+.lyrwrap .lab, .lyrwrap .warnline { font-size: 11px; }
+.lyr.sim > span > span:first-child { font-weight: 600; }
 .chip { font: 12.5px var(--body); color: var(--ink); background: var(--panel2); border: 1px solid var(--line); border-radius: 999px; padding: 6px 11px; cursor: pointer; text-align: left; }
 .chip:hover { border-color: var(--sun); }
 
@@ -307,7 +316,7 @@ pre { font: 11px/1.5 var(--mono); color: var(--muted); white-space: pre-wrap; wo
     <div class="stats" id="stats">H3 res 8 · 17.504 κελιά · 14.053 km² · 40+ layers</div>
   </nav>
   <div class="stage">
-    <div class="modebar">
+    <div class="modebar" hidden>
       <div class="seg" role="group" aria-label="Λειτουργία">
         <button id="mode-query" aria-pressed="true">Ερώτημα</button>
         <button id="mode-time" aria-pressed="false">Daniel μέρα-μέρα</button>
@@ -336,7 +345,7 @@ pre { font: 11px/1.5 var(--mono); color: var(--muted); white-space: pre-wrap; wo
       </div>
       <details class="legendbox" open><summary>Υπόμνημα</summary><div class="legend" id="legend"></div></details>
     </div>
-    <div class="ctl">
+    <div class="ctl" hidden>
       <div class="tl" id="wxUI" hidden>
         <div class="tlhead"><b id="wxTime"></b><span id="wxMax"></span></div>
         <div class="tlrow"><button class="btn" id="wxPlay">▶</button><input type="range" id="wxRange" min="0" max="24" step="1" value="8" aria-label="Ώρες από τώρα"></div>
@@ -363,9 +372,9 @@ pre { font: 11px/1.5 var(--mono); color: var(--muted); white-space: pre-wrap; wo
   <aside>
     <div class="scroll">
       <div class="ask">
-        <p class="pitch"><b>Επιστημονική τεκμηρίωση για αντιπλημμυρικά, νερό και πολιτική προστασία</b>, από ανοιχτά δεδομένα. Κάνε μια ερώτηση: ένα σύστημα AI τη μετατρέπει σε κριτήρια και ο χάρτης δείχνει πού ισχύουν. Οι αριθμοί υπολογίζονται από τα δεδομένα, με πηγή για καθένα.</p>
+        <p class="pitch"><b>Τεκμηρίωση αποφάσεων για τη Θεσσαλία από ανοιχτά δεδομένα</b>: πλημμύρες, πυρκαγιές, έδαφος, ζέστη, πρόσβαση σε υπηρεσίες, ενέργεια και χωροθέτηση. Κάνε μια ερώτηση: ένα σύστημα AI τη μετατρέπει σε κριτήρια και ο χάρτης δείχνει πού ισχύουν. Οι αριθμοί υπολογίζονται από τα δεδομένα, με πηγή για καθένα.</p>
         <label class="sr" for="q">Ερώτηση</label>
-        <textarea id="q" rows="2" placeholder="π.χ. Πού ζουν άνθρωποι κάτω από 100 m που πλημμύρισαν το 2023;"></textarea>
+        <textarea id="q" rows="2" placeholder="π.χ. Ποια χωριά απέχουν πάνω από 45 λεπτά από νοσοκομείο; ή Πού χωρά φωτοβολταϊκό εκτός Natura;"></textarea>
         <div class="row">
           <button class="btn" id="askBtn">Ρώτα</button>
           <button class="btn ghost" id="stopBtn" hidden>Διακοπή</button>
@@ -610,6 +619,8 @@ function cityAt(vs) { if (vs.zoom < 11.4) return null; let best = null, bd = 1e9
 let CITYVIEW = "map", LB = 0, TK = "";       // view: "3d" = analysis (hexagons, relief, 3D buildings in settlements), "map" = flat street map of the whole region; LB = label zoom bucket; TK = visible street tiles
 const RKM = /*RKM*/{"larisa":{"ok":681.9,"dan_out":90.6,"dan":68.7,"q1000":80.9,"q100":108.9},"volos":{"ok":616.5,"q100":158.8,"q1000":52.8},"trikala":{"q100":248.6,"q1000":88.8,"ok":222.2,"dan":1.9},"karditsa":{"ok":183.5,"q1000":84.9,"q100":145.1,"dan_out":0.5,"dan":3.5},"p00":{"q100":87.6,"q1000":10.5,"ok":31.3},"p01":{"dan":60.1,"ok":24.3,"q1000":2.3,"q100":2.1,"dan_out":2.0},"p02":{"ok":43.3,"q1000":12.8,"q100":50.8,"dan":0.5,"dan_out":0.0},"p03":{"q100":75.1,"q1000":9.6,"ok":37.4,"dan":0.2,"dan_out":1.8},"p04":{"q100":12.8,"ok":19.7,"q1000":24.8,"dan":52.9,"dan_out":0.1},"p05":{"ok":3.8,"q100":28.1,"q1000":8.2,"dan":1.5},"p06":{"ok":6.8,"dan":25.0,"q1000":1.1,"q100":1.1,"dan_out":0.7},"p07":{"dan":14.6,"dan_out":22.8,"ok":1.8,"q1000":0.1,"q100":0.0},"p08":{"dan":36.5,"q100":0.6,"ok":3.2,"dan_out":1.5,"q1000":0.3},"p09":{"dan":17.3,"q100":15.8,"q1000":4.2,"dan_out":0.6,"ok":8.9},"p10":{"dan":26.9,"q100":3.3,"q1000":5.6,"ok":6.1,"dan_out":0.5},"p11":{"dan_out":19.0,"ok":1.5,"dan":15.4,"q1000":0.0},"p12":{"dan":12.5,"dan_out":26.9,"q100":0.1},"p13":{"dan":30.8,"q100":9.8,"q1000":2.5,"ok":5.4,"dan_out":0.5},"p14":{"q100":37.7,"q1000":2.2,"ok":2.0},"p15":{"q100":25.5,"q1000":12.9,"ok":11.3},"p16":{"q100":24.8,"q1000":1.3,"dan":2.8,"ok":14.2,"dan_out":0.3},"p17":{"ok":12.1,"q1000":2.0,"q100":22.0},"p18":{"dan":14.5,"dan_out":15.9,"q1000":2.4,"ok":103.6,"q100":0.6},"p19":{"dan":15.5,"dan_out":8.6,"ok":6.0,"q100":0.3,"q1000":0.1}}/*RKM*/;        // road km by flood status per settlement (pipeline/s25, inlined by s28)
 const ST = { man: null, has: { r: new Set(), b: new Set() }, r: {}, b: {}, region: null, zones: null };   // street tiles (pipeline/s27): roads + labels + facilities + zone raster, buildings, region main roads
+const FMASK = () => (ov("official") && ov("official").on ? 3 : 0) | (ov("flood") && ov("flood").on ? 4 : 0);
+const FEFF = (f, m = FMASK()) => { let g = f & m; if (!(m & 3) && (g & 4)) g = 6; return g; };   // only Daniel on: one colour for everything it flooded
 const RCOL = f => (f & 4) ? ((f & 2) ? [79, 163, 224] : [240, 96, 80]) : (f & 1) ? [150, 100, 235] : (f & 2) ? [190, 170, 235] : [214, 220, 228];
 const PKIND = { hospital: ["Νοσοκομείο / κλινική", [240, 96, 80], "Ν"], school: ["Σχολείο", [245, 190, 70], "Σ"], townhall: ["Δημαρχείο", [120, 200, 220], "Δ"], fire: ["Πυροσβεστική", [240, 140, 60], "Π"], police: ["Αστυνομία", [110, 150, 240], "Α"], care: ["Μονάδα φροντίδας", [200, 150, 230], "Φ"] };
 const street = () => CITYVIEW === "map" && (mode === "query" || mode === "sim");
@@ -661,18 +672,19 @@ function setCityView(v, quiet) {
 }
 function mapLayers(id) {            // flat street map of the whole region: dark plate, flood zones, buildings, roads by flood status, street names, key facilities
   const L = [], nd = { depthTest: false }, z = viewState.zoom, keys = stTiles(viewState), wid = [15, 10, 6, 3.5], sim = simSt(), ut = [sim, simK];
-  const rc = d => sim ? (d.h <= simK ? [...WET, 255] : [...DRY, d.rk >= 3 ? 120 : 200]) : [...RCOL(d.f), (d.f & 7) ? 255 : d.rk >= 3 ? 150 : 235];
+  const fm = FMASK(); ut.push(fm);
+  const rc = d => { if (sim) return d.h <= simK ? [...WET, 255] : [...DRY, d.rk >= 3 ? 120 : 200]; const g = FEFF(d.f, fm); return [...RCOL(g), g ? 255 : d.rk >= 3 ? 150 : 235]; };
   L.push(new deck.SolidPolygonLayer({ id: id + "mp", data: [0], getPolygon: () => [[BOUNDS[0] - 2, BOUNDS[1] - 2], [BOUNDS[2] + 2, BOUNDS[1] - 2], [BOUNDS[2] + 2, BOUNDS[3] + 2], [BOUNDS[0] - 2, BOUNDS[3] + 2]], getFillColor: [17, 25, 39, 255], parameters: nd }));
   const ready = keys.filter(k => ST.r[k] && ST.r[k].items), all = keys.length && ready.length === keys.length;
   if (sim) { if (!all && ST.hand) { const cv = handCanvas(ST.hand, simK); L.push(new deck.BitmapLayer({ id: id + "mh" + ST.hand.ver, image: cv, bounds: BOUNDS, opacity: .55, parameters: nd })); }
     ready.forEach(k => { const T = ST.r[k]; if (T.hand) { const cv = handCanvas(T.hand, simK); L.push(new deck.BitmapLayer({ id: id + "mh" + k + T.hand.ver, image: cv, bounds: T.q, opacity: .5, parameters: nd })); } }); }
-  else { if (!all && ST.zones) L.push(new deck.BitmapLayer({ id: id + "mz", image: ST.zones, bounds: BOUNDS, opacity: .55, parameters: nd }));
-    ready.forEach(k => { const T = ST.r[k]; if (T.zone) L.push(new deck.BitmapLayer({ id: id + "mz" + k, image: T.zone.img, bounds: T.zone.q, opacity: .5, parameters: nd })); }); }
+  else if (fm) { if (!all && ST.zones) L.push(new deck.BitmapLayer({ id: id + "mz", image: ST.zones, bounds: BOUNDS, opacity: .35, parameters: nd }));
+    ready.forEach(k => { const T = ST.r[k]; if (T.zone) L.push(new deck.BitmapLayer({ id: id + "mz" + k, image: T.zone.img, bounds: T.zone.q, opacity: .3, parameters: nd })); }); }
   { const ov = overlayCanvas(); if (ov) L.push(new deck.BitmapLayer({ id: id + "mov", image: ov, bounds: BOUNDS, parameters: nd })); }   // the user's layers and query results, above the plate
   const photo = orthoOn(); if (photo) L.push(...orthoLayers(id));
   const bOn = ov("bld") && ov("bld").on;
   if (z >= 13.6 && bOn) keys.forEach(k => { if (!ST.has.b.has(k)) return; const B = ST.b[k]; if (!B) return stLoad("b", k);
-    if (B.items) L.push(new deck.SolidPolygonLayer({ id: id + "mbt" + k + (photo ? "p" : ""), data: photo ? B.items.filter(d => sim ? d.h <= simK : d.f & 7) : B.items, getPolygon: d => d.poly, getFillColor: d => sim ? (d.h <= simK ? [...WET, 200] : [66, 78, 98, 255]) : (d.f & 7) ? [...BCOL(d.f), 175] : [66, 78, 98, 255], updateTriggers: { getFillColor: ut }, parameters: nd })); });
+    if (B.items) L.push(new deck.SolidPolygonLayer({ id: id + "mbt" + k + (photo ? "p" : ""), data: photo ? B.items.filter(d => sim ? d.h <= simK : FEFF(d.f, fm)) : B.items, getPolygon: d => d.poly, getFillColor: d => { if (sim) return d.h <= simK ? [...WET, 200] : [66, 78, 98, 255]; const g = FEFF(d.f, fm); return g ? [...BCOL(g), 175] : [66, 78, 98, 255]; }, updateTriggers: { getFillColor: ut }, parameters: nd })); });
   if (!all && ST.region) L.push(new deck.PathLayer({ id: id + "mrg", data: ST.region, getPath: d => d.path, getWidth: d => d.rk ? 9 : 16, widthUnits: "meters", widthMinPixels: 1.1, widthMaxPixels: 14,
     getColor: rc, updateTriggers: { getColor: ut }, capRounded: true, jointRounded: true, parameters: nd }));
   keys.forEach(k => { const T = ST.r[k]; if (!T) return stLoad("r", k); if (!T.items) return; const data = z >= 13 ? T.items : T.main;
@@ -683,7 +695,7 @@ function mapLayers(id) {            // flat street map of the whole region: dark
       fontFamily: "Fira Sans, sans-serif", fontWeight: 600, getColor: [236, 241, 247, 255], outlineWidth: 3, outlineColor: [10, 15, 24, 255], fontSettings: { sdf: true, fontSize: 64, buffer: 6 }, getTextAnchor: "middle", getAlignmentBaseline: "center", parameters: nd }));
     if (T.pois.length && z >= 12.8) {
       L.push(new deck.ScatterplotLayer({ id: id + "mpo" + k, data: T.pois, pickable: true, getPosition: d => [d.x, d.y], getRadius: 9, radiusUnits: "pixels", getFillColor: d => PKIND[d.kind][1], stroked: true, lineWidthUnits: "pixels",
-        getLineWidth: d => (sim ? d.h <= simK : d.f & 5) ? 3 : 1.5, getLineColor: d => (sim ? d.h <= simK : d.f & 5) ? [255, 255, 255, 255] : [10, 15, 24, 255], updateTriggers: { getLineWidth: ut, getLineColor: ut }, parameters: nd }));
+        getLineWidth: d => (sim ? d.h <= simK : FEFF(d.f, fm) & 5) ? 3 : 1.5, getLineColor: d => (sim ? d.h <= simK : FEFF(d.f, fm) & 5) ? [255, 255, 255, 255] : [10, 15, 24, 255], updateTriggers: { getLineWidth: ut, getLineColor: ut }, parameters: nd }));
       L.push(new deck.TextLayer({ id: id + "mpt" + k, data: T.pois, getPosition: d => [d.x, d.y], getText: d => PKIND[d.kind][2], getSize: 11, characterSet: "auto", fontFamily: "Fira Sans, sans-serif", fontWeight: 700, getColor: [10, 15, 24, 255], getTextAnchor: "middle", getAlignmentBaseline: "center", billboard: true, parameters: nd }));
     } });
   return L;
@@ -766,7 +778,7 @@ const OV = [ // overlays: draped texture layers + vector layers
   { id: "grid", l: "Γραμμές ΥΤ & υποσταθμοί", src: "OSM", kind: "vec", on: false },
   { id: "solar", l: "Φωτοβολταϊκά πάρκα", src: "OSM", kind: "vec", on: false },
   { id: "towns", l: "Οικισμοί (χωριά εμφανίζονται με ζουμ)", src: "OSM/Overture", kind: "vec", on: true },
-  { id: "bld", l: "Κτίρια ανά κίνδυνο πλημμύρας (με ζουμ· σε 3D για 24 οικισμούς)", src: "Overture × ΥΠΕΝ × EMSR692", kind: "vec", on: true },
+  { id: "bld", l: "Κτίρια (με ζουμ· παίρνουν χρώμα από τα ενεργά layers πλημμύρας)", src: "Overture × ΥΠΕΝ × EMSR692", kind: "vec", on: true },
 ];
 const ov = id => OV.find(o => o.id === id);
 
@@ -803,8 +815,8 @@ function vectorLayers(id) {        // the same switches drive both views: 2D str
   }
   if (!sv && ov("bld") && ov("bld").on && CITYNOW && BLD[CITYNOW] && BLD[CITYNOW].items) {
     // extruded from sea level up to ground + building height: the part below the terrain mesh is hidden by the depth test, so each volume stands on the ground
-    L.push(new deck.SolidPolygonLayer({ id: id + "bld" + CITYNOW, data: BLD[CITYNOW].items, pickable: true, getPolygon: d => d.poly, getFillColor: d => BCOL(d.f),
-      extruded: true, getElevation: d => zOf(d.z, 1) + d.h + (orthoOn() ? OLIFT : 0), material: { ambient: .5, diffuse: .65, shininess: 18, specularColor: [50, 50, 55] }, updateTriggers: { getElevation: [EX, orthoOn()] } }));
+    L.push(new deck.SolidPolygonLayer({ id: id + "bld" + CITYNOW, data: BLD[CITYNOW].items, pickable: true, getPolygon: d => d.poly, getFillColor: d => BCOL(FEFF(d.f)),
+      extruded: true, getElevation: d => zOf(d.z, 1) + d.h + (orthoOn() ? OLIFT : 0), material: { ambient: .5, diffuse: .65, shininess: 18, specularColor: [50, 50, 55] }, updateTriggers: { getElevation: [EX, orthoOn()], getFillColor: FMASK() } }));
     L.push(...roofLayers(id));
   }
   if (ov("solar").on) L.push(new deck.ScatterplotLayer({ id: id + "sol", data: V.solar, getPosition: p => [p[0], p[1], zOf(p[2], 60)], getRadius: 2.2, radiusUnits: "pixels", getFillColor: [255, 214, 120, 230], updateTriggers: { getPosition: EXV } }));
@@ -1088,9 +1100,14 @@ function renderLegend() {
   if (street() && !(mode === "query" && spec && !spec.refuse)) {
     const t = el("div", "t"), km = (CITYNOW && RKM[CITYNOW]) || (ST.man && ST.man.km) || null, tot = km ? Object.values(km).reduce((a, b) => a + b, 0) : 0, kv = x => km ? `: ${fmt(km[x] || 0, km === RKM[CITYNOW] ? 1 : 0)} km` : "";
     const row = (col, txt) => { const r = el("div", "lab bl"); const sw = el("i"); sw.style.background = `rgb(${col.slice(0, 3)})`; r.append(sw, el("span", null, txt)); return r; };
-    t.append(el("b", null, km ? `${CITYNOW && RKM[CITYNOW] ? CITY[CITYNOW][0] : "Θεσσαλία"}: ${fmt(tot, 0)} km δρόμων` : "Χάρτης δρόμων"), document.createTextNode(" · χρώμα ανά κίνδυνο πλημμύρας"));
-    L.append(t, row(RCOL(4), `Πλημμύρισαν στον Daniel εκτός ζώνης 1000 ετών${kv("dan_out")}`), row(RCOL(6), `Πλημμύρισαν στον Daniel, εντός ζώνης${kv("dan")}`),
+    const m = FMASK();
+    t.append(el("b", null, km ? `${CITYNOW && RKM[CITYNOW] ? CITY[CITYNOW][0] : "Θεσσαλία"}: ${fmt(tot, 0)} km δρόμων` : "Χάρτης δρόμων"), document.createTextNode(m ? " · χρώμα από τα ενεργά layers πλημμύρας" : ""));
+    L.append(t);
+    if (m === 7) L.append(row(RCOL(4), `Πλημμύρισαν στον Daniel εκτός ζώνης 1000 ετών${kv("dan_out")}`), row(RCOL(6), `Πλημμύρισαν στον Daniel, εντός ζώνης${kv("dan")}`),
       row(RCOL(1), `Σε επίσημη ζώνη 100 ετών${kv("q100")}`), row(RCOL(2), `Σε επίσημη ζώνη 1000 ετών${kv("q1000")}`), row(RCOL(0), `Εκτός ζωνών${kv("ok")}`));
+    else if (m === 4) L.append(row(RCOL(6), `Πλημμύρισαν στον Daniel${km ? `: ${fmt((km.dan || 0) + (km.dan_out || 0), 0)} km` : ""}`), row(RCOL(0), "Δεν πλημμύρισαν (ή εκτός χαρτογράφησης)"));
+    else if (m === 3) L.append(row(RCOL(1), "Σε επίσημη ζώνη 100 ετών"), row(RCOL(2), "Σε επίσημη ζώνη 1000 ετών"), row(RCOL(0), "Εκτός ζωνών"));
+    else L.append(el("div", "lab", "Χωρίς χρωματισμό. Άναψε ένα layer αριστερά (π.χ. «Πλημμύρα Daniel», «Επίσημες ζώνες», «Πυρκαγιά») για να χρωματιστεί ο χάρτης."));
     L.append(el("div", "lab", viewState.zoom < 12.3 ? "Κύριοι δρόμοι. Με ζουμ εμφανίζονται όλοι οι δρόμοι, ονόματα οδών, κτίρια, σχολεία και νοσοκομεία." : "Κύκλοι: Ν νοσοκομείο, Σ σχολείο, Δ δημαρχείο, Π πυροσβεστική, Α αστυνομία, Φ μονάδα φροντίδας· λευκό περίγραμμα = σε ζώνη 100 ετών ή μέσα στην πλημμύρα Daniel. Τα κτίρια και οι σκιασμένες εκτάσεις έχουν τα ίδια χρώματα."));
     { const on = OV.filter(o => o.kind === "tex" && o.on); if (on.length) L.append(el("div", "lab", "Από πάνω: " + on.map(o => o.l).join(" · "))); }
     if (CITYNOW === "volos") L.append(el("div", "lab", "Ο Daniel δεν χαρτογραφήθηκε στην πόλη του Βόλου (EMSR692): εδώ φαίνονται μόνο οι επίσημες ζώνες."));
@@ -1101,9 +1118,13 @@ function renderLegend() {
     const B = BLD[CITYNOW]; const t = el("div", "t");
     if (!B || !B.items) { t.textContent = `Φόρτωση κτιρίων: ${CITY[CITYNOW][0]}…`; L.append(t); }
     else { const n = B.items.length, c = m => B.items.reduce((s, d) => s + (m(d.f) ? 1 : 0), 0);
-      t.append(el("b", null, `${CITY[CITYNOW][0]}: ${fmt(n)} κτίρια`), document.createTextNode(" · χρώμα ανά κίνδυνο πλημμύρας"));
+      const m = FMASK();
+      t.append(el("b", null, `${CITY[CITYNOW][0]}: ${fmt(n)} κτίρια`), document.createTextNode(m ? " · χρώμα από τα ενεργά layers πλημμύρας" : ""));
       const row = (col, txt) => { const r = el("div", "lab bl"); const sw = el("i"); sw.style.background = `rgb(${col.slice(0, 3)})`; r.append(sw, el("span", null, txt)); return r; };
-      L.append(t, row(BCOL(4), `Πλημμύρισε στον Daniel εκτός ζώνης 1000 ετών: ${fmt(c(f => (f & 4) && !(f & 2)))}`), row(BCOL(6), `Πλημμύρισε στον Daniel, εντός ζώνης: ${fmt(c(f => (f & 4) && (f & 2)))}`),
+      if (m === 4) L.append(t, row(BCOL(6), `Πλημμύρισαν στον Daniel: ${fmt(c(f => f & 4))}`), row(BCOL(0), "Δεν πλημμύρισαν"));
+      else if (m === 3) L.append(t, row(BCOL(1), `Επίσημη ζώνη 100 ετών: ${fmt(c(f => f & 1))}`), row(BCOL(2), `Επίσημη ζώνη 1000 ετών: ${fmt(c(f => !(f & 1) && (f & 2)))}`), row(BCOL(0), "Εκτός ζωνών"));
+      else if (!m) L.append(t, el("div", "lab", "Χωρίς χρωματισμό. Άναψε «Πλημμύρα Daniel» ή «Επίσημες ζώνες» για να χρωματιστούν τα κτίρια."));
+      else L.append(t, row(BCOL(4), `Πλημμύρισε στον Daniel εκτός ζώνης 1000 ετών: ${fmt(c(f => (f & 4) && !(f & 2)))}`), row(BCOL(6), `Πλημμύρισε στον Daniel, εντός ζώνης: ${fmt(c(f => (f & 4) && (f & 2)))}`),
         row(BCOL(1), `Επίσημη ζώνη 100 ετών: ${fmt(c(f => !(f & 4) && (f & 1)))}`), row(BCOL(2), `Επίσημη ζώνη 1000 ετών: ${fmt(c(f => !(f & 4) && !(f & 1) && (f & 2)))}`), row(BCOL(0), "Εκτός ζωνών"));
       if (CITYNOW === "volos") L.append(el("div", "lab", "Ο Daniel δεν χαρτογραφήθηκε στην πόλη του Βόλου (EMSR692): εδώ φαίνονται μόνο οι επίσημες ζώνες."));
       if (orthoOn()) L.append(el("div", "lab", ORTHO === "static" ? "Έδαφος και στέγες: ορθοφωτογραφίες © Ελληνικό Κτηματολόγιο." : "Έδαφος και στέγες: ορθοφωτογραφίες © Ελληνικό Κτηματολόγιο (υπηρεσία θέασης, ζωντανά· μόνο στην τοπική έκδοση)."));
@@ -1322,9 +1343,10 @@ function setMode(m) {
   if (m !== "query" && m !== "sim") setCityView("3d", true); $("viewSw").hidden = m !== "query" && m !== "sim";
   stopWx(); $("wxUI").hidden = m !== "wx"; if (m === "wx") setTimeout(() => { setWx(WX.steps.length - 1); flyView({ longitude: 21.62, latitude: 39.12, zoom: 7.85, pitch: 42, bearing: 0 }); }, 0);
   mode = m; ["query", "time", "swipe", "sim", "wx", "today"].forEach(k => $("mode-" + k).setAttribute("aria-pressed", m === k));
+  if (deck1) renderLayersPanel();
   $("simUI").hidden = m !== "sim"; renderModeInfo(); if (m === "sim") { HANDTEX = HANDTEX || composite([{ id: "flood", op: 0.35 }]); setSim(simK); }
   const sw = m === "swipe" || m === "today";
-  $("swipeUI").hidden = !sw; document.querySelector(".layers").hidden = sw; $("map2").hidden = !sw; $("card").hidden = true; $("tlUI").hidden = m !== "time";
+  $("swipeUI").hidden = !sw;  $("map2").hidden = !sw; $("card").hidden = true; $("tlUI").hidden = m !== "time";
   stopTL();
   if (m === "today" && IMG.s2) {
     const mk = extra => { const c = document.createElement("canvas"); c.width = IMG.base.width; c.height = IMG.base.height; const g = c.getContext("2d");
@@ -1358,9 +1380,9 @@ function renderWelcome() {        // first view: nothing computed yet, explain w
   const W = el("div", "welcome");
   W.append(el("h2", null, "Τι μπορείς να κάνεις εδώ"));
   const ul = el("ul");
-  [["Ρώτα", "μια ερώτηση για τη γη της Θεσσαλίας. Ο χάρτης δείχνει πού ισχύει και πόσα km² είναι."],
+  [["Ρώτα", "οτιδήποτε για τη Θεσσαλία που απαντιέται με χάρτη: κίνδυνοι, πρόσβαση, ενέργεια, γη. Ο χάρτης δείχνει πού ισχύει, πόσα km² και πόσοι κάτοικοι."],
    ["Δες", "πώς βρέθηκε το αποτέλεσμα, κριτήριο προς κριτήριο, με την πηγή κάθε δεδομένου."],
-   ["Εξερεύνησε", "τον Daniel μέρα-μέρα, σενάρια στάθμης νερού και την πρόγνωση βροχής από τις καρτέλες πάνω από τον χάρτη."]].forEach(([b, t]) => { const li = el("li"); li.append(el("b", null, b + " "), document.createTextNode(t)); ul.append(li); });
+   ["Εξερεύνησε", "τον Daniel μέρα-μέρα, το σενάριο στάθμης νερού και την πρόγνωση βροχής από τα layers αριστερά: το χειριστήριο ανοίγει κάτω από το καθένα."]].forEach(([b, t]) => { const li = el("li"); li.append(el("b", null, b + " "), document.createTextNode(t)); ul.append(li); });
   W.append(ul, el("p", "hint", "Ξεκίνα με ένα από τα παραδείγματα πάνω, ή πάτα «Ξενάγηση» για μια περιήγηση 1 λεπτού."));
   R.append(W);
 }
@@ -1432,21 +1454,34 @@ function initSwipe() {
   dv.addEventListener("pointerdown", e => { dv.setPointerCapture(e.pointerId); const mv = ev => set(ev.clientX); dv.addEventListener("pointermove", mv); dv.addEventListener("pointerup", () => dv.removeEventListener("pointermove", mv), { once: true }); });
   dv.addEventListener("keydown", e => { const r = st.getBoundingClientRect(); const cur = parseFloat(dv.style.left || "50"); if (e.key === "ArrowLeft") set(r.left + (cur - 3) / 100 * r.width); if (e.key === "ArrowRight") set(r.left + (cur + 3) / 100 * r.width); });
 }
+function setLayers(map) { let tex = false; OV.forEach(o => { if (o.id in map && o.on !== map[o.id]) { o.on = map[o.id]; if (o.kind === "tex") tex = true; } });
+  if (tex) { TEX1 = composite(); texVer++; wxTexK = -1; } if (LGOPEN) Object.keys(map).forEach(id => { const o = ov(id); if (o && map[id]) LGOPEN.add(o.grp || ""); }); renderLayersPanel(); renderLegend(); redraw(); }
 let LGOPEN = null;
+const MODECTL = { time: "tlUI", sim: "simUI", wx: "wxUI" };
 function renderLayersPanel() {
-  const P = $("layersList"); P.replaceChildren();
-  const GRP = { s2: "Δορυφόρος", s2water: "Δορυφόρος", flood: "Πλημμύρα", official: "Πλημμύρα", lake: "Πλημμύρα", bld: "Πλημμύρα", ortho: "Πλημμύρα", fire: "Πυρκαγιά", ground: "Έδαφος", lst: "Ζέστη", landcover: "Γη και προστασία", natura: "Γη και προστασία", excl: "Γη και προστασία",
-    deddie: "Ενέργεια", grid: "Ενέργεια", solar: "Ενέργεια", rivers: "Υπόβαθρο", towns: "Υπόβαθρο" }, order = ["Πλημμύρα", "Πυρκαγιά", "Έδαφος", "Ζέστη", "Γη και προστασία", "Ενέργεια", "Δορυφόρος", "Υπόβαθρο"];
+  const P = $("layersList"), HOLD = document.querySelector(".ctl"); Object.values(MODECTL).forEach(id => HOLD.append($(id)));   // park the controls before the list is rebuilt
+  P.replaceChildren();
+  const GRP = { s2: "Δορυφόρος", s2water: "Δορυφόρος", flood: "Πλημμύρα", official: "Πλημμύρα", lake: "Πλημμύρα", bld: "Πλημμύρα", ortho: "Πλημμύρα", fire: "Πυρκαγιά", ground: "Έδαφος", lst: "Ζέστη", m_time: "Πλημμύρα", m_sim: "Πλημμύρα", m_swipe: "Πλημμύρα", m_wx: "Καιρός", m_today: "Δορυφόρος", landcover: "Γη και προστασία", natura: "Γη και προστασία", excl: "Γη και προστασία",
+    deddie: "Ενέργεια", grid: "Ενέργεια", solar: "Ενέργεια", rivers: "Υπόβαθρο", towns: "Υπόβαθρο" }, order = ["Πλημμύρα", "Καιρός", "Πυρκαγιά", "Έδαφος", "Ζέστη", "Γη και προστασία", "Ενέργεια", "Δορυφόρος", "Υπόβαθρο"];
   const box = {};
-  if (!LGOPEN) LGOPEN = new Set(OV.filter(o => o.on).map(o => GRP[o.id] || "Υπόβαθρο"));   // first render: open the groups that have something on
+  OV.forEach(o => o.grp = GRP[o.id] || "Υπόβαθρο");
+  if (!LGOPEN) LGOPEN = new Set(OV.filter(o => o.on).map(o => o.grp));
+  OV.forEach(o => { if (o.kind === "mode" && mode === o.mode) LGOPEN.add(o.grp); });   // first render: open the groups that have something on
   order.forEach(g => { const items = OV.filter(o => (GRP[o.id] || "Υπόβαθρο") === g); if (!items.length) return;
     const d = el("details", "lgd"); d.open = LGOPEN.has(g); d.ontoggle = () => d.open ? LGOPEN.add(g) : LGOPEN.delete(g);
-    const s = el("summary", "lgrp", g); const n = items.filter(o => o.on).length; if (n) s.append(el("span", "cnt", `${n} ενεργ${n === 1 ? "ό" : "ά"}`));
+    const s = el("summary", "lgrp", g); const n = items.filter(o => o.kind === "mode" ? mode === o.mode : o.on).length; if (n) s.append(el("span", "cnt", `${n} ενεργ${n === 1 ? "ό" : "ά"}`));
     d.append(s); P.append(d); box[g] = d; });
   OV.forEach(o => {
     const g = GRP[o.id] || "Υπόβαθρο"; const Pg = box[g];
+    if (o.kind === "mode") {          // a simulation: one at a time, its slider / play button right under it
+      const w = el("div", "lyrwrap"), r = el("label", "lyr sim"); const cb = el("input"); cb.type = "checkbox"; cb.checked = mode === o.mode; cb.id = "ov-" + o.id;
+      cb.onchange = () => { if (tourK >= 0) tourGo(-1); setMode(cb.checked ? o.mode : "query"); };
+      const t = el("span"); t.append(el("span", null, o.l), el("small", null, o.src)); r.append(cb, t); w.append(r);
+      if (mode === o.mode && MODECTL[o.mode]) w.append($(MODECTL[o.mode]));
+      Pg.append(w); return;
+    }
     const r = el("label", "lyr"); const cb = el("input"); cb.type = "checkbox"; cb.checked = o.on; cb.id = "ov-" + o.id;
-    cb.onchange = () => { o.on = cb.checked; if (o.kind === "tex") { TEX1 = composite(); texVer++; wxTexK = -1; renderLayersPanel(); } redraw(); };
+    cb.onchange = () => { o.on = cb.checked; if (o.kind === "tex") { TEX1 = composite(); texVer++; wxTexK = -1; renderLayersPanel(); } redraw(); renderLegend(); };
     const t = el("span"); t.append(el("span", null, o.l), el("small", null, o.src)); r.append(cb, t);
     if (o.kind === "tex" && o.on) { const s = el("input"); s.type = "range"; s.min = 0.1; s.max = 1; s.step = 0.05; s.value = o.op; s.id = "op-" + o.id; s.setAttribute("aria-label", "Διαφάνεια " + o.l);
       s.oninput = () => { o.op = +s.value; if (o.on) { TEX1 = composite(); texVer++; wxTexK = -1; redraw(); } }; r.append(s); }
@@ -1457,7 +1492,7 @@ function renderLayersPanel() {
 // ---------- guided tour ----------
 let tourK = -1, tourT = null;
 const TOUR = [
-  { cap: "Θεσσαλία: 48.564 km δρόμων χρωματισμένα ανά κίνδυνο πλημμύρας. Κόκκινο = πλημμύρισε στον Daniel έξω από τους επίσημους χάρτες. Πίσω από αυτό, 40+ ανοιχτά δεδομένα σε 17.504 εξάγωνα.", run: () => { setMode("query"); setCityView("map", true); spec = null; renderWelcome(); renderLegend(); redraw(); flyView(homeView()); } },
+  { cap: "Θεσσαλία: 48.564 km δρόμων χρωματισμένα ανά κίνδυνο πλημμύρας. Κόκκινο = πλημμύρισε στον Daniel έξω από τους επίσημους χάρτες. Πίσω από αυτό, 40+ ανοιχτά δεδομένα σε 17.504 εξάγωνα.", run: () => { setMode("query"); setCityView("map", true); spec = null; setLayers({ official: true, flood: true }); renderWelcome(); renderLegend(); redraw(); flyView(homeView()); } },
   { cap: "Σεπτέμβριος 2023: ο Daniel μέρα με τη μέρα, από 12 δορυφορικές λήψεις του Copernicus.", run: () => { setMode("time"); setTL(0); flyView({ longitude: 22.2, latitude: 39.5, zoom: 8.6, pitch: 55, bearing: -20 }); setTimeout(() => { if (tourK === 1) playTL(); }, 600); }, wait: 14500 },
   { cap: "Σήμερα από δορυφόρο: πόσο νερό έχει η Κάρλα τώρα, δίπλα στην έκταση του Daniel. Σύρε τη γραμμή.", run: () => { if (IMG.s2) setMode("today"); }, wait: 9000 },
   { cap: "Κάρλα: πού έμεινε το νερό τις περισσότερες μέρες, η βάση για τεκμηριωμένες αποφάσεις παραχώρησης.", run: () => { const p = PRESETS[1]; setCityView("3d", true); setMode("query"); $("q").value = p.q; apply(structuredClone(p.spec), "preset", true, p.q, false); }, wait: 8500 },
@@ -1473,7 +1508,7 @@ function goHome() {                // back to the start: no query, default layer
   if (tourK >= 0) tourGo(-1);
   stopWx(); stopTL(); setMode("query"); setCityView("map", true);
   spec = null; history = []; RES = []; pass = null; PIN = null; showExcl = false;
-  $("q").value = ""; $("q").placeholder = "π.χ. Πού ζουν άνθρωποι κάτω από 100 m που πλημμύρισαν το 2023;"; $("status").textContent = ""; $("card").hidden = true;
+  $("q").value = ""; $("q").placeholder = "π.χ. Ποια χωριά απέχουν πάνω από 45 λεπτά από νοσοκομείο; ή Πού χωρά φωτοβολταϊκό εκτός Natura;"; $("status").textContent = ""; $("card").hidden = true;
   let changed = false; OV.forEach(o => { const def = ["rivers", "towns", "bld", "ortho"].includes(o.id); if (o.on !== def) { o.on = def; changed = true; } });
   if (changed) { TEX1 = composite(); texVer++; wxTexK = -1; renderLayersPanel(); }
   renderWelcome(); renderLegend(); redraw(); flyView(homeView());
@@ -1520,8 +1555,15 @@ function tourGo(k) {
   if (innerWidth <= 1180) document.querySelector(".layers").open = false;
   document.querySelectorAll("#viewSw button").forEach(b => b.onclick = () => { if (b.dataset.v === "map" && mode !== "query" && mode !== "sim") setMode("query"); setCityView(b.dataset.v); });
   ["query", "time", "swipe", "sim", "wx", "today"].forEach(k => $("mode-" + k).onclick = () => setMode(k));
+  { const at = (id, item) => OV.splice(OV.findIndex(o => o.id === id) + 1, 0, { kind: "mode", on: false, ...item });
+    at("flood", { id: "m_time", mode: "time", l: "▶ Daniel μέρα με τη μέρα", src: "EMSR692 · 12 λήψεις, 6–22 Σεπ 2023" });
+    at("lake", { id: "m_swipe", mode: "swipe", l: "Σύγκριση Daniel ↔ λίμνη Τεμπών (σύρε τη γραμμή)", src: "EMSR692 · DEM" });
+    at("official", { id: "m_sim", mode: "sim", l: "Σενάριο στάθμης νερού +1 έως +10 m", src: "μοντέλο HAND · έλεγχος με τον Daniel" });
+    if (WX) OV.push({ kind: "mode", on: false, id: "m_wx", mode: "wx", l: "▶ Πρόγνωση βροχής 72 ωρών", src: WX.source });
+    if (IMG.s2) at("s2water", { id: "m_today", mode: "today", l: "Σύγκριση σήμερα ↔ Daniel (σύρε τη γραμμή)", src: "Sentinel-2 · EMSR692" }); }
   if (!IMG.s2) { $("mode-today").hidden = true; OV.splice(OV.findIndex(o => o.id === "s2"), 2); }
   else if (S2W) { const d = new Date(S2W.date).toLocaleDateString("el-GR", { day: "numeric", month: "long", year: "numeric" }); ov("s2").src = `Copernicus Sentinel-2 · ${d}`; ov("s2water").src = `Sentinel-2 · ${d}`; }
+  renderLayersPanel();
   { const addOrtho = (kind, src) => { if (ORTHO) return; ORTHO = kind; OV.splice(OV.findIndex(o => o.id === "bld") + 1, 0, { id: "ortho", l: "Αεροφωτογραφίες Κτηματολογίου (στις 4 πόλεις, με ζουμ)", src, kind: "vec", on: true }); renderLayersPanel(); };
     fetch("assets/ortho/manifest.json").then(r => r.ok ? r.json() : null).then(j => { if (j && j.keys) { OKEYS = new Set(j.keys); LOKEYS = new Set(j.lokeys || (j.lo ? j.keys : [])); addOrtho("static", "© Ελληνικό Κτηματολόγιο"); } }).catch(() => {});
     if (location.hostname === "localhost" || location.hostname === "127.0.0.1") fetch("/ortho?ping=1").then(r => r.ok ? r.json() : null).then(j => { if (j && j.ok) addOrtho("live", "Ελληνικό Κτηματολόγιο · ζωντανά, μόνο τοπικά"); }).catch(() => {}); }

@@ -81,7 +81,16 @@ aside { background: var(--panel); border-left: 1px solid var(--line); display: f
 .btn[disabled] { opacity: .5; cursor: progress; }
 .btn.ghost { background: none; color: var(--muted); border: 1px solid var(--line); }
 .status { font: 12px var(--mono); color: var(--muted); min-height: 1em; }
-.presets { display: flex; flex-wrap: wrap; gap: 6px; }
+.presets { display: grid; gap: 4px; }
+.presets-in { display: flex; flex-wrap: wrap; gap: 6px; padding: 6px 0 8px; }
+.pgd > summary { cursor: pointer; font: 600 12px var(--body); color: var(--ink); padding: 5px 0; list-style-position: outside; }
+.pgd > summary:hover, .lgd > summary:hover { color: var(--sun); }
+.lgd > summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 6px; }
+.lgd > summary::-webkit-details-marker { display: none; }
+.lgd > summary::before { content: "▸"; font-size: 10px; transition: transform .15s; }
+.lgd[open] > summary::before { transform: rotate(90deg); }
+.lgd > summary .cnt { font: 500 10px var(--body); letter-spacing: 0; text-transform: none; color: var(--muted); margin-left: auto; }
+.lgd { border-bottom: 1px solid var(--line); padding-bottom: 4px; }
 .chip { font: 12.5px var(--body); color: var(--ink); background: var(--panel2); border: 1px solid var(--line); border-radius: 999px; padding: 6px 11px; cursor: pointer; text-align: left; }
 .chip:hover { border-color: var(--sun); }
 
@@ -265,6 +274,9 @@ pre { font: 11px/1.5 var(--mono); color: var(--muted); white-space: pre-wrap; wo
   .layers > summary { border: 0; padding: 2px 0; }
   .layers[open] #layersList { position: static; width: auto; max-height: none; border: 0; padding: 0; box-shadow: none; grid-template-columns: 1fr 1fr; column-gap: 10px; }
   .lgrp { grid-column: 1 / -1; }
+  .layers[open] #layersList { display: block; }
+  .lgd[open] { display: grid; grid-template-columns: 1fr 1fr; column-gap: 10px; }
+  .lgd > summary { grid-column: 1 / -1; }
   .seg { flex-wrap: nowrap; overflow-x: auto; max-width: 100%; scrollbar-width: none; }
   .seg button { white-space: nowrap; flex: none; }
   .tag { max-width: 44%; font-size: 11px; padding: 4px 7px; }
@@ -656,6 +668,7 @@ function mapLayers(id) {            // flat street map of the whole region: dark
     ready.forEach(k => { const T = ST.r[k]; if (T.hand) { const cv = handCanvas(T.hand, simK); L.push(new deck.BitmapLayer({ id: id + "mh" + k + T.hand.ver, image: cv, bounds: T.q, opacity: .5, parameters: nd })); } }); }
   else { if (!all && ST.zones) L.push(new deck.BitmapLayer({ id: id + "mz", image: ST.zones, bounds: BOUNDS, opacity: .55, parameters: nd }));
     ready.forEach(k => { const T = ST.r[k]; if (T.zone) L.push(new deck.BitmapLayer({ id: id + "mz" + k, image: T.zone.img, bounds: T.zone.q, opacity: .5, parameters: nd })); }); }
+  { const ov = overlayCanvas(); if (ov) L.push(new deck.BitmapLayer({ id: id + "mov", image: ov, bounds: BOUNDS, parameters: nd })); }   // the user's layers and query results, above the plate
   if (z >= 13.6) keys.forEach(k => { if (!ST.has.b.has(k)) return; const B = ST.b[k]; if (!B) return stLoad("b", k);
     if (B.items) L.push(new deck.SolidPolygonLayer({ id: id + "mbt" + k, data: B.items, getPolygon: d => d.poly, getFillColor: d => sim ? (d.h <= simK ? [...WET, 200] : [66, 78, 98, 255]) : (d.f & 7) ? [...BCOL(d.f), 175] : [66, 78, 98, 255], updateTriggers: { getFillColor: ut }, parameters: nd })); });
   if (!all && ST.region) L.push(new deck.PathLayer({ id: id + "mrg", data: ST.region, getPath: d => d.path, getWidth: d => d.rk ? 9 : 16, widthUnits: "meters", widthMinPixels: 1.1, widthMaxPixels: 14,
@@ -829,16 +842,27 @@ function paintHexes(canvas, items) {   // items: [cellIndex, [r,g,b,a]] painted 
 const memo = {};
 function cachedTex(name, key, make) { if (memo[name] && memo[name].key === key) return memo[name].tex; const tex = make(); memo[name] = { key, tex }; return tex; }
 let texVer = 0;                  // bumped whenever the draped overlays (TEX1) change
+const queryKey = () => [texVer, showExcl, PIN ? PIN.ids.length : 0, RES.length, score && score.length ? Array.from(weights).join() : "", steps.map(x => x.on).join()].join("|") + "|" + scoreVer;
+function queryItems() {
+  const items = [];
+  if (showExcl) EXC.forEach(i => { if (failAt[i] > 0) items.push([i, [...EXCL[(failAt[i] - 1) % EXCL.length].slice(0, 3), 150]]); });
+  if (PIN) PIN.ids.forEach(i => { if (!pass[i]) items.push([i, [...GONEC, 225]]); });
+  RES.forEach(i => items.push([i, PIN && !PIN.set.has(i) ? [...NEWC, 235] : [...lerpC(AMBER, score[i]), 235]]));
+  return items;
+}
+function overlayCanvas() {       // street map: enabled draped layers + query result on a transparent canvas (the 3D view drapes the same things on the terrain)
+  const list = OV.filter(o => o.kind === "tex" && o.on && IMG[o.id]), q = mode === "query" && spec && !spec.refuse && RES.length;
+  if (!list.length && !q) return null;
+  const key = texVer + "|" + (q ? queryKey() : "");
+  const c = cachedTex("ovl", key, () => { const c = document.createElement("canvas"); c.width = IMG.base.width; c.height = IMG.base.height; const g = c.getContext("2d");
+    list.forEach(o => { g.globalAlpha = o.op ?? 0.9; g.drawImage(IMG[o.id], 0, 0, c.width, c.height); }); g.globalAlpha = 1;
+    return q ? paintHexes(c, queryItems()) : c; });
+  return c;
+}
 function queryLayers() {
   if (!spec) return [terrain("t1", TEX1), ...vectorLayers("a")];
-  const key = [texVer, showExcl, PIN ? PIN.ids.length : 0, RES.length, score && score.length ? Array.from(weights).join() : "", steps.map(x => x.on).join()].join("|") + "|" + scoreVer;
-  const tex = cachedTex("q", key, () => {
-    const items = [];
-    if (showExcl) EXC.forEach(i => { if (failAt[i] > 0) items.push([i, [...EXCL[(failAt[i] - 1) % EXCL.length].slice(0, 3), 150]]); });
-    if (PIN) PIN.ids.forEach(i => { if (!pass[i]) items.push([i, [...GONEC, 225]]); });
-    RES.forEach(i => items.push([i, PIN && !PIN.set.has(i) ? [...NEWC, 235] : [...lerpC(AMBER, score[i]), 235]]));
-    return paintHexes(composite(), items);
-  });
+  const key = queryKey();
+  const tex = cachedTex("q", key, () => paintHexes(composite(), queryItems()));
   return [terrain("t1", tex), ...vectorLayers("a")];
 }
 const SIMC = [[30, 70, 110], [40, 140, 190], [110, 215, 230], [215, 250, 255]];
@@ -1406,19 +1430,25 @@ function initSwipe() {
   dv.addEventListener("pointerdown", e => { dv.setPointerCapture(e.pointerId); const mv = ev => set(ev.clientX); dv.addEventListener("pointermove", mv); dv.addEventListener("pointerup", () => dv.removeEventListener("pointermove", mv), { once: true }); });
   dv.addEventListener("keydown", e => { const r = st.getBoundingClientRect(); const cur = parseFloat(dv.style.left || "50"); if (e.key === "ArrowLeft") set(r.left + (cur - 3) / 100 * r.width); if (e.key === "ArrowRight") set(r.left + (cur + 3) / 100 * r.width); });
 }
+let LGOPEN = null;
 function renderLayersPanel() {
   const P = $("layersList"); P.replaceChildren();
   const GRP = { s2: "Δορυφόρος", s2water: "Δορυφόρος", flood: "Πλημμύρα", official: "Πλημμύρα", lake: "Πλημμύρα", bld: "Πλημμύρα", ortho: "Πλημμύρα", fire: "Πυρκαγιά", ground: "Έδαφος", lst: "Ζέστη", landcover: "Γη και προστασία", natura: "Γη και προστασία", excl: "Γη και προστασία",
     deddie: "Ενέργεια", grid: "Ενέργεια", solar: "Ενέργεια", rivers: "Υπόβαθρο", towns: "Υπόβαθρο" }, order = ["Πλημμύρα", "Πυρκαγιά", "Έδαφος", "Ζέστη", "Γη και προστασία", "Ενέργεια", "Δορυφόρος", "Υπόβαθρο"];
-  let last = null;
-  [...OV].sort((a, b) => order.indexOf(GRP[a.id] || "Υπόβαθρο") - order.indexOf(GRP[b.id] || "Υπόβαθρο")).forEach(o => {
-    const g = GRP[o.id] || "Υπόβαθρο"; if (g !== last) { P.append(el("div", "lgrp", g)); last = g; }
+  const box = {};
+  if (!LGOPEN) LGOPEN = new Set(OV.filter(o => o.on).map(o => GRP[o.id] || "Υπόβαθρο"));   // first render: open the groups that have something on
+  order.forEach(g => { const items = OV.filter(o => (GRP[o.id] || "Υπόβαθρο") === g); if (!items.length) return;
+    const d = el("details", "lgd"); d.open = LGOPEN.has(g); d.ontoggle = () => d.open ? LGOPEN.add(g) : LGOPEN.delete(g);
+    const s = el("summary", "lgrp", g); const n = items.filter(o => o.on).length; if (n) s.append(el("span", "cnt", `${n} ενεργ${n === 1 ? "ό" : "ά"}`));
+    d.append(s); P.append(d); box[g] = d; });
+  OV.forEach(o => {
+    const g = GRP[o.id] || "Υπόβαθρο"; const Pg = box[g];
     const r = el("label", "lyr"); const cb = el("input"); cb.type = "checkbox"; cb.checked = o.on; cb.id = "ov-" + o.id;
     cb.onchange = () => { o.on = cb.checked; if (o.kind === "tex") { TEX1 = composite(); texVer++; wxTexK = -1; renderLayersPanel(); } redraw(); };
     const t = el("span"); t.append(el("span", null, o.l), el("small", null, o.src)); r.append(cb, t);
     if (o.kind === "tex" && o.on) { const s = el("input"); s.type = "range"; s.min = 0.1; s.max = 1; s.step = 0.05; s.value = o.op; s.id = "op-" + o.id; s.setAttribute("aria-label", "Διαφάνεια " + o.l);
       s.oninput = () => { o.op = +s.value; if (o.on) { TEX1 = composite(); texVer++; wxTexK = -1; redraw(); } }; r.append(s); }
-    P.append(r);
+    Pg.append(r);
   });
 }
 
@@ -1472,7 +1502,13 @@ function tourGo(k) {
   const big = V.towns.filter(t => (t.p || 0) >= 5000).sort((a, b) => (b.p || 0) - (a.p || 0));
   big.forEach(t => { if (!TOWNS.some(u => Math.hypot((u.x - t.x) * 0.77, u.y - t.y) < 0.065)) TOWNS.push(t); });
   TEX1 = composite();
-  const P = $("presets"); PRESETS.forEach(p => { const b = el("button", "chip", p.s); b.title = p.q; b.onclick = () => { $("q").value = p.q; if (mode !== "query") setMode("query"); apply(structuredClone(p.spec), "preset", true, p.q, false); }; P.append(b); });
+  { const P = $("presets"), TH = [["Πλημμύρα", /αντιπλημμυρικά|Κάρλα|Daniel έξω|ζώνη πλημμύρας|Daniel: κτίρια|λεκάνη/],
+      ["Πυρκαγιά, έδαφος, ζέστη", /Πυρκαγιά|Καθιζήσεις|Ζέστη/], ["Άνθρωποι και υπηρεσίες", /νοσοκομείο|αποκομμένοι/], ["Ενέργεια", /ΦΒ|BESS|Agrivoltaics/]];
+    TH.forEach(([g, re], k) => { const ps = PRESETS.filter(p => re.test(p.s)); if (!ps.length) return;
+      const d = el("details", "pgd"); d.open = k === 0; d.append(el("summary", null, `${g} · ${ps.length}`));
+      const w = el("div", "presets-in"); ps.forEach(p => { const b = el("button", "chip", p.s); b.title = p.q; b.onclick = () => { $("q").value = p.q; if (mode !== "query") setMode("query"); apply(structuredClone(p.spec), "preset", true, p.q, false); }; w.append(b); });
+      d.append(w); P.append(d); });
+    const left = PRESETS.filter(p => !TH.some(([, re]) => re.test(p.s))); if (left.length) console.warn("presets without a theme:", left.map(p => p.s)); }
   $("tlRange").max = TL.dates.length - 1;
   renderWelcome();
   try { viewState = homeView(); } catch {}

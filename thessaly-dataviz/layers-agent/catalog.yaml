@@ -39,6 +39,7 @@ columns:
   hosp_min:        {unit: min, source: "Overture transportation 2026-10-21 (segments + connectors, bridges kept open), Overture places for 8 general hospitals", desc: "driving time to nearest general hospital, free flow, speeds by road class (assumed)", caveat: "likely optimistic by 10-20%; islands have no road link"}
   hosp_min_dan:    {unit: min, source: "as hosp_min + EMSR692 extent", desc: "same with every road part under Daniel water closed (all at once)"}
   cut_dan:         {unit: "0/1", desc: "route exists normally but not with Daniel roads closed"}
+  lst_c:           {unit: "deg C", source: "Landsat 8/9 Collection 2 Level-2 ST_B10 via Microsoft Planetary Computer, 118 scenes Jul-Aug 2023-2025, QA-masked per-pixel median, 90 m", desc: "summer late-morning land SURFACE temperature (not air)"}
   daniel_flood_share: {unit: share, source: "Copernicus EMS rapid mapping EMSR692 (Storm Daniel, 6-22 Sep 2023), union of 'Flooded area' polygons over all DEL products", caveat: "one event, not a return-period hazard map; only inside the 7 mapped AOIs"}
   daniel_mapped_share: {unit: share, desc: "share of the cell inside any EMSR692 area of interest. 0 = not mapped, so 'not flooded' is unknown there"}
   daniel_products_flooded: {unit: count, desc: "number of EMSR692 products (dates) in which the cell was flooded: persistence proxy"}

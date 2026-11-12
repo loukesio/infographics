@@ -431,6 +431,7 @@ const CAT = {
   hospdan:{l:"Χρόνος ως νοσοκομείο αν ξανασυμβεί Daniel", u:"λεπτά", src:"ίδιο + EMSR692", d:"με κλειστούς όσους δρόμους ήταν κάτω από νερό στον Daniel (γέφυρες ανοιχτές)· κενό = δεν υπάρχει διαδρομή"},
   hospxdan:{l:"Καθυστέρηση ως νοσοκομείο σε Daniel", u:"λεπτά", src:"ίδιο", d:"πόσα λεπτά παραπάνω χρειάζονται με τους πλημμυρισμένους δρόμους κλειστούς (μόνο όπου υπάρχει ακόμη διαδρομή)"},
   cutdan: {l:"Αποκόπηκε στον Daniel", u:"0/1", src:"Overture × EMSR692", d:"1 = υπάρχει οδική διαδρομή κανονικά, αλλά καμία όταν κλείσουν οι δρόμοι που πλημμύρισαν στον Daniel"},
+  lst:    {l:"Θερμοκρασία επιφάνειας καλοκαίρι", u:"°C", src:"Landsat 8/9 (USGS C2 L2), Ιούλ–Αύγ 2023–2025, 118 λήψεις", d:"διάμεση θερμοκρασία ΕΠΙΦΑΝΕΙΑΣ (στέγες, άσφαλτος, χώμα) στις ~10:30 το πρωί, όχι θερμοκρασία αέρα. Στη Λάρισα η πόλη είναι όσο ζεστή όσο τα θερισμένα χωράφια γύρω (~47 °C)· σε Τρίκαλα και Καρδίτσα ~5 °C θερμότερη από τον ποτιστικό κάμπο"},
   pe:     {l:"Περιφερειακή Ενότητα (επίσημη)", u:"κωδ.", src:"ΥΠΕΝ/ΥΠΕΣ όρια", d:"0=Λάρισα, 1=Μαγνησία, 2=Σποράδες, 3=Καρδίτσα, 4=Τρίκαλα"},
   dimos:  {l:"Δήμος", u:"κωδ.", src:"OSM", d:"δείκτης στη λίστα δήμων"},
   lat:    {l:"Γεωγραφικό πλάτος", u:"°", src:"H3", d:"κέντρο κελιού"},
@@ -509,6 +510,16 @@ const PRESETS = [
       filters: [{col:"hospmin", op:">", value:45, label:"Πάνω από 45 λεπτά"}, {col:"pop", op:">=", value:10, label:"Τουλάχιστον 10 κάτοικοι"}],
       score: [{col:"hospmin", dir:"high", cap:120, w:0.6, label:"Χρόνος"}, {col:"pop", dir:"high", cap:300, w:0.4, label:"Κάτοικοι"}],
       caveats: ["Μόνο γενικά νοσοκομεία· τα Κέντρα Υγείας δεν μπήκαν γιατί η λίστα του Overture είναι ελλιπής (λείπουν π.χ. Ελασσόνα, Τύρναβος).", "Οι ταχύτητες είναι εκτίμηση ανά τύπο δρόμου, χωρίς κίνηση και καιρό· οι πραγματικοί χρόνοι είναι μάλλον 10–20% μεγαλύτεροι. Τα νησιά δεν έχουν οδική σύνδεση και δεν εμφανίζονται."] } },
+  { s: "Ζέστη: θερμές γειτονιές", q: "Ποιες κατοικημένες γειτονιές έχουν την πιο ζεστή επιφάνεια το καλοκαίρι;",
+    spec: { title: "Οι πιο ζεστές κατοικημένες γειτονιές το καλοκαίρι", answer: "Πυκνοδομημένα εξάγωνα με πάνω από 300 κατοίκους όπου η επιφάνεια φτάνει τουλάχιστον 46 °C στις καλοκαιρινές πρωινές λήψεις του Landsat (Ιούλ–Αύγ 2023–2025). Περίπου 135.000 κάτοικοι, κυρίως Λάρισα, Βόλος και Τύρναβος. Υποψήφια σημεία για σκίαση, δέντρα και ψυχρές στέγες.",
+      filters: [{col:"lst", op:">=", value:46, label:"Επιφάνεια ≥ 46 °C το καλοκαίρι"}, {col:"built", op:">=", value:0.3, label:"Δομημένο ≥ 30%"}, {col:"pop", op:">=", value:300, label:"Πάνω από 300 κάτοικοι"}],
+      score: [{col:"lst", dir:"high", cap:50, w:0.6, label:"Θερμοκρασία επιφάνειας"}, {col:"pop", dir:"high", cap:2000, w:0.4, label:"Κάτοικοι"}],
+      caveats: ["Θερμοκρασία επιφάνειας στις ~10:30, όχι αέρα· το πρόβλημα υγείας είναι κυρίως οι ζεστές νύχτες, που ο Landsat δεν βλέπει.", "Δεν υπάρχουν στοιχεία ηλικίας ανά γειτονιά· η ευαλωσία (ηλικιωμένοι, μοναχικά νοικοκυριά) θέλει την απογραφή 2021 της ΕΛΣΤΑΤ."] } },
+  { s: "Πού χωρά λεκάνη ανάσχεσης", q: "Πού θα μπορούσε να γίνει λεκάνη ανάσχεσης ή αποκατάσταση πλημμυρικού πεδίου;",
+    spec: { title: "Πρώτο φίλτρο για λεκάνες ανάσχεσης και αποκατάσταση πλημμυρικού πεδίου", answer: "Επίπεδη αγροτική γη μέσα στην επίσημη ζώνη πλημμύρας 100 ετών, σε χαμηλή γη δίπλα σε ποτάμι, σχεδόν χωρίς κτίρια. Βαθμολογείται υψηλότερα όπου πλημμύρισε και στον Daniel. Δείχνει πού χωρά ένα τέτοιο έργο, όχι πόσο θα βοηθούσε.",
+      filters: [{col:"q100", op:">=", value:0.3, label:"Μέσα στη ζώνη πλημμύρας 100 ετών (≥30%)"}, {col:"hand3", op:">", value:0.3, label:"Χαμηλή γη δίπλα σε ποτάμι (+3 m)"}, {col:"flat", op:">=", value:0.7, label:"Επίπεδο"}, {col:"crop", op:">=", value:0.5, label:"Κυρίως αγροτική γη"}, {col:"bld", op:"<=", value:3, label:"Έως 3 κτίρια"}],
+      score: [{col:"flood", dir:"high", cap:1, w:0.5, label:"Πλημμύρισε στον Daniel"}, {col:"q100", dir:"high", cap:1, w:0.3, label:"Μερίδιο σε ζώνη 100 ετών"}, {col:"droad", dir:"low", cap:2, w:0.2, label:"Πρόσβαση από άσφαλτο"}],
+      caveats: ["Η βιβλιογραφία δείχνει μικρό όφελος από μεμονωμένα μέτρα (μείωση βάθους 0,02–0,24 m σε μεσογειακή λεκάνη)· χρειάζεται δίκτυο έργων και υδραυλική μελέτη για να μετρηθεί το όφελος.", "Δεν είναι γνωστά ιδιοκτησία, αξία γης και αναχώματα· τα κύρια εμπόδια σε τέτοια έργα είναι κοινωνικά και θεσμικά, όχι τεχνικά."] } },
   { s: "Agrivoltaics", q: "Επίπεδη αγροτική γη εκτός Natura, που δεν πλημμύρισε, κοντά σε υποσταθμό (agrivoltaics)",
     spec: { title: "Πρώτο φίλτρο για agrivoltaics", answer: "Επίπεδα χωράφια εκτός Natura 2000, εκτός της πλημμύρας του Daniel και έως 5 km από υποσταθμό, βαθμολογημένα για σύνδεση και πρόσβαση.",
       filters: [
@@ -731,6 +742,7 @@ const OV = [ // overlays: draped texture layers + vector layers
   { id: "official", l: "Επίσημες ζώνες πλημμύρας Q100/Q1000", src: "ΥΠΕΝ ΣΔΚΠ", kind: "tex", on: false, op: 0.85 },
   { id: "fire", l: "Επικινδυνότητα πυρκαγιάς (κίτρινο→κόκκινο) · γκρι διαγράμμιση: κάηκε από το 2021", src: "FSim Greece, EFFIS", kind: "tex", on: false, op: 0.9 },
   { id: "ground", l: "Καθίζηση εδάφους 2021–2025 (γαλάζιο 2 mm/έτος → μωβ 20+)", src: "Copernicus EGMS", kind: "tex", on: false, op: 0.95 },
+  { id: "lst", l: "Θερμοκρασία επιφάνειας στις πόλεις, καλοκαίρι (κίτρινο 34 °C → μπορντό 50 °C)", src: "Landsat 8/9", kind: "tex", on: false, op: 0.9 },
   { id: "excl", l: "Αποκλεισμοί ΕΧΠ: αρχαιολ. ζώνη Α, χωρίς δρόμους", src: "ΥΠΠΟ, Παν. Ιωαννίνων", kind: "tex", on: false, op: 0.9 },
   { id: "rivers", l: "Ποτάμια", src: "OSM", kind: "vec", on: true },
   { id: "deddie", l: "Υποσταθμοί ΔΕΔΔΗΕ: ελεύθερο περιθώριο ΑΠΕ", src: "ΔΕΔΔΗΕ 10/11/2026", kind: "vec", on: false },
@@ -1194,7 +1206,7 @@ function showCard(i) {
   const x = el("button", "x", "×"); x.setAttribute("aria-label", "Κλείσιμο"); x.onclick = () => C.hidden = true;
   C.append(x, el("h3", null, `${placeName(i)} · κελί ${D.h3[i].slice(-6)}`));
   const dl = el("dl");
-  const rows = [["elev", 0], ["slope", 1], ["crop", 2], ["tree", 2], ["built", 2], ["pop", 0], ["flood", 2], ["q100", 2], ["q1000", 2], ["firehaz", 1], ["firecfl", 1], ["burned", 2], ["gmsink", 1], ["gmrise", 1], ["hospmin", 0], ["hospdan", 0], ["lake", 2], ["natura", 2], ["archA", 2], ["roadless", 2], ["dsub", 1], ["droad", 1], ["solar", 3], ["thr", 0]].filter(([c]) => D[c]);
+  const rows = [["elev", 0], ["slope", 1], ["crop", 2], ["tree", 2], ["built", 2], ["pop", 0], ["flood", 2], ["q100", 2], ["q1000", 2], ["firehaz", 1], ["firecfl", 1], ["burned", 2], ["gmsink", 1], ["gmrise", 1], ["hospmin", 0], ["hospdan", 0], ["lst", 1], ["lake", 2], ["natura", 2], ["archA", 2], ["roadless", 2], ["dsub", 1], ["droad", 1], ["solar", 3], ["thr", 0]].filter(([c]) => D[c]);
   rows.forEach(([c, d]) => { const v = D[c][i]; dl.append(el("dt", null, CAT[c].l), el("dd", null, v < 0 ? "—" : (CAT[c].u === "0-1" ? fmt(v * 100) + "%" : fmt(v, d) + " " + CAT[c].u))); });
   C.append(dl);
   if (D.mapped[i] < 0.5) C.append(el("div", "lab", "Εκτός χαρτογράφησης EMSR692: η πλημμύρα εδώ είναι άγνωστη."));
@@ -1366,8 +1378,8 @@ function initSwipe() {
 }
 function renderLayersPanel() {
   const P = $("layersList"); P.replaceChildren();
-  const GRP = { s2: "Δορυφόρος", s2water: "Δορυφόρος", flood: "Πλημμύρα", official: "Πλημμύρα", lake: "Πλημμύρα", bld: "Πλημμύρα", ortho: "Πλημμύρα", fire: "Πυρκαγιά", ground: "Έδαφος", landcover: "Γη και προστασία", natura: "Γη και προστασία", excl: "Γη και προστασία",
-    deddie: "Ενέργεια", grid: "Ενέργεια", solar: "Ενέργεια", rivers: "Υπόβαθρο", towns: "Υπόβαθρο" }, order = ["Πλημμύρα", "Πυρκαγιά", "Έδαφος", "Γη και προστασία", "Ενέργεια", "Δορυφόρος", "Υπόβαθρο"];
+  const GRP = { s2: "Δορυφόρος", s2water: "Δορυφόρος", flood: "Πλημμύρα", official: "Πλημμύρα", lake: "Πλημμύρα", bld: "Πλημμύρα", ortho: "Πλημμύρα", fire: "Πυρκαγιά", ground: "Έδαφος", lst: "Ζέστη", landcover: "Γη και προστασία", natura: "Γη και προστασία", excl: "Γη και προστασία",
+    deddie: "Ενέργεια", grid: "Ενέργεια", solar: "Ενέργεια", rivers: "Υπόβαθρο", towns: "Υπόβαθρο" }, order = ["Πλημμύρα", "Πυρκαγιά", "Έδαφος", "Ζέστη", "Γη και προστασία", "Ενέργεια", "Δορυφόρος", "Υπόβαθρο"];
   let last = null;
   [...OV].sort((a, b) => order.indexOf(GRP[a.id] || "Υπόβαθρο") - order.indexOf(GRP[b.id] || "Υπόβαθρο")).forEach(o => {
     const g = GRP[o.id] || "Υπόβαθρο"; if (g !== last) { P.append(el("div", "lgrp", g)); last = g; }
@@ -1417,7 +1429,7 @@ function tourGo(k) {
   try {
     [D, V, TL, HAND] = await Promise.all(["data.json", "assets/vectors.json", "assets/daniel_timeline.json", "assets/hand.json"].map(u => fetch(u).then(r => r.json())));
     try { WX = await (await fetch("assets/forecast.json", { cache: "no-store" })).json(); } catch { WX = null; }
-    const names = ["base", "landcover", "natura", "flood", "lake", "official", "excl", "fire", "ground"], files = ["assets/base.jpg", "assets/ov_landcover.png", "assets/ov_natura.png", "assets/ov_flood.png", "assets/ov_lake.png", "assets/ov_official.png", "assets/ov_excl.png", "assets/ov_fire.png", "assets/ov_ground.png"];
+    const names = ["base", "landcover", "natura", "flood", "lake", "official", "excl", "fire", "ground", "lst"], files = ["assets/base.jpg", "assets/ov_landcover.png", "assets/ov_natura.png", "assets/ov_flood.png", "assets/ov_lake.png", "assets/ov_official.png", "assets/ov_excl.png", "assets/ov_fire.png", "assets/ov_ground.png", "assets/ov_lst.png"];
     try { [IMG.s2, IMG.s2water] = await Promise.all([loadImg("assets/s2_today.jpg"), loadImg("assets/s2_water.png")]); S2W = await (await fetch("assets/s2_water.json")).json(); } catch { IMG.s2 = null; }
     (await Promise.all(files.map(loadImg))).forEach((im, k) => IMG[names[k]] = im);
   } catch (e) { $("loading").textContent = "Τα δεδομένα δεν φορτώθηκαν."; return; }

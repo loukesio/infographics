@@ -32,6 +32,10 @@ columns:
   fire_cfl_m:      {unit: m, source: "FSim dataset for Greece", date: "fuels 2018-2020", desc: "conditional flame length, mean over burnable pixels"}
   fire_hazard:     {unit: index, source: "FSim dataset for Greece", date: "fuels 2018-2020", desc: "fire_bp_pct x fire_cfl_m"}
   burned_2021_share: {unit: share, source: "EFFIS burnt areas (WFS modis.ba.poly)", date: "2021-01-01 to 2026-10", desc: "share of cell burnt since 2021; FSim hazard is outdated there"}
+  gm_vel_mm:       {unit: "mm/yr", source: "Copernicus EGMS Ortho L3 vertical, release 2020-2025 (prod. 22/09/2026), 100 m", date: "2021-05 to 2025-11", desc: "vertical ground velocity after the 3 Mar 2021 earthquake (linear trend of the time series), negative = sinking", caveat: "InSAR coverage ~14% on cropland"}
+  gm_vel_p10_mm:   {unit: "mm/yr", source: "EGMS", desc: "10th percentile of the trend within the cell"}
+  gm_eq2021_mm:    {unit: mm, source: "EGMS", desc: "displacement step across the 3 Mar 2021 Mw 6.3 earthquake (3 dates after minus 3 before)"}
+  gm_cover:        {unit: share, source: "EGMS", desc: "share of the cell with an InSAR measurement"}
   daniel_flood_share: {unit: share, source: "Copernicus EMS rapid mapping EMSR692 (Storm Daniel, 6-22 Sep 2023), union of 'Flooded area' polygons over all DEL products", caveat: "one event, not a return-period hazard map; only inside the 7 mapped AOIs"}
   daniel_mapped_share: {unit: share, desc: "share of the cell inside any EMSR692 area of interest. 0 = not mapped, so 'not flooded' is unknown there"}
   daniel_products_flooded: {unit: count, desc: "number of EMSR692 products (dates) in which the cell was flooded: persistence proxy"}

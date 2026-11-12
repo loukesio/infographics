@@ -423,6 +423,10 @@ const CAT = {
   firecfl:{l:"Μήκος φλόγας", u:"m", src:"FSim Greece", d:"αναμενόμενο μήκος φλόγας όπου μπορεί να καεί (ένταση· πάνω από ~2,5 m η άμεση κατάσβεση από το έδαφος δυσκολεύει)"},
   firehaz:{l:"Επικινδυνότητα πυρκαγιάς", u:"δείκτης", src:"FSim Greece", d:"πιθανότητα καύσης (%) × μήκος φλόγας (m)· συνδυάζει πόσο συχνά και πόσο έντονα. Σχετικός δείκτης: ~12 = ανώτερο 25% της Θεσσαλίας, ~43 = ανώτερο 10%, ~73 = ανώτερο 3%"},
   burned: {l:"Κάηκε από το 2021", u:"0-1", src:"EFFIS burnt areas (έως 10/2026)", d:"μερίδιο κελιού μέσα σε καμένη έκταση από 1/1/2021· εκεί η επικινδυνότητα FSim είναι ξεπερασμένη (τα καύσιμα του μοντέλου είναι του 2018–2020)"},
+  gmsink: {l:"Καθίζηση εδάφους", u:"mm/έτος", src:"Copernicus EGMS Ortho 2020–2025", d:"ρυθμός βύθισης του εδάφους 5/2021–11/2025 (μετά τον σεισμό του 2021), μέσος όρος στα μετρημένα σημεία του κελιού· 0 = σταθερό ή ανυψώνεται, κενό = χωρίς μέτρηση. Σοβαρό από ~5 mm/έτος"},
+  gmrise: {l:"Ανύψωση εδάφους", u:"mm/έτος", src:"Copernicus EGMS Ortho 2020–2025", d:"ρυθμός ανύψωσης 5/2021–11/2025· στην Κάρλα ξεκινά μετά τον Σεπτέμβριο 2023 (πιθανώς ανάκαμψη υδροφορέα μετά τον Daniel, όχι επιβεβαιωμένο)"},
+  gmeq:   {l:"Βύθιση στον σεισμό του 2021", u:"mm", src:"Copernicus EGMS Ortho 2020–2025", d:"πόσο χαμήλωσε απότομα το έδαφος στον σεισμό της 3/3/2021 (Μw 6,3, Δαμάσι–Τύρναβος)· έως ~380 mm"},
+  gmcov:  {l:"Κάλυψη μετρήσεων εδάφους", u:"0-1", src:"Copernicus EGMS", d:"μερίδιο κελιού με μέτρηση· οι δορυφορικές μετρήσεις λείπουν σε οργωμένα χωράφια, δάση και νερό (κάλυψη καλλιεργειών ~14%)"},
   pe:     {l:"Περιφερειακή Ενότητα (επίσημη)", u:"κωδ.", src:"ΥΠΕΝ/ΥΠΕΣ όρια", d:"0=Λάρισα, 1=Μαγνησία, 2=Σποράδες, 3=Καρδίτσα, 4=Τρίκαλα"},
   dimos:  {l:"Δήμος", u:"κωδ.", src:"OSM", d:"δείκτης στη λίστα δήμων"},
   lat:    {l:"Γεωγραφικό πλάτος", u:"°", src:"H3", d:"κέντρο κελιού"},
@@ -486,6 +490,11 @@ const PRESETS = [
       filters: [{col:"firehaz", op:">=", value:43, label:"Επικινδυνότητα στο ανώτερο 10%"}, {col:"bld", op:">=", value:5, label:"Τουλάχιστον 5 κτίρια"}, {col:"burned", op:"<", value:0.3, label:"Δεν κάηκε από το 2021"}],
       score: [{col:"bld", dir:"high", cap:150, w:0.5, label:"Κτίρια"}, {col:"firehaz", dir:"high", cap:120, w:0.3, label:"Επικινδυνότητα"}, {col:"droad", dir:"high", cap:2, w:0.2, label:"Μακριά από άσφαλτο"}],
       caveats: ["Προσομοίωση (FSim) με καύσιμη ύλη του 2018–2020: δείχνει σχετική κατάταξη περιοχών, όχι πρόβλεψη. Οι δημιουργοί δεν δίνουν ποσοτικά μέτρα ακρίβειας.", "Η επικινδυνότητα είναι μέσος όρος εξαγώνου (~0,74 km²)· δεν λέει αν το συγκεκριμένο κτίριο είναι δίπλα σε βλάστηση. Κτίρια = κάθε κατασκευή του Overture."] } },
+  { s: "Καθιζήσεις: κτίρια σε έδαφος που βουλιάζει", q: "Πού υπάρχουν κτίρια σε έδαφος που βουλιάζει πάνω από 5 mm τον χρόνο;",
+    spec: { title: "Κτίρια σε έδαφος που βουλιάζει", answer: "Εξάγωνα όπου το έδαφος χαμηλώνει τουλάχιστον 5 mm τον χρόνο (5/2021–11/2025, δορυφορικές μετρήσεις Copernicus EGMS), με τουλάχιστον 5 κτίρια. Περίπου 6.500 κτίρια· τα περισσότερα στον Δήμο Κιλελέρ (Πλατύκαμπος: ~13 cm σε 5 χρόνια) και γύρω από το Βελεστίνο.",
+      filters: [{col:"gmsink", op:">=", value:5, label:"Βουλιάζει ≥ 5 mm/έτος"}, {col:"gmcov", op:">=", value:0.15, label:"Μετρήθηκε τουλάχιστον το 15% του κελιού"}, {col:"bld", op:">=", value:5, label:"Τουλάχιστον 5 κτίρια"}],
+      score: [{col:"gmsink", dir:"high", cap:25, w:0.6, label:"Ρυθμός βύθισης"}, {col:"bld", dir:"high", cap:200, w:0.4, label:"Κτίρια"}],
+      caveats: ["Οι δορυφορικές μετρήσεις λείπουν στα περισσότερα οργωμένα χωράφια (κάλυψη ~14% στις καλλιέργειες)· η καθίζηση του κάμπου είναι πιθανότατα πιο εκτεταμένη από όσο δείχνει ο χάρτης.", "Γύρω από Δαμάσι και Ελασσόνα μέρος της βύθισης είναι μετασεισμική κίνηση μετά τον σεισμό του 2021, όχι υπεράντληση. Το ποσοστό κάθε αιτίας δεν διαχωρίζεται εδώ."] } },
   { s: "Agrivoltaics", q: "Επίπεδη αγροτική γη εκτός Natura, που δεν πλημμύρισε, κοντά σε υποσταθμό (agrivoltaics)",
     spec: { title: "Πρώτο φίλτρο για agrivoltaics", answer: "Επίπεδα χωράφια εκτός Natura 2000, εκτός της πλημμύρας του Daniel και έως 5 km από υποσταθμό, βαθμολογημένα για σύνδεση και πρόσβαση.",
       filters: [
@@ -707,6 +716,7 @@ const OV = [ // overlays: draped texture layers + vector layers
   { id: "lake", l: "Λίμνη Τεμπών (σενάριο)", src: "DEM", kind: "tex", on: false, op: 0.85 },
   { id: "official", l: "Επίσημες ζώνες πλημμύρας Q100/Q1000", src: "ΥΠΕΝ ΣΔΚΠ", kind: "tex", on: false, op: 0.85 },
   { id: "fire", l: "Επικινδυνότητα πυρκαγιάς (κίτρινο→κόκκινο) · γκρι διαγράμμιση: κάηκε από το 2021", src: "FSim Greece, EFFIS", kind: "tex", on: false, op: 0.9 },
+  { id: "ground", l: "Καθίζηση εδάφους 2021–2025 (γαλάζιο 2 mm/έτος → μωβ 20+)", src: "Copernicus EGMS", kind: "tex", on: false, op: 0.95 },
   { id: "excl", l: "Αποκλεισμοί ΕΧΠ: αρχαιολ. ζώνη Α, χωρίς δρόμους", src: "ΥΠΠΟ, Παν. Ιωαννίνων", kind: "tex", on: false, op: 0.9 },
   { id: "rivers", l: "Ποτάμια", src: "OSM", kind: "vec", on: true },
   { id: "deddie", l: "Υποσταθμοί ΔΕΔΔΗΕ: ελεύθερο περιθώριο ΑΠΕ", src: "ΔΕΔΔΗΕ 10/11/2026", kind: "vec", on: false },
@@ -1170,7 +1180,7 @@ function showCard(i) {
   const x = el("button", "x", "×"); x.setAttribute("aria-label", "Κλείσιμο"); x.onclick = () => C.hidden = true;
   C.append(x, el("h3", null, `${placeName(i)} · κελί ${D.h3[i].slice(-6)}`));
   const dl = el("dl");
-  const rows = [["elev", 0], ["slope", 1], ["crop", 2], ["tree", 2], ["built", 2], ["pop", 0], ["flood", 2], ["q100", 2], ["q1000", 2], ["firehaz", 1], ["firecfl", 1], ["burned", 2], ["lake", 2], ["natura", 2], ["archA", 2], ["roadless", 2], ["dsub", 1], ["droad", 1], ["solar", 3], ["thr", 0]].filter(([c]) => D[c]);
+  const rows = [["elev", 0], ["slope", 1], ["crop", 2], ["tree", 2], ["built", 2], ["pop", 0], ["flood", 2], ["q100", 2], ["q1000", 2], ["firehaz", 1], ["firecfl", 1], ["burned", 2], ["gmsink", 1], ["gmrise", 1], ["lake", 2], ["natura", 2], ["archA", 2], ["roadless", 2], ["dsub", 1], ["droad", 1], ["solar", 3], ["thr", 0]].filter(([c]) => D[c]);
   rows.forEach(([c, d]) => { const v = D[c][i]; dl.append(el("dt", null, CAT[c].l), el("dd", null, v < 0 ? "—" : (CAT[c].u === "0-1" ? fmt(v * 100) + "%" : fmt(v, d) + " " + CAT[c].u))); });
   C.append(dl);
   if (D.mapped[i] < 0.5) C.append(el("div", "lab", "Εκτός χαρτογράφησης EMSR692: η πλημμύρα εδώ είναι άγνωστη."));
@@ -1342,8 +1352,8 @@ function initSwipe() {
 }
 function renderLayersPanel() {
   const P = $("layersList"); P.replaceChildren();
-  const GRP = { s2: "Δορυφόρος", s2water: "Δορυφόρος", flood: "Πλημμύρα", official: "Πλημμύρα", lake: "Πλημμύρα", bld: "Πλημμύρα", ortho: "Πλημμύρα", fire: "Πυρκαγιά", landcover: "Γη και προστασία", natura: "Γη και προστασία", excl: "Γη και προστασία",
-    deddie: "Ενέργεια", grid: "Ενέργεια", solar: "Ενέργεια", rivers: "Υπόβαθρο", towns: "Υπόβαθρο" }, order = ["Πλημμύρα", "Πυρκαγιά", "Γη και προστασία", "Ενέργεια", "Δορυφόρος", "Υπόβαθρο"];
+  const GRP = { s2: "Δορυφόρος", s2water: "Δορυφόρος", flood: "Πλημμύρα", official: "Πλημμύρα", lake: "Πλημμύρα", bld: "Πλημμύρα", ortho: "Πλημμύρα", fire: "Πυρκαγιά", ground: "Έδαφος", landcover: "Γη και προστασία", natura: "Γη και προστασία", excl: "Γη και προστασία",
+    deddie: "Ενέργεια", grid: "Ενέργεια", solar: "Ενέργεια", rivers: "Υπόβαθρο", towns: "Υπόβαθρο" }, order = ["Πλημμύρα", "Πυρκαγιά", "Έδαφος", "Γη και προστασία", "Ενέργεια", "Δορυφόρος", "Υπόβαθρο"];
   let last = null;
   [...OV].sort((a, b) => order.indexOf(GRP[a.id] || "Υπόβαθρο") - order.indexOf(GRP[b.id] || "Υπόβαθρο")).forEach(o => {
     const g = GRP[o.id] || "Υπόβαθρο"; if (g !== last) { P.append(el("div", "lgrp", g)); last = g; }
@@ -1393,7 +1403,7 @@ function tourGo(k) {
   try {
     [D, V, TL, HAND] = await Promise.all(["data.json", "assets/vectors.json", "assets/daniel_timeline.json", "assets/hand.json"].map(u => fetch(u).then(r => r.json())));
     try { WX = await (await fetch("assets/forecast.json", { cache: "no-store" })).json(); } catch { WX = null; }
-    const names = ["base", "landcover", "natura", "flood", "lake", "official", "excl", "fire"], files = ["assets/base.jpg", "assets/ov_landcover.png", "assets/ov_natura.png", "assets/ov_flood.png", "assets/ov_lake.png", "assets/ov_official.png", "assets/ov_excl.png", "assets/ov_fire.png"];
+    const names = ["base", "landcover", "natura", "flood", "lake", "official", "excl", "fire", "ground"], files = ["assets/base.jpg", "assets/ov_landcover.png", "assets/ov_natura.png", "assets/ov_flood.png", "assets/ov_lake.png", "assets/ov_official.png", "assets/ov_excl.png", "assets/ov_fire.png", "assets/ov_ground.png"];
     try { [IMG.s2, IMG.s2water] = await Promise.all([loadImg("assets/s2_today.jpg"), loadImg("assets/s2_water.png")]); S2W = await (await fetch("assets/s2_water.json")).json(); } catch { IMG.s2 = null; }
     (await Promise.all(files.map(loadImg))).forEach((im, k) => IMG[names[k]] = im);
   } catch (e) { $("loading").textContent = "Τα δεδομένα δεν φορτώθηκαν."; return; }

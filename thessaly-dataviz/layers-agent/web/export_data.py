@@ -16,6 +16,9 @@ off = pd.read_parquet(R / "data/official_h3.parquet"); d = d.merge(off, on="h3",
 d = d.merge(pd.read_parquet(R / "data/deddie_h3.parquet"), on="h3", how="left")
 d = d.merge(pd.read_parquet(R / "data/buildings_h3.parquet"), on="h3", how="left").merge(pd.read_parquet(R / "data/crops_h3.parquet"), on="h3", how="left")
 d = d.merge(pd.read_parquet(R / "data/fire_h3.parquet"), on="h3", how="left")
+gm = pd.read_parquet(R / "data/ground_h3.parquet")   # signed mm/yr -> two non-negative columns (the page uses -1 for 'no data')
+gm["gm_sink"] = (-gm.gm_vel_mm).clip(lower=0); gm["gm_rise"] = gm.gm_vel_mm.clip(lower=0); gm["gm_eqdrop"] = (-gm.gm_eq2021_mm).clip(lower=0)
+d = d.merge(gm[["h3", "gm_sink", "gm_rise", "gm_eqdrop", "gm_cover"]], on="h3", how="left")
 d["forest_proxy"] = (d.lc_tree_share.fillna(0) + d.lc_shrub_share.fillna(0)).clip(0, 1)
 cols.update({"q50": ("official_flood_q50_share", 2), "q100": ("official_flood_q100_share", 2), "q1000": ("official_flood_q1000_share", 2),
  "archA": ("arch_zone_share", 2), "darch": ("dist_arch_zone_km", 1), "roadless": ("roadless_share", 2), "histfl": ("hist_flood_events", 0),
@@ -24,7 +27,8 @@ cols.update({"q50": ("official_flood_q50_share", 2), "q100": ("official_flood_q1
  "bld": ("bld", 0), "bldq100": ("bld_q100", 0), "bldq1000": ("bld_q1000", 0), "blddan": ("bld_daniel", 0), "blddanout": ("bld_daniel_out", 0),
  "wheat": ("crop_wheat_share", 2), "maize": ("crop_maize_share", 2), "indcrop": ("crop_industrial_share", 2), "fodder": ("crop_fodder_share", 2),
  "cereal2": ("crop_barley_oats_share", 2),
- "firebp": ("fire_bp_pct", 2), "firecfl": ("fire_cfl_m", 1), "firehaz": ("fire_hazard", 1), "burned": ("burned_2021_share", 2), "sunfl": ("crop_sunflower_share", 2), "arable": ("arable_share", 2)})
+ "firebp": ("fire_bp_pct", 2), "firecfl": ("fire_cfl_m", 1), "firehaz": ("fire_hazard", 1), "burned": ("burned_2021_share", 2),
+ "gmsink": ("gm_sink", 1), "gmrise": ("gm_rise", 1), "gmeq": ("gm_eqdrop", 0), "gmcov": ("gm_cover", 2), "sunfl": ("crop_sunflower_share", 2), "arable": ("arable_share", 2)})
 PE = ["Λάρισα", "Μαγνησία", "Σποράδες", "Καρδίτσα", "Τρίκαλα"]
 DM = sorted(d.municipality.dropna().unique().tolist())
 out = {"h3": d.h3.tolist(), "ru": d.regional_unit.map(ru).fillna(0).astype(int).tolist(),
